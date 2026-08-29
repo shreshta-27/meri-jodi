@@ -3,6 +3,7 @@ import { User } from "../models/User.js"
 import { PAGINATION_DEFAULTS } from "../constants/index.js"
 
 const PROFILE_CREATE_FIELDS = [
+    "name",
     "dateOfBirth",
     "placeOfBirth",
     "motherTongue",
@@ -27,6 +28,7 @@ const PROFILE_CREATE_FIELDS = [
 ]
 
 const PROFILE_UPDATE_FIELDS = [
+    "name",
     "dateOfBirth",
     "placeOfBirth",
     "motherTongue",
@@ -35,11 +37,15 @@ const PROFILE_UPDATE_FIELDS = [
     "heightCm",
     "religion",
     "caste",
+    "gotham",
+    "rashi",
+    "nakshtra",
     "maritalStatus",
     "location",
     "education",
     "career",
     "family",
+    "lifestyle",
     "createdBy",
     "agreedToTerms",
     "agreedToPrivacyPolicy",
@@ -60,6 +66,12 @@ class ProfileService {
                 sanitized[field] = data[field]
             }
         }
+
+        if (!sanitized.name) {
+            const user = await User.findById(userId)
+            if (user && user.name) sanitized.name = user.name
+        }
+
         const profile = new Profile({ userId, ...sanitized })
         profile.profileCompletionPct = this._calculateCompletion(profile)
         await profile.save()
@@ -72,7 +84,7 @@ class ProfileService {
      * @returns {Promise<object|null>} Profile or null
      */
     async getByUserId(userId) {
-        return Profile.findOne({ userId })
+        return Profile.findOne({ userId }).populate("userId", "name email phone avatar")
     }
 
     /**
@@ -81,7 +93,7 @@ class ProfileService {
      * @returns {Promise<object|null>} Profile or null
      */
     async getById(id) {
-        return Profile.findById(id)
+        return Profile.findById(id).populate("userId", "name email phone avatar")
     }
 
     /**
@@ -99,11 +111,16 @@ class ProfileService {
             }
         }
 
+        if (sanitized.name) {
+            await User.findByIdAndUpdate(userId, { name: sanitized.name })
+        }
+
         const profile = await Profile.findOneAndUpdate(
             { userId },
             { $set: sanitized },
             { returnDocument: "after", runValidators: true }
-        )
+        ).populate("userId", "name email phone avatar")
+
         if (profile) {
             profile.profileCompletionPct = this._calculateCompletion(profile)
             await profile.save()
@@ -174,12 +191,16 @@ class ProfileService {
                 .sort({ createdAt: -1 })
                 .skip(skip)
                 .limit(limit)
+                .populate("userId", "name avatar")
                 .lean(),
             Profile.countDocuments(query),
         ])
 
         return {
-            profiles,
+            profiles: profiles.map((p) => ({
+                ...p,
+                name: p.name || p.userId?.name || "MeriJodi Member",
+            })),
             pagination: {
                 page,
                 limit,

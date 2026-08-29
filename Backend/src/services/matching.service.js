@@ -76,7 +76,6 @@ class MatchingService {
         } else if (profile.gender === "female") {
             query.gender = "male"
         }
-        // If gender is "other" and no preference, show all genders
 
         // Apply preference filters
         if (preferences) {
@@ -123,15 +122,13 @@ class MatchingService {
         }
 
         const skip = (page - 1) * limit
-
-        // Fetch more candidates than needed to ensure correct sorting by compatibility.
-        // DB filters narrow the pool, then we sort by compatibility in memory.
         const fetchLimit = Math.max(limit * 3, 60)
 
         const [allCandidates, total] = await Promise.all([
             Profile.find(query)
                 .sort({ createdAt: -1 })
                 .limit(fetchLimit)
+                .populate("userId", "name avatar")
                 .lean(),
             Profile.countDocuments(query),
         ])
@@ -139,6 +136,7 @@ class MatchingService {
         // Calculate compatibility score for each candidate
         const candidatesWithScore = allCandidates.map((match) => ({
             ...match,
+            name: match.name || match.userId?.name || "MeriJodi Member",
             age: calculateAge(match.dateOfBirth),
             compatibilityScore: this._calculateCompatibility(
                 profile,
@@ -178,7 +176,9 @@ class MatchingService {
         // Religion match (20 points)
         maxScore += 20
         if (preferences?.religion && matchProfile.religion) {
-            if (userProfile.religion === matchProfile.religion) score += 20
+            if (preferences.religion === matchProfile.religion) score += 20
+        } else if (userProfile.religion && matchProfile.religion && userProfile.religion === matchProfile.religion) {
+            score += 15
         } else {
             score += 10
         }
@@ -186,7 +186,9 @@ class MatchingService {
         // Caste match (15 points)
         maxScore += 15
         if (preferences?.caste && matchProfile.caste) {
-            if (userProfile.caste === matchProfile.caste) score += 15
+            if (preferences.caste === matchProfile.caste) score += 15
+        } else if (userProfile.caste && matchProfile.caste && userProfile.caste === matchProfile.caste) {
+            score += 12
         } else {
             score += 7.5
         }
@@ -194,9 +196,11 @@ class MatchingService {
         // Location match (15 points)
         maxScore += 15
         if (preferences?.location && matchProfile.location?.city) {
-            if (preferences.location === matchProfile.location.city) {
+            if (preferences.location.toLowerCase() === matchProfile.location.city.toLowerCase()) {
                 score += 15
             }
+        } else if (userProfile.location?.city && matchProfile.location?.city && userProfile.location.city.toLowerCase() === matchProfile.location.city.toLowerCase()) {
+            score += 12
         } else {
             score += 7.5
         }
@@ -211,42 +215,38 @@ class MatchingService {
                 if (matchAge >= min && matchAge <= max) score += 15
             }
         } else {
-            score += 7.5
+            score += 10
         }
 
         // Education match (10 points)
         maxScore += 10
         if (preferences?.education && matchProfile.education?.highestDegree) {
-            if (
-                matchProfile.education.highestDegree
-                    .toLowerCase()
-                    .includes(preferences.education.toLowerCase())
-            ) {
+            if (preferences.education === matchProfile.education.highestDegree) {
                 score += 10
             }
         } else {
             score += 5
         }
 
-        // Occupation match (10 points)
+        // Lifestyle / Diet match (10 points)
         maxScore += 10
-        if (preferences?.occupation && matchProfile.career?.occupation) {
-            if (
-                matchProfile.career.occupation
-                    .toLowerCase()
-                    .includes(preferences.occupation.toLowerCase())
-            ) {
-                score += 10
-            }
+        if (preferences?.diet && matchProfile.lifestyle?.diet) {
+            if (preferences.diet === matchProfile.lifestyle.diet) score += 10
         } else {
             score += 5
         }
 
-        // Profile completion bonus (15 points)
-        maxScore += 15
-        score += (matchProfile.profileCompletionPct / 100) * 15
+        // Marital status match (10 points)
+        maxScore += 10
+        if (preferences?.maritalStatus?.length > 0 && matchProfile.maritalStatus) {
+            if (preferences.maritalStatus.includes(matchProfile.maritalStatus)) {
+                score += 10
+            }
+        } else {
+            score += 8
+        }
 
-        return maxScore > 0 ? Math.round((score / maxScore) * 100) : 0
+        return Math.round((score / maxScore) * 100)
     }
 }
 

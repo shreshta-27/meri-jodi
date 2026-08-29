@@ -21,12 +21,14 @@ const userSchema = new Schema(
         },
         passwordHash: { type: String },
         googleId: { type: String, unique: true, sparse: true },
+        avatar: { type: String },
         role: { type: String, enum: Object.values(ROLES), default: ROLES.USER },
         status: {
             type: String,
             enum: Object.values(USER_STATUS),
             default: USER_STATUS.ACTIVE,
         },
+        isEmailVerified: { type: Boolean, default: false },
         isPhoneVerified: { type: Boolean, default: false },
         lastLogin: Date,
     },
@@ -34,7 +36,7 @@ const userSchema = new Schema(
 )
 
 userSchema.methods.setPassword = async function (password) {
-    this.passwordHash = await bcrypt.hash(password, 12)
+    this.passwordHash = await bcrypt.hash(password, 10)
 }
 
 userSchema.methods.validatePassword = async function (password) {
@@ -48,7 +50,10 @@ userSchema.methods.toAuthJSON = function () {
         name: this.name,
         email: this.email,
         phone: this.phone,
+        avatar: this.avatar,
         role: this.role,
+        status: this.status,
+        isEmailVerified: this.isEmailVerified,
         isPhoneVerified: this.isPhoneVerified,
     }
 }

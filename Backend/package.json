@@ -24,23 +24,30 @@
         "bcryptjs": "^3.0.3",
         "cloudinary": "^2.10.0",
         "compression": "^1.8.0",
+        "cookie-parser": "^1.4.7",
         "cors": "^2.8.6",
         "dotenv": "^16.6.1",
         "express": "^4.22.2",
         "express-rate-limit": "^7.5.0",
         "express-validator": "^7.3.2",
+        "google-auth-library": "^11.0.2",
         "helmet": "^8.0.0",
         "jsonwebtoken": "^9.0.3",
+        "mongo-sanitize": "^1.1.0",
         "mongoose": "^8.12.1",
         "morgan": "^1.10.0",
         "multer": "^1.4.5-lts.2",
         "multer-storage-cloudinary-v2": "^1.0.3",
+        "nodemailer": "^9.0.6",
+        "redis": "^6.2.1",
         "socket.io": "^4.8.3",
-        "twilio": "^6.0.2"
+        "twilio": "^6.0.2",
+        "zod": "^4.5.2"
     },
     "devDependencies": {
         "eslint": "^9.21.0",
         "nodemon": "^3.1.9",
-        "prettier": "^3.5.3"
+        "prettier": "^3.5.3",
+        "supertest": "^7.2.2"
     }
 }

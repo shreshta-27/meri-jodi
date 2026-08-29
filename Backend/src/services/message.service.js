@@ -58,8 +58,8 @@ class MessageService {
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit)
-            .populate("senderProfileId", "photos")
-            .populate("receiverProfileId", "photos")
+            .populate("senderProfileId", "name photos gender")
+            .populate("receiverProfileId", "name photos gender")
     }
 
     /**
@@ -77,7 +77,7 @@ class MessageService {
     }
 
     /**
-     * Get all conversations for a profile
+     * Get all conversations for a profile with populated partner profile details
      * @param {string} profileId
      * @returns {Promise<Array>} Latest message from each conversation
      */
@@ -123,6 +123,49 @@ class MessageService {
                             ],
                         },
                     },
+                },
+            },
+            {
+                $lookup: {
+                    from: "profiles",
+                    localField: "_id",
+                    foreignField: "_id",
+                    as: "partnerProfile",
+                },
+            },
+            {
+                $unwind: {
+                    path: "$partnerProfile",
+                    preserveNullAndEmptyArrays: true,
+                },
+            },
+            {
+                $lookup: {
+                    from: "users",
+                    localField: "partnerProfile.userId",
+                    foreignField: "_id",
+                    as: "partnerUser",
+                },
+            },
+            {
+                $unwind: {
+                    path: "$partnerUser",
+                    preserveNullAndEmptyArrays: true,
+                },
+            },
+            {
+                $project: {
+                    _id: 1,
+                    lastMessage: 1,
+                    unreadCount: 1,
+                    partnerName: {
+                        $ifNull: [
+                            "$partnerProfile.name",
+                            { $ifNull: ["$partnerUser.name", "MeriJodi Member"] },
+                        ],
+                    },
+                    partnerPhotos: { $ifNull: ["$partnerProfile.photos", []] },
+                    partnerGender: "$partnerProfile.gender",
                 },
             },
             { $sort: { "lastMessage.createdAt": -1 } },

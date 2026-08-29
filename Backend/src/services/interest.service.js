@@ -122,9 +122,24 @@ class InterestService {
      * @returns {Promise<Array>} Sent interests
      */
     async getSent(profileId) {
-        return Interest.find({ senderProfileId: profileId })
+        const interests = await Interest.find({ senderProfileId: profileId })
             .sort({ createdAt: -1 })
-            .populate("receiverProfileId", "gender location photos")
+            .populate({
+                path: "receiverProfileId",
+                select: "name gender location photos dateOfBirth religion caste career education aboutMe maritalStatus",
+                populate: { path: "userId", select: "name avatar" },
+            })
+            .lean()
+
+        return interests.map((item) => {
+            if (item.receiverProfileId) {
+                item.receiverProfileId.name =
+                    item.receiverProfileId.name ||
+                    item.receiverProfileId.userId?.name ||
+                    "MeriJodi Member"
+            }
+            return item
+        })
     }
 
     /**
@@ -133,9 +148,24 @@ class InterestService {
      * @returns {Promise<Array>} Received interests
      */
     async getReceived(profileId) {
-        return Interest.find({ receiverProfileId: profileId })
+        const interests = await Interest.find({ receiverProfileId: profileId })
             .sort({ createdAt: -1 })
-            .populate("senderProfileId", "gender location photos")
+            .populate({
+                path: "senderProfileId",
+                select: "name gender location photos dateOfBirth religion caste career education aboutMe maritalStatus",
+                populate: { path: "userId", select: "name avatar" },
+            })
+            .lean()
+
+        return interests.map((item) => {
+            if (item.senderProfileId) {
+                item.senderProfileId.name =
+                    item.senderProfileId.name ||
+                    item.senderProfileId.userId?.name ||
+                    "MeriJodi Member"
+            }
+            return item
+        })
     }
 
     /**

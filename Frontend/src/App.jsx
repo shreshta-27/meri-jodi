@@ -4,6 +4,7 @@ import LandingPage from "./Pages/LandingPage.jsx";
 import LoginPage from "./Pages/LoginPage.jsx";
 import SignUpPage from "./Pages/SignUpPage.jsx";
 import RegisterPage from "./Pages/RegisterPage.jsx";
+import VerifyEmailPage from "./Pages/VerifyEmailPage.jsx";
 import CompleteProfilePage from "./Pages/CompleteProfilePage.jsx";
 import AddDetailsManually from "./Pages/AddDetailsManually.jsx";
 import UploadBiodataPage from "./Pages/UploadBiodataPage.jsx";
@@ -24,6 +25,7 @@ function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<SignUpPage />} />
       <Route path="/verify-otp" element={<RegisterPage />} />
+      <Route path="/verify-email/:token" element={<VerifyEmailPage />} />
 
       {/* Protected Routes */}
       <Route
