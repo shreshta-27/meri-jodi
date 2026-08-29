@@ -92,8 +92,8 @@ const setupSocket = (httpServer) => {
                 })
 
                 const populated = await Message.findById(message._id)
-                    .populate("senderProfileId", "photos")
-                    .populate("receiverProfileId", "photos")
+                    .populate("senderProfileId", "name photos gender")
+                    .populate("receiverProfileId", "name photos gender")
 
                 const roomId = [socket.profileId, receiverProfileId].sort().join(":")
                 io.to(roomId).emit("new_message", populated)

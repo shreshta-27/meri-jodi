@@ -53,6 +53,13 @@ const biodataSchema = {
 
 router.post("/extract-biodata", upload.single("file"), async (req, res, next) => {
     try {
+        if (!process.env.GEMINI_API_KEY) {
+            return res.status(503).json({
+                success: false,
+                error: "AI Biodata extraction service is not configured (missing GEMINI_API_KEY).",
+            })
+        }
+
         if (!req.file) {
             return res.status(400).json({ success: false, error: "No file uploaded." })
         }
