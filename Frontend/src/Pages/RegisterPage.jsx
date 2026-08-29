@@ -39,7 +39,7 @@ const RegisterPage = () => {
     const newOtp = [...otp]
     newOtp[index] = value
     setOtp(newOtp)
-    if (value && index < 3) {
+    if (value && index < 5) {
       document.getElementById(`otp-${index + 1}`)?.focus()
     }
   }

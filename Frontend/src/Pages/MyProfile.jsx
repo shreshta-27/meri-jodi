@@ -1,344 +1,602 @@
 import { useEffect, useState } from "react"
+import { useNavigate } from "react-router-dom"
 import { useAuth } from "../context/AuthContext"
 import Navbar from "../Components/Navbar"
+import Footer from "../Components/Footer"
 import EditProfileModal from "../Components/EditProfileModal"
+import PartnerPreferenceModal from "../Components/PartnerPreferenceModal"
+import PhotoUploadModal from "../Components/PhotoUploadModal"
 import userImage from "../assets/user.jpg"
-import match1 from "../assets/match1.png"
-import match2 from "../assets/match2.png"
-import match3 from "../assets/match3.png"
-import match4 from "../assets/match4.png"
+import home1 from "../assets/home1.png"
 import { getMyProfile } from "../api/profileApi"
+import { getPartnerPreferences, updatePartnerPreferences } from "../api/partnerPreferenceApi"
+import { getMyMatches } from "../api/matchingApi"
 import {
-  Briefcase, Calendar, CigaretteOff, Heart, MapPin, Phone, Sparkles,
-  Utensils, WineOff, Users, GraduationCap, Flame, Target, ArrowRight,
+    Briefcase,
+    Calendar,
+    CigaretteOff,
+    Heart,
+    MapPin,
+    Phone,
+    Sparkles,
+    Utensils,
+    WineOff,
+    Users,
+    GraduationCap,
+    Flame,
+    Target,
+    ArrowRight,
+    Camera,
+    CheckCircle,
 } from "lucide-react"
 
 const calculateAge = (dateOfBirth) => {
-  if (!dateOfBirth) return null
-  const dob = new Date(dateOfBirth)
-  if (Number.isNaN(dob.getTime())) return null
-  return Math.floor((Date.now() - dob.getTime()) / (365.25 * 24 * 60 * 60 * 1000))
+    if (!dateOfBirth) return null
+    const dob = new Date(dateOfBirth)
+    if (Number.isNaN(dob.getTime())) return null
+    return Math.floor((Date.now() - dob.getTime()) / (365.25 * 24 * 60 * 60 * 1000))
 }
 
 const formatDate = (dateOfBirth) => {
-  if (!dateOfBirth) return null
-  const dob = new Date(dateOfBirth)
-  if (Number.isNaN(dob.getTime())) return null
-  return dob.toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" })
+    if (!dateOfBirth) return null
+    const dob = new Date(dateOfBirth)
+    if (Number.isNaN(dob.getTime())) return null
+    return dob.toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" })
 }
 
 const formatHeight = (heightCm) => {
-  if (!heightCm) return null
-  const totalInches = heightCm / 2.54
-  const feet = Math.floor(totalInches / 12)
-  const inches = Math.round(totalInches % 12)
-  return `${feet}ft ${inches}in`
+    if (!heightCm) return null
+    const totalInches = heightCm / 2.54
+    const feet = Math.floor(totalInches / 12)
+    const inches = Math.round(totalInches % 12)
+    return `${feet}ft ${inches}in (${heightCm}cm)`
 }
 
 const formatSiblings = (numBrothers, numSisters) => {
-  if (numBrothers == null && numSisters == null) return null
-  const parts = []
-  if (numBrothers) parts.push(`${numBrothers} Brother${numBrothers > 1 ? "s" : ""}`)
-  if (numSisters) parts.push(`${numSisters} Sister${numSisters > 1 ? "s" : ""}`)
-  return parts.length ? parts.join(", ") : "No siblings"
+    if (numBrothers == null && numSisters == null) return null
+    const parts = []
+    if (numBrothers) parts.push(`${numBrothers} Brother${numBrothers > 1 ? "s" : ""}`)
+    if (numSisters) parts.push(`${numSisters} Sister${numSisters > 1 ? "s" : ""}`)
+    return parts.length ? parts.join(", ") : "No siblings"
 }
 
 const formatLocation = (location) => {
-  if (!location) return null
-  return [location.city, location.country].filter(Boolean).join(", ") || null
+    if (!location) return null
+    return [location.city, location.state, location.country].filter(Boolean).join(", ") || null
 }
 
-const DetailRow = ({ label, value }) => (
-  <div className="flex justify-between py-1">
-    <span className="text-gray-600">{label}</span>
-    {value ? <span className="font-medium">{value}</span> : <span className="text-[#842029] cursor-pointer hover:underline">Add {label}</span>}
-  </div>
-)
-
-const PreferenceField = ({ label, addLabel, value }) => (
-  <div>
-    <p className="text-xs font-semibold text-gray-500 mb-2">{label}</p>
-    {value ? <p className="text-base">{value}</p> : <p className="text-[#842029] cursor-pointer hover:underline">{addLabel}</p>}
-  </div>
-)
-
-const MyProfile = () => {
-  const { user } = useAuth()
-  const [profile, setProfile] = useState(null)
-  const [status, setStatus] = useState("loading")
-  const [editingSection, setEditingSection] = useState(null)
-
-  useEffect(() => {
-    let cancelled = false
-    const fetchProfile = async () => {
-      setStatus("loading")
-      try {
-        const data = await getMyProfile()
-        if (cancelled) return
-        if (data) { setProfile(data); setStatus("found") }
-        else { setStatus("empty") }
-      } catch (err) {
-        console.error("Failed to load profile:", err)
-        if (!cancelled) setStatus("error")
-      }
-    }
-    fetchProfile()
-    return () => { cancelled = true }
-  }, [])
-
-  const handleEditComplete = async () => {
-    try {
-      const data = await getMyProfile()
-      if (data) setProfile(data)
-    } catch (err) {
-      console.error("Failed to refetch profile:", err)
-    }
-    setEditingSection(null)
-  }
-
-  const fullName = user?.name || profile?.name || "—"
-  const email = user?.email || "—"
-  const phone = user?.phone || "—"
-
-  const photoSources = profile?.photos?.length
-    ? profile.photos.slice(0, 4).map((p) => p.url)
-    : [userImage, userImage, userImage, userImage]
-  const heroPhoto = photoSources[0]
-
-  if (status === "loading") {
-    return (
-      <div>
-        <Navbar />
-        <div className="pt-16 px-20 text-gray-500">Loading your profile...</div>
-      </div>
-    )
-  }
-
-  if (status === "error") {
-    return (
-      <div>
-        <Navbar />
-        <div className="pt-16 px-20">
-          <p className="text-gray-600">Something went wrong loading your profile. Please refresh the page.</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (status === "empty") {
-    return (
-      <div>
-        <Navbar />
-        <div className="pt-16 px-20">
-          <p className="text-gray-600 mb-3">You haven't completed your profile yet.</p>
-          <a href="/add-details" className="text-[#842029] font-medium hover:underline">Complete Your Profile →</a>
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div>
-      <Navbar />
-      <div className="pt-16 px-20">
-        <div className="flex gap-12">
-          <div className="flex flex-col gap-3 min-w-4/12">
-            <div>
-              <img src={heroPhoto} alt="" className="w-132 h-96 object-cover object-center rounded-2xl" />
-            </div>
-            <div className="flex gap-3">
-              {photoSources.map((src, i) => (
-                <img key={i} src={src} alt="" className="h-28 w-28 rounded-2xl object-cover object-center" />
-              ))}
-            </div>
-          </div>
-
-          <div className="space-y-6">
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <h2>MY PROFILE</h2>
-                <button onClick={() => setEditingSection("personal")} className="text-[#842029] font-medium hover:underline">edit profile</button>
-              </div>
-              <h1 className="text-5xl">{fullName}</h1>
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-1 text-sm">
-                  <Calendar size={16} />
-                  <span>{calculateAge(profile.dateOfBirth) ?? "—"} years</span>
-                </div>
-                <div className="h-1 w-1 rounded-full bg-[#E0BEBF]"></div>
-                <div className="flex items-center gap-1 text-sm">
-                  <MapPin size={16} />
-                  <span>{formatLocation(profile.location) || "Add Location"}</span>
-                </div>
-                <div className="h-1 w-1 rounded-full bg-[#E0BEBF]"></div>
-                <div className="flex items-center gap-1 text-sm">
-                  <Briefcase size={16} />
-                  <span>{profile.career?.occupation || "Add Occupation"}</span>
-                </div>
-                <div className="h-1 w-1 rounded-full bg-[#E0BEBF]"></div>
-                <div className="flex items-center gap-1 text-sm">
-                  <Phone size={16} />
-                  <span>{phone}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-[#FFF4F6] border border-[#F1AEB44D] rounded-2xl px-12 py-8 space-y-6">
-              <p className="flex gap-3 text-2xl"><Sparkles /> About {fullName !== "—" ? fullName.split(" ")[0] : "You"}</p>
-              <p>{profile.aboutMe || "You haven't added an about section yet."}</p>
-              <h2>Lifestyle</h2>
-              {profile.lifestyle ? (
-                <div className="flex gap-3">
-                  {profile.lifestyle.diet && (
-                    <div className="bg-[#E0BEBF33] rounded-full px-6 py-3 flex items-center gap-3">
-                      <Utensils size={11} /><p className="text-sm">{profile.lifestyle.diet}</p>
-                    </div>
-                  )}
-                  {profile.lifestyle.smoking === false && (
-                    <div className="bg-[#E0BEBF33] rounded-full px-6 py-3 flex items-center gap-3">
-                      <CigaretteOff size={11} /><p className="text-sm">Non-smoker</p>
-                    </div>
-                  )}
-                  {profile.lifestyle.drinking === false && (
-                    <div className="bg-[#E0BEBF33] rounded-full px-6 py-3 flex items-center gap-3">
-                      <WineOff size={11} /><p className="text-sm">Non-drinker</p>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <p onClick={() => setEditingSection("lifestyle")} className="text-[#842029] cursor-pointer hover:underline text-sm">Add Lifestyle Preferences</p>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-12 space-y-6">
-          <div className="grid grid-cols-2 gap-6">
-            <div className="border border-[#E0BEBF] rounded-2xl p-6">
-              <div className="flex justify-between items-center mb-4">
-                <div className="flex items-center gap-3"><Heart size={24} className="text-[#842029]" /><h3 className="text-lg font-semibold">Personal Details</h3></div>
-                <button onClick={() => setEditingSection("personal")} className="text-[#842029] text-sm font-medium hover:underline">✎ Edit</button>
-              </div>
-              <div className="space-y-2">
-                <DetailRow label="Age" value={calculateAge(profile.dateOfBirth) ? `${calculateAge(profile.dateOfBirth)} years` : null} />
-                <DetailRow label="Height" value={formatHeight(profile.heightCm)} />
-                <DetailRow label="Date of Birth" value={formatDate(profile.dateOfBirth)} />
-                <DetailRow label="Place of Birth" value={profile.placeOfBirth} />
-                <DetailRow label="Gender" value={profile.gender} />
-                <DetailRow label="Location" value={formatLocation(profile.location)} />
-                <DetailRow label="Marital Status" value={profile.maritalStatus} />
-                <div className="flex justify-between py-1"><span className="text-gray-600">Email</span><span className="font-medium">{email}</span></div>
-              </div>
-            </div>
-
-            <div className="border border-[#E0BEBF] rounded-2xl p-6">
-              <div className="flex justify-between items-center mb-4">
-                <div className="flex items-center gap-3"><Users size={24} className="text-[#842029]" /><h3 className="text-lg font-semibold">Family Background</h3></div>
-                <button onClick={() => setEditingSection("family")} className="text-[#842029] text-sm font-medium hover:underline">✎ Edit</button>
-              </div>
-              <div className="space-y-2">
-                <DetailRow label="Mother Tongue" value={profile.motherTongue} />
-                <DetailRow label="Family Type" value={profile.family?.familyType} />
-                <DetailRow label="Father's Occupation" value={profile.family?.fatherOccupation} />
-                <DetailRow label="Mother's Occupation" value={profile.family?.motherOccupation} />
-                <DetailRow label="Family Location" value={null} />
-                <DetailRow label="Family Values" value={profile.family?.familyValues} />
-                <DetailRow label="Siblings" value={formatSiblings(profile.family?.numBrothers, profile.family?.numSisters)} />
-              </div>
-            </div>
-
-            <div className="border border-[#E0BEBF] rounded-2xl p-6">
-              <div className="flex justify-between items-center mb-4">
-                <div className="flex items-center gap-3"><GraduationCap size={24} className="text-[#842029]" /><h3 className="text-lg font-semibold">Career & Education</h3></div>
-                <button onClick={() => setEditingSection("career")} className="text-[#842029] text-sm font-medium hover:underline">✎ Edit</button>
-              </div>
-              <div className="space-y-2">
-                <DetailRow label="Education" value={profile.education?.highestDegree} />
-                <DetailRow label="College" value={profile.education?.institution} />
-                <DetailRow label="Occupation" value={profile.career?.occupation} />
-                <DetailRow label="Company Name" value={profile.career?.companyName} />
-                <DetailRow label="Annual Income" value={profile.career?.annualIncome} />
-              </div>
-            </div>
-
-            <div className="border border-[#E0BEBF] rounded-2xl p-6">
-              <div className="flex justify-between items-center mb-4">
-                <div className="flex items-center gap-3"><Flame size={24} className="text-[#842029]" /><h3 className="text-lg font-semibold">Religion Details</h3></div>
-                <button onClick={() => setEditingSection("religion")} className="text-[#842029] text-sm font-medium hover:underline">✎ Edit</button>
-              </div>
-              <div className="space-y-2">
-                <DetailRow label="Native Place" value={null} />
-                <DetailRow label="Religion" value={profile.religion} />
-                <DetailRow label="Caste" value={profile.caste} />
-                <DetailRow label="Gotham" value={null} />
-                <DetailRow label="Nakshtra" value={null} />
-                <DetailRow label="Rashi" value={null} />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-12 border-2 border-[#E0BEBF] border-dashed rounded-3xl p-8">
-          <div className="flex justify-between items-center mb-8">
-            <div className="flex items-center gap-3"><Target size={28} className="text-[#842029]" /><h2 className="text-2xl font-semibold">Ideal Partner Preferences</h2></div>
-            <button className="text-[#842029] font-medium hover:underline flex items-center gap-1">✎ Edit</button>
-          </div>
-          <div className="grid grid-cols-4 gap-8 mb-8">
-            <PreferenceField label="AGE RANGE" addLabel="Add Age Range" value={null} />
-            <PreferenceField label="HEIGHT" addLabel="Add Height" value={null} />
-            <PreferenceField label="MARITAL STATUS" addLabel="Add Marital Status" value={null} />
-            <PreferenceField label="LOCATION" addLabel="Add Location" value={null} />
-            <PreferenceField label="RELIGION" addLabel="Add Religion" value={null} />
-            <PreferenceField label="HEIGHT" addLabel="Add Height" value={null} />
-            <PreferenceField label="CASTE" addLabel="Add Caste" value={null} />
-            <PreferenceField label="NATIVE PLACE" addLabel="Add Native Place" value={null} />
-            <PreferenceField label="EDUCATION" addLabel="Add Education" value={null} />
-            <PreferenceField label="OCCUPATION" addLabel="Add Occupation" value={null} />
-            <PreferenceField label="COMPANY NAME" addLabel="Add Company Name" value={null} />
-            <PreferenceField label="ANNUAL INCOME" addLabel="Add Annual Income" value={null} />
-          </div>
-          <div className="mb-8">
-            <h3 className="text-lg font-semibold mb-4">Hobbies & Interests</h3>
-            <p className="text-[#842029] cursor-pointer hover:underline text-sm">Add Hobbies & Interests</p>
-          </div>
-          <button className="flex items-center gap-2 text-[#842029] font-medium hover:underline">⚠ Describe Partner Preferences</button>
-        </div>
-
-        <div className="mt-12 rounded-2xl p-8">
-          <div className="flex justify-between items-center mb-8">
-            <h2 className="text-2xl font-semibold">Matches You would Like to View</h2>
-            <button className="text-red-600 font-medium hover:underline flex items-center gap-2">View All <ArrowRight size={20} /></button>
-          </div>
-          <div className="flex gap-6 overflow-x-auto pb-4">
-            {[
-              { img: match1, name: "Ishani D", role: "Lawyer" },
-              { img: match2, name: "Pratiksha bedi", role: "Manager" },
-              { img: match3, name: "Ishani Shah", role: "Banker" },
-              { img: match4, name: "Isha Patel", role: "Actress" },
-            ].map((m) => (
-              <div key={m.name} className="shrink-0 w-64 rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow">
-                <div className="relative h-80 bg-gray-200">
-                  <img src={m.img} alt={m.name} className="w-full h-full object-cover" />
-                  <div className="absolute bottom-0 left-0 right-0 bg-linear-to-t from-black/50 to-transparent py-3 px-4 backdrop-blur-md">
-                    <p className="text-xs text-gray-300 uppercase tracking-wide">{m.role}</p>
-                    <p className="text-white text-lg font-semibold">{m.name}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <EditProfileModal
-        isOpen={editingSection !== null}
-        section={editingSection}
-        profile={profile}
-        onClose={() => setEditingSection(null)}
-        onSuccess={handleEditComplete}
-      />
+const DetailRow = ({ label, value, onAdd }) => (
+    <div className="flex justify-between items-center py-1.5 text-xs sm:text-sm border-b border-gray-50 last:border-0">
+        <span className="text-gray-500">{label}</span>
+        {value ? (
+            <span className="font-semibold text-gray-800 text-right">{value}</span>
+        ) : (
+            <button
+                type="button"
+                onClick={onAdd}
+                className="text-[#842029] text-xs font-medium hover:underline cursor-pointer"
+            >
+                + Add {label}
+            </button>
+        )}
     </div>
-  )
-}
+)
 
-export default MyProfile
+const PreferenceField = ({ label, value, onEdit }) => (
+    <div className="p-3.5 bg-gray-50/70 rounded-2xl border border-gray-100 flex flex-col justify-between">
+        <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-1">
+            {label}
+        </p>
+        {value ? (
+            <p className="text-xs sm:text-sm font-semibold text-gray-800 leading-snug">{value}</p>
+        ) : (
+            <button
+                type="button"
+                onClick={onEdit}
+                className="text-left text-xs text-[#842029] font-medium hover:underline cursor-pointer"
+            >
+                + Specify {label}
+            </button>
+        )}
+    </div>
+)
+
+export default function MyProfile() {
+    const navigate = useNavigate()
+    const { user } = useAuth()
+    const [profile, setProfile] = useState(null)
+    const [preferences, setPreferences] = useState(null)
+    const [recommendedMatches, setRecommendedMatches] = useState([])
+    const [status, setStatus] = useState("loading")
+    const [editingSection, setEditingSection] = useState(null)
+    const [isPrefModalOpen, setIsPrefModalOpen] = useState(false)
+    const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false)
+
+    const fetchProfileAndData = async () => {
+        setStatus("loading")
+        try {
+            const [profileData, prefData, matchData] = await Promise.all([
+                getMyProfile(),
+                getPartnerPreferences(),
+                getMyMatches({ limit: 6 }).catch(() => ({ matches: [] })),
+            ])
+
+            if (profileData) {
+                setProfile(profileData)
+                setPreferences(prefData)
+                setRecommendedMatches(matchData?.matches || [])
+                setStatus("found")
+            } else {
+                setStatus("empty")
+            }
+        } catch (err) {
+            console.error("Failed to load profile:", err)
+            setStatus("error")
+        }
+    }
+
+    useEffect(() => {
+        fetchProfileAndData()
+    }, [])
+
+    const handleEditComplete = async () => {
+        try {
+            const data = await getMyProfile()
+            if (data) setProfile(data)
+        } catch (err) {
+            console.error("Failed to refetch profile:", err)
+        }
+        setEditingSection(null)
+    }
+
+    const handleSavePreferences = async (newPrefs) => {
+        const saved = await updatePartnerPreferences(newPrefs)
+        setPreferences(saved)
+    }
+
+    const handlePhotosUpdated = (updatedProfile) => {
+        setProfile(updatedProfile)
+    }
+
+    const fullName = user?.name || profile?.name || "MeriJodi Member"
+    const email = user?.email || "—"
+    const phone = user?.phone || "—"
+
+    const primaryPhoto =
+        profile?.photos?.find((p) => p.isPrimary)?.url ||
+        profile?.photos?.[0]?.url ||
+        userImage
+
+    const photosList = profile?.photos?.length ? profile.photos : []
+
+    if (status === "loading") {
+        return (
+            <div className="min-h-screen bg-[#FBF9F9] flex flex-col">
+                <Navbar />
+                <div className="flex-1 flex items-center justify-center text-gray-500">
+                    Loading your profile...
+                </div>
+            </div>
+        )
+    }
+
+    if (status === "empty") {
+        return (
+            <div className="min-h-screen bg-[#FBF9F9] flex flex-col">
+                <Navbar />
+                <div className="flex-1 max-w-xl mx-auto px-6 py-20 text-center">
+                    <div className="w-16 h-16 rounded-full bg-[#FFF0F2] text-[#842029] flex items-center justify-center mx-auto mb-4">
+                        <Heart size={28} />
+                    </div>
+                    <h2 className="text-2xl font-bold font-serif text-gray-900 mb-2">
+                        Complete Your Profile
+                    </h2>
+                    <p className="text-gray-500 text-sm mb-6">
+                        Set up your biodata and lifestyle details to start getting personalized match suggestions.
+                    </p>
+                    <button
+                        onClick={() => navigate("/add-details")}
+                        className="px-8 py-3 rounded-full bg-[#842029] text-white font-semibold text-sm hover:bg-[#6b1b27] transition-all shadow-sm"
+                    >
+                        Fill Biodata Manually
+                    </button>
+                </div>
+                <Footer />
+            </div>
+        )
+    }
+
+    return (
+        <div className="min-h-screen bg-[#FBF9F9] font-sans flex flex-col">
+            <Navbar />
+            <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
+                {/* Hero Profile Overview */}
+                <div className="bg-white rounded-3xl p-5 sm:p-8 border border-[#FFE4E8] shadow-xs flex flex-col lg:flex-row gap-8 lg:gap-12">
+                    {/* Left: Photos */}
+                    <div className="flex flex-col gap-3 w-full lg:w-96 shrink-0">
+                        <div className="relative aspect-4/5 w-full rounded-2xl overflow-hidden shadow-sm bg-gray-100">
+                            <img
+                                src={primaryPhoto}
+                                alt={fullName}
+                                className="w-full h-full object-cover"
+                            />
+                            <button
+                                onClick={() => setIsPhotoModalOpen(true)}
+                                className="absolute bottom-3 right-3 px-3.5 py-1.5 rounded-full bg-black/60 backdrop-blur-xs text-white text-xs font-semibold hover:bg-black/80 transition-colors flex items-center gap-1.5 shadow"
+                            >
+                                <Camera size={14} /> Manage Photos ({photosList.length}/6)
+                            </button>
+                            {profile.isVerified && (
+                                <span className="absolute top-3 left-3 px-3 py-1 rounded-full bg-emerald-600 text-white text-[11px] font-bold shadow-md flex items-center gap-1">
+                                    <CheckCircle size={12} /> Verified Profile
+                                </span>
+                            )}
+                        </div>
+
+                        {/* Thumbnails */}
+                        {photosList.length > 1 && (
+                            <div className="flex gap-2 overflow-x-auto pb-1">
+                                {photosList.map((p, idx) => (
+                                    <img
+                                        key={idx}
+                                        src={p.url}
+                                        alt=""
+                                        onClick={() => setIsPhotoModalOpen(true)}
+                                        className="h-16 w-16 rounded-xl object-cover border cursor-pointer hover:opacity-80 transition-opacity"
+                                    />
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Right: Key Info & Bio */}
+                    <div className="flex-1 flex flex-col justify-between space-y-6">
+                        <div>
+                            <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
+                                <span className="text-xs font-bold uppercase tracking-wider text-[#842029]">
+                                    My Profile
+                                </span>
+                                <button
+                                    onClick={() => setEditingSection("personal")}
+                                    className="px-4 py-1.5 rounded-full border border-[#842029] text-[#842029] text-xs font-semibold hover:bg-[#842029] hover:text-white transition-colors"
+                                >
+                                    ✎ Edit Profile
+                                </button>
+                            </div>
+
+                            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold font-serif text-[#640515] leading-tight">
+                                {fullName}
+                            </h1>
+
+                            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-3 text-xs sm:text-sm text-gray-600">
+                                <div className="flex items-center gap-1 font-medium">
+                                    <Calendar size={15} className="text-[#842029]" />
+                                    <span>{calculateAge(profile.dateOfBirth) ?? "—"} Years</span>
+                                </div>
+                                <span>&bull;</span>
+                                <div className="flex items-center gap-1 font-medium">
+                                    <MapPin size={15} className="text-[#842029]" />
+                                    <span>{formatLocation(profile.location) || "Location not set"}</span>
+                                </div>
+                                <span>&bull;</span>
+                                <div className="flex items-center gap-1 font-medium">
+                                    <Briefcase size={15} className="text-[#842029]" />
+                                    <span>{profile.career?.occupation || "Occupation not set"}</span>
+                                </div>
+                                <span>&bull;</span>
+                                <div className="flex items-center gap-1 font-medium">
+                                    <Phone size={15} className="text-[#842029]" />
+                                    <span>{phone}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* About Me Section */}
+                        <div className="bg-[#FFF4F6] border border-[#F1AEB4]/40 rounded-2xl p-5 sm:p-6 space-y-4">
+                            <h2 className="flex items-center gap-2 text-base font-bold text-[#842029] font-serif">
+                                <Sparkles size={18} /> About {fullName.split(" ")[0]}
+                            </h2>
+                            <p className="text-xs sm:text-sm text-gray-700 leading-relaxed">
+                                {profile.aboutMe || "You haven't added an about summary yet. Share your passions, family values, and what you're looking for in a partner."}
+                            </p>
+
+                            {/* Lifestyle Badges */}
+                            <div>
+                                <h3 className="text-xs font-bold uppercase tracking-wider text-[#842029] mb-2">
+                                    Lifestyle Habits
+                                </h3>
+                                <div className="flex flex-wrap gap-2">
+                                    {profile.lifestyle?.diet && (
+                                        <div className="bg-white rounded-full px-3.5 py-1.5 border border-rose-100 flex items-center gap-2 text-xs font-semibold text-gray-800 shadow-2xs">
+                                            <Utensils size={12} className="text-[#842029]" />
+                                            {profile.lifestyle.diet}
+                                        </div>
+                                    )}
+                                    {profile.lifestyle?.smoking === false && (
+                                        <div className="bg-white rounded-full px-3.5 py-1.5 border border-rose-100 flex items-center gap-2 text-xs font-semibold text-gray-800 shadow-2xs">
+                                            <CigaretteOff size={12} className="text-[#842029]" />
+                                            Non-Smoker
+                                        </div>
+                                    )}
+                                    {profile.lifestyle?.drinking === false && (
+                                        <div className="bg-white rounded-full px-3.5 py-1.5 border border-rose-100 flex items-center gap-2 text-xs font-semibold text-gray-800 shadow-2xs">
+                                            <WineOff size={12} className="text-[#842029]" />
+                                            Non-Drinker
+                                        </div>
+                                    )}
+                                    {!profile.lifestyle && (
+                                        <button
+                                            onClick={() => setEditingSection("lifestyle")}
+                                            className="text-xs text-[#842029] font-medium hover:underline"
+                                        >
+                                            + Add Lifestyle Preferences
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* 4 Detail Grid Cards */}
+                <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* 1. Personal Details */}
+                    <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-xs">
+                        <div className="flex justify-between items-center mb-4 pb-3 border-b border-gray-100">
+                            <div className="flex items-center gap-2.5">
+                                <div className="w-8 h-8 rounded-full bg-[#FFF0F2] text-[#842029] flex items-center justify-center">
+                                    <Heart size={16} />
+                                </div>
+                                <h2 className="text-base font-bold text-gray-900 font-serif">
+                                    Personal Details
+                                </h2>
+                            </div>
+                            <button
+                                onClick={() => setEditingSection("personal")}
+                                className="text-xs font-semibold text-[#842029] hover:underline"
+                            >
+                                ✎ Edit
+                            </button>
+                        </div>
+                        <div className="space-y-1">
+                            <DetailRow label="Age" value={calculateAge(profile.dateOfBirth) ? `${calculateAge(profile.dateOfBirth)} Years` : null} onAdd={() => setEditingSection("personal")} />
+                            <DetailRow label="Height" value={formatHeight(profile.heightCm)} onAdd={() => setEditingSection("personal")} />
+                            <DetailRow label="Date of Birth" value={formatDate(profile.dateOfBirth)} onAdd={() => setEditingSection("personal")} />
+                            <DetailRow label="Place of Birth" value={profile.placeOfBirth} onAdd={() => setEditingSection("personal")} />
+                            <DetailRow label="Gender" value={profile.gender} onAdd={() => setEditingSection("personal")} />
+                            <DetailRow label="Marital Status" value={profile.maritalStatus?.replace("_", " ")} onAdd={() => setEditingSection("personal")} />
+                            <DetailRow label="Email" value={email} />
+                        </div>
+                    </div>
+
+                    {/* 2. Family Background */}
+                    <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-xs">
+                        <div className="flex justify-between items-center mb-4 pb-3 border-b border-gray-100">
+                            <div className="flex items-center gap-2.5">
+                                <div className="w-8 h-8 rounded-full bg-[#FFF0F2] text-[#842029] flex items-center justify-center">
+                                    <Users size={16} />
+                                </div>
+                                <h2 className="text-base font-bold text-gray-900 font-serif">
+                                    Family Background
+                                </h2>
+                            </div>
+                            <button
+                                onClick={() => setEditingSection("family")}
+                                className="text-xs font-semibold text-[#842029] hover:underline"
+                            >
+                                ✎ Edit
+                            </button>
+                        </div>
+                        <div className="space-y-1">
+                            <DetailRow label="Mother Tongue" value={profile.motherTongue} onAdd={() => setEditingSection("family")} />
+                            <DetailRow label="Family Type" value={profile.family?.familyType} onAdd={() => setEditingSection("family")} />
+                            <DetailRow label="Father's Occupation" value={profile.family?.fatherOccupation} onAdd={() => setEditingSection("family")} />
+                            <DetailRow label="Mother's Occupation" value={profile.family?.motherOccupation} onAdd={() => setEditingSection("family")} />
+                            <DetailRow label="Family Values" value={profile.family?.familyValues} onAdd={() => setEditingSection("family")} />
+                            <DetailRow label="Siblings" value={formatSiblings(profile.family?.numBrothers, profile.family?.numSisters)} onAdd={() => setEditingSection("family")} />
+                        </div>
+                    </div>
+
+                    {/* 3. Career & Education */}
+                    <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-xs">
+                        <div className="flex justify-between items-center mb-4 pb-3 border-b border-gray-100">
+                            <div className="flex items-center gap-2.5">
+                                <div className="w-8 h-8 rounded-full bg-[#FFF0F2] text-[#842029] flex items-center justify-center">
+                                    <GraduationCap size={16} />
+                                </div>
+                                <h2 className="text-base font-bold text-gray-900 font-serif">
+                                    Career &amp; Education
+                                </h2>
+                            </div>
+                            <button
+                                onClick={() => setEditingSection("career")}
+                                className="text-xs font-semibold text-[#842029] hover:underline"
+                            >
+                                ✎ Edit
+                            </button>
+                        </div>
+                        <div className="space-y-1">
+                            <DetailRow label="Highest Degree" value={profile.education?.highestDegree} onAdd={() => setEditingSection("career")} />
+                            <DetailRow label="College / University" value={profile.education?.institution} onAdd={() => setEditingSection("career")} />
+                            <DetailRow label="Occupation" value={profile.career?.occupation} onAdd={() => setEditingSection("career")} />
+                            <DetailRow label="Company Name" value={profile.career?.companyName} onAdd={() => setEditingSection("career")} />
+                            <DetailRow label="Annual Income" value={profile.career?.annualIncome} onAdd={() => setEditingSection("career")} />
+                        </div>
+                    </div>
+
+                    {/* 4. Religion & Astrological Details */}
+                    <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-xs">
+                        <div className="flex justify-between items-center mb-4 pb-3 border-b border-gray-100">
+                            <div className="flex items-center gap-2.5">
+                                <div className="w-8 h-8 rounded-full bg-[#FFF0F2] text-[#842029] flex items-center justify-center">
+                                    <Flame size={16} />
+                                </div>
+                                <h2 className="text-base font-bold text-gray-900 font-serif">
+                                    Religion &amp; Astrology
+                                </h2>
+                            </div>
+                            <button
+                                onClick={() => setEditingSection("religion")}
+                                className="text-xs font-semibold text-[#842029] hover:underline"
+                            >
+                                ✎ Edit
+                            </button>
+                        </div>
+                        <div className="space-y-1">
+                            <DetailRow label="Religion" value={profile.religion} onAdd={() => setEditingSection("religion")} />
+                            <DetailRow label="Caste / Sub-caste" value={profile.caste} onAdd={() => setEditingSection("religion")} />
+                            <DetailRow label="Gotra" value={profile.gotham} onAdd={() => setEditingSection("religion")} />
+                            <DetailRow label="Rashi" value={profile.rashi} onAdd={() => setEditingSection("religion")} />
+                            <DetailRow label="Nakshatra" value={profile.nakshtra} onAdd={() => setEditingSection("religion")} />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Ideal Partner Preferences Section */}
+                <div className="mt-10 bg-white rounded-3xl p-6 sm:p-8 border-2 border-dashed border-[#E0BEBF] shadow-xs">
+                    <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-[#FFF0F2] text-[#842029] flex items-center justify-center">
+                                <Target size={22} />
+                            </div>
+                            <div>
+                                <h2 className="text-xl sm:text-2xl font-bold font-serif text-[#640515]">
+                                    Ideal Partner Preferences
+                                </h2>
+                                <p className="text-xs text-gray-500">
+                                    Compatibility scores in Browse Matches are tailored to these criteria
+                                </p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={() => setIsPrefModalOpen(true)}
+                            className="px-6 py-2 rounded-full bg-[#842029] text-white text-xs font-semibold hover:bg-[#6b1b27] transition-all shadow-xs"
+                        >
+                            ✎ Edit Preferences
+                        </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <PreferenceField
+                            label="Age Range"
+                            value={preferences?.ageMin ? `${preferences.ageMin} - ${preferences.ageMax || 40} Years` : null}
+                            onEdit={() => setIsPrefModalOpen(true)}
+                        />
+                        <PreferenceField
+                            label="Height Range"
+                            value={preferences?.heightMinCm ? `${preferences.heightMinCm}cm - ${preferences.heightMaxCm || 200}cm` : null}
+                            onEdit={() => setIsPrefModalOpen(true)}
+                        />
+                        <PreferenceField
+                            label="Preferred Religion"
+                            value={preferences?.religion || null}
+                            onEdit={() => setIsPrefModalOpen(true)}
+                        />
+                        <PreferenceField
+                            label="Preferred Caste"
+                            value={preferences?.caste || null}
+                            onEdit={() => setIsPrefModalOpen(true)}
+                        />
+                        <PreferenceField
+                            label="Preferred Location"
+                            value={preferences?.location || null}
+                            onEdit={() => setIsPrefModalOpen(true)}
+                        />
+                        <PreferenceField
+                            label="Education Level"
+                            value={preferences?.education || null}
+                            onEdit={() => setIsPrefModalOpen(true)}
+                        />
+                        <PreferenceField
+                            label="Occupation"
+                            value={preferences?.occupation || null}
+                            onEdit={() => setIsPrefModalOpen(true)}
+                        />
+                        <PreferenceField
+                            label="Annual Income"
+                            value={preferences?.annualIncome || null}
+                            onEdit={() => setIsPrefModalOpen(true)}
+                        />
+                    </div>
+                </div>
+
+                {/* Recommended Matches Carousel */}
+                {recommendedMatches.length > 0 && (
+                    <div className="mt-12">
+                        <div className="flex items-center justify-between mb-6">
+                            <div>
+                                <h2 className="text-xl sm:text-2xl font-bold font-serif text-[#640515]">
+                                    Recommended Matches for You
+                                </h2>
+                                <p className="text-xs text-gray-500">Based on your shared lifestyle and preferences</p>
+                            </div>
+                            <button
+                                onClick={() => navigate("/browse-matches")}
+                                className="text-xs sm:text-sm font-semibold text-[#842029] hover:underline flex items-center gap-1"
+                            >
+                                View All <ArrowRight size={14} />
+                            </button>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {recommendedMatches.slice(0, 3).map((match) => {
+                                const mId = match._id || match.id
+                                const mPhoto = match.photos?.find((p) => p.isPrimary)?.url || match.photos?.[0]?.url || home1
+                                const mName = match.name || match.userId?.name || "Member"
+                                const mAge = calculateAge(match.dateOfBirth)
+                                return (
+                                    <div
+                                        key={mId}
+                                        onClick={() => navigate(`/match-details/${mId}`)}
+                                        className="bg-white rounded-3xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition-all cursor-pointer group"
+                                    >
+                                        <div className="relative aspect-4/3 w-full overflow-hidden bg-gray-100">
+                                            <img src={mPhoto} alt={mName} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                                            {typeof match.compatibilityScore === "number" && (
+                                                <span className="absolute top-3 right-3 px-2.5 py-1 rounded-full bg-white/95 text-[#842029] text-[11px] font-bold shadow-xs">
+                                                    ★ {match.compatibilityScore}% Match
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="p-4">
+                                            <h3 className="font-bold text-gray-900 text-base font-serif">
+                                                {mName}{mAge ? `, ${mAge}` : ""}
+                                            </h3>
+                                            <p className="text-xs text-gray-500 mt-1">
+                                                {match.career?.occupation || "Professional"} &bull; {match.location?.city || "India"}
+                                            </p>
+                                        </div>
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    </div>
+                )}
+            </main>
+
+            <Footer />
+
+            {/* Edit Modals */}
+            <EditProfileModal
+                isOpen={editingSection !== null}
+                section={editingSection}
+                profile={profile}
+                onClose={() => setEditingSection(null)}
+                onSuccess={handleEditComplete}
+            />
+
+            <PartnerPreferenceModal
+                isOpen={isPrefModalOpen}
+                preferences={preferences}
+                onClose={() => setIsPrefModalOpen(false)}
+                onSave={handleSavePreferences}
+            />
+
+            <PhotoUploadModal
+                isOpen={isPhotoModalOpen}
+                photos={photosList}
+                onClose={() => setIsPhotoModalOpen(false)}
+                onPhotosUpdated={handlePhotosUpdated}
+            />
+        </div>
+    )
+}

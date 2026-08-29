@@ -34,7 +34,20 @@ class ProfileController extends BaseController {
                 }
             }
 
+            // Record profile view asynchronously
+            profileService.recordView(req.user._id, profile._id.toString()).catch(() => {})
+
             return this.sendSuccess(res, profile, "Profile retrieved")
+        } catch (error) {
+            next(error)
+        }
+    }
+
+    async getWhoViewedMe(req, res, next) {
+        try {
+            const limit = parseInt(req.query.limit) || 10
+            const viewers = await profileService.getWhoViewedMe(req.user._id, limit)
+            return this.sendSuccess(res, viewers, "Viewers retrieved")
         } catch (error) {
             next(error)
         }

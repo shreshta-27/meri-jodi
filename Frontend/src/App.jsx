@@ -16,6 +16,8 @@ import Chatapp from "./Pages/Chatapp.jsx";
 import MyProfile from "./Pages/MyProfile.jsx";
 import ProtectedRoute from "./Components/ProtectedRoute.jsx";
 import HomePage from "./Pages/HomePage.jsx";
+import ShortlistPage from "./Pages/ShortlistPage.jsx";
+import NotFoundPage from "./Pages/NotFoundPage.jsx";
 
 function App() {
   return (
@@ -109,6 +111,14 @@ function App() {
         }
       />
       <Route
+        path="/shortlist"
+        element={
+          <ProtectedRoute>
+            <ShortlistPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/home"
         element={
           <ProtectedRoute>
@@ -116,6 +126,8 @@ function App() {
           </ProtectedRoute>
         }
       />
+      {/* Catch-all 404 Route */}
+      <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
 }

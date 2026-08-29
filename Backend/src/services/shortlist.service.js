@@ -37,7 +37,11 @@ class ShortlistService {
     async getShortlisted(profileId) {
         return Shortlist.find({ profileId })
             .sort({ createdAt: -1 })
-            .populate("shortlistedProfileId", "gender location photos aboutMe")
+            .populate({
+                path: "shortlistedProfileId",
+                select: "name gender location photos aboutMe dateOfBirth religion caste career education lifestyle heightCm isVerified",
+                populate: { path: "userId", select: "name avatar" },
+            })
     }
 
     /**

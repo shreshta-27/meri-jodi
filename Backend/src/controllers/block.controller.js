@@ -10,9 +10,10 @@ class BlockController extends BaseController {
                 return this.sendError(res, "Profile not found", 404)
             }
 
+            const targetId = req.body.profileId || req.body.blockedProfileId
             await blockService.block(
                 profile._id.toString(),
-                req.body.profileId
+                targetId
             )
 
             return this.sendSuccess(res, null, "User blocked")

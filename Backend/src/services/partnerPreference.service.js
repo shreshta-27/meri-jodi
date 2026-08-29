@@ -1,4 +1,5 @@
 import { PartnerPreference } from "../models/PartnerPreference.js"
+import { Profile } from "../models/Profile.js"
 
 const PREFERENCE_UPDATE_FIELDS = [
     "gender",
@@ -34,10 +35,16 @@ class PartnerPreferenceService {
 
         // Ensure gender is present for upserts (required field not enforced by $set)
         if (!sanitized.gender) {
-            // Check if existing preferences have gender
             const existing = await PartnerPreference.findOne({ profileId })
-            if (!existing || !existing.gender) {
-                throw new Error("Gender is required")
+            if (existing && existing.gender) {
+                sanitized.gender = existing.gender
+            } else {
+                const profile = await Profile.findById(profileId)
+                if (profile && profile.gender) {
+                    sanitized.gender = profile.gender.toLowerCase() === "male" ? "female" : "male"
+                } else {
+                    sanitized.gender = "female"
+                }
             }
         }
 

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
-import { Search, Send, ArrowLeft } from 'lucide-react'
+import { Search, Send, ArrowLeft, User } from 'lucide-react'
+import { useSearchParams } from 'react-router-dom'
 import { io } from 'socket.io-client'
 import Navbar from '../Components/Navbar'
 import Footer from '../Components/Footer'
@@ -18,9 +19,12 @@ const COLORS = {
 }
 
 export default function Chatapp() {
+  const [searchParams] = useSearchParams()
+  const initialTargetProfileId = searchParams.get('profileId') || searchParams.get('userId')
+
   const [searchQuery, setSearchQuery] = useState('')
   const [conversations, setConversations] = useState([])
-  const [activeChat, setActiveChat] = useState(null)
+  const [activeChat, setActiveChat] = useState(initialTargetProfileId || null)
   const [activeProfile, setActiveProfile] = useState(null)
   const [messages, setMessages] = useState([])
   const [newMessage, setNewMessage] = useState('')
@@ -39,7 +43,7 @@ export default function Chatapp() {
     scrollToBottom()
   }, [messages])
 
-  // Fetch conversations and own profile
+  // Fetch initial conversations and own profile
   useEffect(() => {
     let cancelled = false
     const fetchInitial = async () => {
@@ -54,7 +58,7 @@ export default function Chatapp() {
           setLoading(false)
         }
       } catch (err) {
-        console.error('Failed to fetch initial data:', err)
+        console.error('Failed to fetch initial chat data:', err)
         if (!cancelled) setLoading(false)
       }
     }
@@ -62,10 +66,20 @@ export default function Chatapp() {
     return () => { cancelled = true }
   }, [])
 
+  // If initial target profile passed in query param, fetch their profile details
+  useEffect(() => {
+    if (initialTargetProfileId) {
+      setActiveChat(initialTargetProfileId)
+      getProfileById(initialTargetProfileId)
+        .then(setActiveProfile)
+        .catch(() => {})
+    }
+  }, [initialTargetProfileId])
+
   // Setup Socket.io
   useEffect(() => {
     const setupSocket = () => {
-      const token = localStorage.getItem('token')
+      const token = localStorage.getItem('accessToken') || localStorage.getItem('token')
       if (!token) return
       const SOCKET_URL = import.meta.env.VITE_API_BASE_URL
         ? import.meta.env.VITE_API_BASE_URL.replace('/api/v1', '')
@@ -83,8 +97,7 @@ export default function Chatapp() {
           return exists ? prev : [...prev, message]
         })
       })
-      s.on('new_message_notification', (data) => {
-        // Refresh conversations list
+      s.on('new_message_notification', () => {
         getConversations().then((data) => {
           if (Array.isArray(data)) setConversations(data)
         }).catch(() => {})
@@ -123,10 +136,8 @@ export default function Chatapp() {
     }
     fetchMessages()
 
-    // Fetch active profile details
-    getProfileById(activeChat).then(setActiveProfile).catch(() => setActiveProfile(null))
+    getProfileById(activeChat).then(setActiveProfile).catch(() => {})
 
-    // Join socket room
     if (socket) {
       socket.emit('join_conversation', activeChat)
       socket.emit('mark_read', { senderProfileId: activeChat })
@@ -170,12 +181,12 @@ export default function Chatapp() {
   }
 
   const filteredConversations = conversations.filter((conv) => {
-    const name = conv.lastMessage?.senderProfileId?.name || ''
+    const name = conv.partnerName || conv.partner?.name || conv.partner?.userId?.name || ''
     return name.toLowerCase().includes(searchQuery.toLowerCase())
   })
 
   const getChatPartnerName = () => {
-    return activeProfile?.name || 'Chat Partner'
+    return activeProfile?.name || activeProfile?.userId?.name || 'Chat Partner'
   }
 
   const getChatPartnerPhoto = () => {
@@ -183,65 +194,76 @@ export default function Chatapp() {
   }
 
   return (
-    <>
+    <div className="min-h-screen bg-[#FBF9F9] flex flex-col font-sans">
       <Navbar />
-      <div className="min-h-screen p-4 md:p-8 flex items-center justify-center font-sans antialiased">
+      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 flex items-center justify-center">
         <div
-          className="w-full max-w-7xl h-[800px] rounded-2xl overflow-hidden flex border shadow-sm"
-          style={{ borderColor: COLORS.borderTone }}
+          className="w-full h-[650px] sm:h-[750px] rounded-3xl overflow-hidden flex border border-[#FFE4E8] shadow-sm bg-white"
         >
           {/* Sidebar */}
           <aside
-            className={`${activeChat ? 'hidden md:flex' : 'flex'} w-full md:w-[340px] flex-col border-r shrink-0`}
-            style={{ backgroundColor: COLORS.sidebarBg, borderColor: COLORS.borderTone }}
+            className={`${activeChat ? 'hidden md:flex' : 'flex'} w-full md:w-[340px] flex-col border-r border-[#FFE4E8] shrink-0 bg-[#FFF9FA]`}
           >
-            <div className="p-6 border-b" style={{ borderColor: COLORS.borderTone }}>
-              <h1 className="text-2xl font-serif font-bold mb-4 tracking-tight" style={{ color: COLORS.textDark }}>
-                Conversations
+            <div className="p-5 border-b border-[#FFE4E8]">
+              <h1 className="text-xl font-serif font-bold text-[#640515] mb-3">
+                Messages
               </h1>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="Search messages"
+                  placeholder="Search conversations..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 bg-white border border-[#DDC0BF] rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-rose-900/20 focus:border-rose-900 transition-all placeholder:text-gray-400"
+                  className="w-full pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:border-[#842029]"
                 />
               </div>
             </div>
-            <div className="flex-1 overflow-y-auto divide-y" style={{ borderColor: COLORS.borderTone }}>
+
+            <div className="flex-1 overflow-y-auto divide-y divide-gray-100">
               {loading ? (
-                <div className="p-8 text-center text-xs opacity-50">Loading conversations...</div>
+                <div className="p-8 text-center text-xs text-gray-400">Loading messages...</div>
               ) : filteredConversations.length === 0 ? (
-                <div className="p-8 text-center text-xs opacity-50">No conversations found</div>
+                <div className="p-8 text-center text-xs text-gray-400">No active conversations found</div>
               ) : (
                 filteredConversations.map((conv) => {
                   const partnerId = conv._id
+                  const partnerName = conv.partnerName || conv.partner?.name || conv.partner?.userId?.name || 'Member'
+                  const partnerPhoto =
+                    conv.partnerPhotos?.find((p) => p.isPrimary)?.url ||
+                    conv.partnerPhotos?.[0]?.url ||
+                    conv.partner?.photos?.find((p) => p.isPrimary)?.url ||
+                    conv.partner?.photos?.[0]?.url
                   const msg = conv.lastMessage
+
                   return (
                     <div
                       key={partnerId}
                       onClick={() => setActiveChat(partnerId)}
-                      className={`flex gap-3 p-4 items-start cursor-pointer transition-colors relative border-b border-[#DDC0BF] ${activeChat === partnerId ? 'bg-white/80' : 'hover:bg-white/40'}`}
+                      className={`flex gap-3 p-4 items-start cursor-pointer transition-colors relative ${activeChat === partnerId ? 'bg-[#FFF0F2]' : 'hover:bg-gray-50'}`}
                     >
                       {activeChat === partnerId && (
-                        <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: COLORS.primary }} />
+                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#842029]" />
                       )}
-                      <div className="w-12 h-12 rounded-full overflow-hidden shrink-0 border border-gray-100 bg-gray-200" />
+                      <div className="w-11 h-11 rounded-full overflow-hidden shrink-0 border border-gray-200 bg-gray-100 flex items-center justify-center">
+                        {partnerPhoto ? (
+                          <img src={partnerPhoto} alt={partnerName} className="w-full h-full object-cover" />
+                        ) : (
+                          <User size={18} className="text-gray-400" />
+                        )}
+                      </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex justify-between items-baseline mb-1">
-                          <h2 className="text-sm font-semibold text-gray-900 truncate">Chat Partner</h2>
-                          <span className="text-[11px] font-medium text-gray-800 shrink-0 ml-2">
-                            {msg?.createdAt ? new Date(msg.createdAt).toLocaleDateString() : ''}
+                        <div className="flex justify-between items-baseline mb-0.5">
+                          <h2 className="text-xs sm:text-sm font-bold text-gray-900 truncate">{partnerName}</h2>
+                          <span className="text-[10px] text-gray-400 shrink-0 ml-2">
+                            {msg?.createdAt ? new Date(msg.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric' }) : ''}
                           </span>
                         </div>
-                        <p className="text-xs truncate font-medium leading-relaxed" style={{ color: COLORS.textMuted }}>
+                        <p className="text-xs truncate text-gray-500">
                           {msg?.content || 'No messages yet'}
                         </p>
                         {conv.unreadCount > 0 && (
-                          <span className="inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold text-white mt-1"
-                            style={{ backgroundColor: COLORS.primary }}>
+                          <span className="inline-flex items-center justify-center px-1.5 py-0.5 rounded-full text-[10px] font-bold text-white bg-[#842029] mt-1">
                             {conv.unreadCount}
                           </span>
                         )}
@@ -255,42 +277,52 @@ export default function Chatapp() {
 
           {/* Chat Area */}
           <main
-            className={`${!activeChat ? 'hidden md:flex' : 'flex'} flex-1 flex-col`}
-            style={{ backgroundColor: COLORS.mainBg }}
+            className={`${!activeChat ? 'hidden md:flex' : 'flex'} flex-1 flex-col bg-white`}
           >
             {!activeChat ? (
               <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-                <h2 className="text-3xl font-serif font-bold mb-3 tracking-tight" style={{ color: COLORS.primary }}>
-                  Your Eternal Connections
+                <div className="w-16 h-16 rounded-full bg-[#FFF0F2] text-[#842029] flex items-center justify-center mb-4">
+                  <User size={28} />
+                </div>
+                <h2 className="text-2xl font-serif font-bold text-[#640515] mb-2">
+                  Direct Messages
                 </h2>
-                <p className="text-sm leading-relaxed mb-6 font-medium max-w-sm" style={{ color: COLORS.textMuted }}>
-                  Select a conversation from the list to start chatting with your matches.
+                <p className="text-xs sm:text-sm text-gray-500 max-w-sm">
+                  Select a match from the conversation list to start communicating securely.
                 </p>
               </div>
             ) : (
               <>
                 {/* Chat Header */}
-                <div className="flex items-center gap-3 p-4 border-b" style={{ borderColor: COLORS.borderTone, backgroundColor: COLORS.sidebarBg }}>
-                  <button onClick={() => setActiveChat(null)} className="md:hidden p-1">
-                    <ArrowLeft className="w-5 h-5" style={{ color: COLORS.primary }} />
+                <div className="flex items-center gap-3 px-5 py-4 border-b border-[#FFE4E8] bg-[#FFF9FA]">
+                  <button onClick={() => setActiveChat(null)} className="md:hidden p-1 text-gray-600">
+                    <ArrowLeft className="w-5 h-5" />
                   </button>
-                  <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-200 shrink-0">
-                    {getChatPartnerPhoto() && <img src={getChatPartnerPhoto()} alt="" className="w-full h-full object-cover" />}
+                  <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-100 shrink-0 border border-gray-200 flex items-center justify-center">
+                    {getChatPartnerPhoto() ? (
+                      <img src={getChatPartnerPhoto()} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <User size={18} className="text-gray-400" />
+                    )}
                   </div>
                   <div>
-                    <h3 className="font-semibold text-sm" style={{ color: COLORS.textDark }}>
+                    <h3 className="font-bold text-sm text-gray-900 font-serif">
                       {getChatPartnerName()}
                     </h3>
-                    {typingProfiles[activeChat] && (
-                      <p className="text-xs" style={{ color: COLORS.primary }}>typing...</p>
+                    {typingProfiles[activeChat] ? (
+                      <p className="text-[11px] text-[#842029] font-medium animate-pulse">typing...</p>
+                    ) : (
+                      <p className="text-[11px] text-emerald-600 font-medium">Online</p>
                     )}
                   </div>
                 </div>
 
-                {/* Messages */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                {/* Messages Feed */}
+                <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3">
                   {messages.length === 0 ? (
-                    <div className="text-center text-sm opacity-50 mt-10">No messages yet. Start the conversation!</div>
+                    <div className="text-center text-xs text-gray-400 mt-12">
+                      No messages yet. Say hello to begin your conversation!
+                    </div>
                   ) : (
                     [...messages].reverse().map((msg) => {
                       const senderId = typeof msg.senderProfileId === 'object' ? msg.senderProfileId._id : msg.senderProfileId
@@ -298,10 +330,14 @@ export default function Chatapp() {
                       return (
                         <div key={msg._id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
                           <div
-                            className={`max-w-[70%] rounded-2xl px-4 py-2.5 ${isMine ? 'bg-[#852231] text-white rounded-br-md' : 'bg-gray-100 text-gray-800 rounded-bl-md'}`}
+                            className={`max-w-[75%] rounded-2xl px-4 py-2.5 shadow-2xs ${
+                              isMine
+                                ? 'bg-[#842029] text-white rounded-br-xs'
+                                : 'bg-gray-100 text-gray-800 rounded-bl-xs'
+                            }`}
                           >
-                            <p className="text-sm">{msg.content}</p>
-                            <p className="text-[10px] mt-1 opacity-60">
+                            <p className="text-xs sm:text-sm leading-relaxed">{msg.content}</p>
+                            <p className="text-[9px] mt-1 text-right opacity-70">
                               {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </p>
                           </div>
@@ -312,8 +348,8 @@ export default function Chatapp() {
                   <div ref={messagesEndRef} />
                 </div>
 
-                {/* Input */}
-                <form onSubmit={handleSendMessage} className="p-4 border-t flex gap-3" style={{ borderColor: COLORS.borderTone }}>
+                {/* Message Input Box */}
+                <form onSubmit={handleSendMessage} className="p-4 border-t border-gray-100 flex gap-3">
                   <input
                     type="text"
                     value={newMessage}
@@ -322,15 +358,13 @@ export default function Chatapp() {
                       handleTyping(true)
                     }}
                     onBlur={() => handleTyping(false)}
-                    placeholder="Type a message..."
-                    className="flex-1 px-4 py-2.5 rounded-full border focus:outline-none focus:ring-1 text-sm"
-                    style={{ borderColor: COLORS.borderTone }}
+                    placeholder="Type your message..."
+                    className="flex-1 px-4 py-2.5 rounded-full bg-gray-50 border border-gray-200 focus:bg-white focus:border-[#842029] text-xs sm:text-sm outline-none"
                   />
                   <button
                     type="submit"
                     disabled={!newMessage.trim()}
-                    className="w-10 h-10 rounded-full flex items-center justify-center text-white disabled:opacity-50"
-                    style={{ backgroundColor: COLORS.primary }}
+                    className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-[#842029] hover:bg-[#6b1b27] disabled:opacity-40 transition-colors shadow-xs"
                   >
                     <Send className="w-4 h-4" />
                   </button>
@@ -339,8 +373,8 @@ export default function Chatapp() {
             )}
           </main>
         </div>
-      </div>
+      </main>
       <Footer />
-    </>
+    </div>
   )
 }
