@@ -1,9 +1,16 @@
 import { body } from "express-validator"
+import mongoose from "mongoose"
 
 export const toggleShortlist = [
-    body("profileId")
-        .notEmpty()
-        .withMessage("Profile ID is required")
-        .isMongoId()
-        .withMessage("Invalid profile ID"),
+    body().custom((value, { req }) => {
+        const id = req.body?.profileId || req.body?.targetProfileId || req.body?.shortlistedProfileId
+        if (!id) {
+            throw new Error("Profile ID is required")
+        }
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            throw new Error("Invalid profile ID")
+        }
+        return true
+    }),
 ]
+

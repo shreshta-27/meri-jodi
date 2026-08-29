@@ -1,5 +1,7 @@
+import mongoose from "mongoose"
 import { Profile } from "../models/Profile.js"
 import { User } from "../models/User.js"
+import { ProfileView } from "../models/ProfileView.js"
 import { PAGINATION_DEFAULTS } from "../constants/index.js"
 
 const PROFILE_CREATE_FIELDS = [
@@ -227,12 +229,15 @@ class ProfileService {
      * @param {string|object} profileId - Profile ID or profile document
      * @returns {Promise<string|null>} User ID or null
      */
-    async getUserIdFromProfile(profileId) {
-        const profile = typeof profileId === "object" && profileId.userId
-            ? profileId
-            : await Profile.findById(profileId)
-        if (!profile) return null
-        return profile.userId.toString()
+    async getUserIdFromProfile(profileOrId) {
+        if (!profileOrId) return null
+        let profile = profileOrId
+        if (typeof profileOrId === "string" || profileOrId instanceof mongoose.Types.ObjectId) {
+            profile = await Profile.findById(profileOrId)
+        }
+        if (!profile || !profile.userId) return null
+        const uId = typeof profile.userId === "object" && profile.userId._id ? profile.userId._id : profile.userId
+        return uId.toString()
     }
 
     /**
@@ -283,6 +288,53 @@ class ProfileService {
         if (profile.photos && profile.photos.length > 0) filled++
 
         return Math.round((filled / total) * 100)
+    }
+
+    async recordView(viewerUserId, targetProfileId) {
+        try {
+            if (!viewerUserId || !targetProfileId) return null
+            const viewerProfile = await Profile.findOne({ userId: viewerUserId })
+            if (!viewerProfile) return null
+
+            // Do not record self views
+            if (viewerProfile._id.toString() === targetProfileId.toString()) {
+                return null
+            }
+
+            return await ProfileView.findOneAndUpdate(
+                {
+                    viewerProfileId: viewerProfile._id,
+                    viewedProfileId: targetProfileId,
+                },
+                { lastViewedAt: new Date() },
+                { upsert: true, new: true, setDefaultsOnInsert: true }
+            )
+        } catch (err) {
+            console.error("Failed to record profile view:", err.message)
+            return null
+        }
+    }
+
+    async getWhoViewedMe(userId, limit = 10) {
+        const myProfile = await Profile.findOne({ userId })
+        if (!myProfile) return []
+
+        const views = await ProfileView.find({ viewedProfileId: myProfile._id })
+            .sort({ lastViewedAt: -1 })
+            .limit(limit)
+            .populate({
+                path: "viewerProfileId",
+                select: "name dateOfBirth location career religion caste photos isVerified profileCompletionPct gender",
+                populate: { path: "userId", select: "name" },
+            })
+
+        return views
+            .filter((v) => v.viewerProfileId)
+            .map((v) => ({
+                _id: v._id,
+                viewedAt: v.lastViewedAt || v.updatedAt || v.createdAt,
+                profile: v.viewerProfileId,
+            }))
     }
 }
 

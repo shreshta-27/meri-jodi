@@ -41,7 +41,8 @@ export const markAllNotificationsRead = async () => {
 export const getUnreadNotificationCount = async () => {
     try {
         const response = await axiosInstance.get(`${NOTIFICATION_BASE}/unread-count`)
-        return unwrap(response)?.count ?? 0
+        const data = unwrap(response)
+        return data?.unreadCount ?? data?.count ?? (typeof data === "number" ? data : 0)
     } catch {
         return 0
     }

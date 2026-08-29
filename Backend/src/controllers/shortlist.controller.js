@@ -10,9 +10,10 @@ class ShortlistController extends BaseController {
                 return this.sendError(res, "Profile not found", 404)
             }
 
+            const targetId = req.body.profileId || req.body.targetProfileId || req.body.shortlistedProfileId
             const result = await shortlistService.toggle(
                 profile._id.toString(),
-                req.body.profileId
+                targetId
             )
 
             return this.sendSuccess(

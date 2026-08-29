@@ -122,7 +122,7 @@ class MatchingService {
         }
 
         const skip = (page - 1) * limit
-        const fetchLimit = Math.max(limit * 3, 60)
+        const fetchLimit = Math.max(skip + limit * 3, 100)
 
         const [allCandidates, total] = await Promise.all([
             Profile.find(query)

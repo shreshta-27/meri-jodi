@@ -106,6 +106,7 @@ export const VERIFICATION_STATUS = {
     SUBMITTED: "submitted",
     UNDER_REVIEW: "under_review",
     VERIFIED: "verified",
+    APPROVED: "approved",
     REJECTED: "rejected",
 }
 

@@ -78,8 +78,10 @@ export const AuthProvider = ({ children }) => {
         }
     }, [token, saveToken])
 
+    const isAuth = Boolean(token)
+
     return (
-        <AuthContext.Provider value={{ user, token, loading, signIn, signOut, refreshUser }}>
+        <AuthContext.Provider value={{ user, token, isAuth, loading, signIn, signOut, refreshUser }}>
             {children}
         </AuthContext.Provider>
     )

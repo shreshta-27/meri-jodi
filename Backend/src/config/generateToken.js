@@ -39,6 +39,16 @@ export const generateToken = async (userId, res = null) => {
     return { accessToken, refreshToken }
 }
 
+export const verifyAccessToken = (token) => {
+    try {
+        if (!token) return null
+        const decoded = jwt.verify(token, config.jwtSecret)
+        return decoded
+    } catch (error) {
+        return null
+    }
+}
+
 export const verifyRefreshToken = async (refreshToken) => {
     try {
         if (!refreshToken) return null

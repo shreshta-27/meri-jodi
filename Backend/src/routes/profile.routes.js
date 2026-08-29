@@ -14,6 +14,7 @@ const router = express.Router()
 router.use(attachUser)
 
 router.get("/me", profileController.getMyProfile.bind(profileController))
+router.get("/who-viewed-me", profileController.getWhoViewedMe.bind(profileController))
 router.get("/search", searchProfiles, validate, profileController.searchProfiles.bind(profileController))
 router.get("/:id", validateObjectId("id"), validate, profileController.getProfileById.bind(profileController))
 router.post("/", createProfile, validate, profileController.createProfile.bind(profileController))

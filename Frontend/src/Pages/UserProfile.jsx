@@ -1,9 +1,7 @@
-import React from 'react'
+import { Navigate } from "react-router-dom"
 
 const UserProfile = () => {
-  return (
-    <div>UserProfile</div>
-  )
+  return <Navigate to="/profile" replace />
 }
 
-export default UserProfile  
+export default UserProfile

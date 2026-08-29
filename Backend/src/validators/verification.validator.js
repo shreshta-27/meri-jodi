@@ -2,7 +2,7 @@ import { body } from "express-validator"
 import { VERIFICATION_DOC_TYPE, VERIFICATION_STATUS } from "../constants/index.js"
 
 const docTypeValues = Object.values(VERIFICATION_DOC_TYPE)
-const reviewStatusValues = [VERIFICATION_STATUS.VERIFIED, VERIFICATION_STATUS.REJECTED]
+const reviewStatusValues = [VERIFICATION_STATUS.VERIFIED, VERIFICATION_STATUS.APPROVED, VERIFICATION_STATUS.REJECTED]
 
 export const submitDocument = [
     body("documentType")

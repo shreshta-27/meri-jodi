@@ -74,7 +74,7 @@ class VerificationService {
             { returnDocument: "after" }
         )
 
-        if (verification && status === "verified") {
+        if (verification && (status === "verified" || status === "approved")) {
             await Profile.findByIdAndUpdate(verification.profileId, {
                 isVerified: true,
             })

@@ -12,6 +12,7 @@ router.use(attachUser)
 router.get("/unread-count", messageController.getUnreadCount.bind(messageController))
 router.get("/conversations", messageController.getConversations.bind(messageController))
 router.get("/conversation/:profileId", validateObjectId("profileId"), validate, messageController.getConversation.bind(messageController))
+router.get("/conversations/:profileId", validateObjectId("profileId"), validate, messageController.getConversation.bind(messageController))
 router.post("/", sendMessage, validate, messageController.sendMessage.bind(messageController))
 router.put("/:id/read", validateObjectId("id"), validate, messageController.markAsRead.bind(messageController))
 

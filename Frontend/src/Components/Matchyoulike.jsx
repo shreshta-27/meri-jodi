@@ -26,9 +26,9 @@ const Matchyoulike = () => {
   ];
 
   return (
-    <div className="pt-10 min-w-[85rem] p-10 px-20   bg-[#f8f4f4] ">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-3xl font-serif font-semibold text-[#2f2f2f] mb-5">
+    <div className="py-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <h2 className="text-2xl sm:text-3xl font-serif font-bold text-[#2f2f2f]">
           Matches You Would Like to View
         </h2>
 

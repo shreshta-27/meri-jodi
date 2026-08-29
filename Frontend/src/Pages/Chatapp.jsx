@@ -128,7 +128,8 @@ export default function Chatapp() {
     const fetchMessages = async () => {
       try {
         const data = await getConversationHistory(activeChat)
-        setMessages(Array.isArray(data) ? data : [])
+        // Backend returns descending order (newest first). Reverse once to chronological order.
+        setMessages(Array.isArray(data) ? [...data].reverse() : [])
       } catch (err) {
         console.error('Failed to fetch messages:', err)
         setMessages([])
@@ -324,7 +325,7 @@ export default function Chatapp() {
                       No messages yet. Say hello to begin your conversation!
                     </div>
                   ) : (
-                    [...messages].reverse().map((msg) => {
+                    messages.map((msg) => {
                       const senderId = typeof msg.senderProfileId === 'object' ? msg.senderProfileId._id : msg.senderProfileId
                       const isMine = myProfileId ? senderId === myProfileId : false
                       return (

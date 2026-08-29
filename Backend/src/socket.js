@@ -1,6 +1,6 @@
 import { Server } from "socket.io"
 import { config } from "./config/config.js"
-import authService from "./services/auth.service.js"
+import { verifyAccessToken } from "./config/generateToken.js"
 import { User } from "./models/User.js"
 import { Profile } from "./models/Profile.js"
 import { Message } from "./models/Message.js"
@@ -26,8 +26,12 @@ const setupSocket = (httpServer) => {
             if (!token) {
                 return next(new Error("Authentication required"))
             }
-            const decoded = authService.verifyToken(token)
-            const user = await User.findById(decoded.userId)
+            const decoded = verifyAccessToken(token)
+            if (!decoded) {
+                return next(new Error("Invalid or expired token"))
+            }
+            const userId = decoded.userId || decoded.id
+            const user = await User.findById(userId)
             if (!user) {
                 return next(new Error("User not found"))
             }

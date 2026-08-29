@@ -11,8 +11,9 @@ class NotificationService {
      * @returns {Promise<object>}
      */
     async create(userId, type, message, relatedProfileId = null) {
+        const cleanUserId = typeof userId === "object" && userId?._id ? userId._id : userId
         return Notification.create({
-            userId,
+            userId: cleanUserId,
             type,
             message,
             relatedProfileId,
