@@ -43,6 +43,20 @@ class PartnerPreferenceController extends BaseController {
             next(error)
         }
     }
+
+    async deletePreferences(req, res, next) {
+        try {
+            const profile = await profileService.getByUserId(req.user._id)
+            if (!profile) {
+                return this.sendError(res, "Profile not found", 404)
+            }
+
+            await partnerPreferenceService.delete(profile._id)
+            return this.sendSuccess(res, null, "Preferences deleted")
+        } catch (error) {
+            next(error)
+        }
+    }
 }
 
 export default new PartnerPreferenceController()

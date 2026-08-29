@@ -10,5 +10,6 @@ router.use(attachUser)
 
 router.get("/", partnerPreferenceController.getMyPreferences.bind(partnerPreferenceController))
 router.put("/", createOrUpdatePreferences, validate, partnerPreferenceController.updatePreferences.bind(partnerPreferenceController))
+router.delete("/", partnerPreferenceController.deletePreferences.bind(partnerPreferenceController))
 
 export default router
