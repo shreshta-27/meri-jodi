@@ -1,0 +1,268 @@
+import { Profile } from "../models/Profile.js"
+import { User } from "../models/User.js"
+import { PAGINATION_DEFAULTS } from "../constants/index.js"
+
+const PROFILE_CREATE_FIELDS = [
+    "dateOfBirth",
+    "placeOfBirth",
+    "motherTongue",
+    "gender",
+    "aboutMe",
+    "heightCm",
+    "religion",
+    "caste",
+    "gotham",
+    "rashi",
+    "nakshtra",
+    "maritalStatus",
+    "location",
+    "education",
+    "career",
+    "family",
+    "lifestyle",
+    "createdBy",
+    "agreedToTerms",
+    "agreedToPrivacyPolicy",
+    "termsAgreedAt",
+]
+
+const PROFILE_UPDATE_FIELDS = [
+    "dateOfBirth",
+    "placeOfBirth",
+    "motherTongue",
+    "gender",
+    "aboutMe",
+    "heightCm",
+    "religion",
+    "caste",
+    "maritalStatus",
+    "location",
+    "education",
+    "career",
+    "family",
+    "createdBy",
+    "agreedToTerms",
+    "agreedToPrivacyPolicy",
+    "termsAgreedAt",
+]
+
+class ProfileService {
+    /**
+     * Create a new profile
+     * @param {string} userId - User ID
+     * @param {object} data - Profile data
+     * @returns {Promise<object>} Created profile
+     */
+    async create(userId, data) {
+        const sanitized = {}
+        for (const field of PROFILE_CREATE_FIELDS) {
+            if (data[field] !== undefined) {
+                sanitized[field] = data[field]
+            }
+        }
+        const profile = new Profile({ userId, ...sanitized })
+        profile.profileCompletionPct = this._calculateCompletion(profile)
+        await profile.save()
+        return profile
+    }
+
+    /**
+     * Get profile by user ID
+     * @param {string} userId - User ID
+     * @returns {Promise<object|null>} Profile or null
+     */
+    async getByUserId(userId) {
+        return Profile.findOne({ userId })
+    }
+
+    /**
+     * Get profile by ID
+     * @param {string} id - Profile ID
+     * @returns {Promise<object|null>} Profile or null
+     */
+    async getById(id) {
+        return Profile.findById(id)
+    }
+
+    /**
+     * Update profile (whitelisted fields only)
+     * @param {string} userId - User ID
+     * @param {object} data - Update data
+     * @returns {Promise<object>} Updated profile
+     */
+    async update(userId, data) {
+        // Whitelist: only allow safe fields
+        const sanitized = {}
+        for (const field of PROFILE_UPDATE_FIELDS) {
+            if (data[field] !== undefined) {
+                sanitized[field] = data[field]
+            }
+        }
+
+        const profile = await Profile.findOneAndUpdate(
+            { userId },
+            { $set: sanitized },
+            { returnDocument: "after", runValidators: true }
+        )
+        if (profile) {
+            profile.profileCompletionPct = this._calculateCompletion(profile)
+            await profile.save()
+        }
+        return profile
+    }
+
+    /**
+     * Search profiles with filters
+     * @param {object} filters - Search filters
+     * @param {object} options - Pagination options
+     * @returns {Promise<object>} Search results with pagination
+     */
+    async search(filters = {}, options = {}) {
+        // Cross-validation: minAge <= maxAge
+        if (filters.minAge && filters.maxAge && Number(filters.minAge) > Number(filters.maxAge)) {
+            throw new Error("Minimum age must be less than or equal to maximum age")
+        }
+
+        const page = options.page || PAGINATION_DEFAULTS.PAGE
+        const limit = Math.min(
+            options.limit || PAGINATION_DEFAULTS.LIMIT,
+            PAGINATION_DEFAULTS.MAX_LIMIT
+        )
+        const skip = (page - 1) * limit
+
+        const query = {}
+
+        if (filters.religion) query.religion = filters.religion
+        if (filters.caste) query.caste = filters.caste
+        if (filters.gender) query.gender = filters.gender
+        if (filters.maritalStatus) query.maritalStatus = filters.maritalStatus
+        if (filters.city) query["location.city"] = filters.city
+        if (filters.state) query["location.state"] = filters.state
+
+        // Age filter
+        if (filters.minAge || filters.maxAge) {
+            const now = new Date()
+            if (filters.maxAge) {
+                query.dateOfBirth = {
+                    ...query.dateOfBirth,
+                    $gte: new Date(
+                        now.getFullYear() - filters.maxAge,
+                        now.getMonth(),
+                        now.getDate()
+                    ),
+                }
+            }
+            if (filters.minAge) {
+                query.dateOfBirth = {
+                    ...query.dateOfBirth,
+                    $lte: new Date(
+                        now.getFullYear() - filters.minAge,
+                        now.getMonth(),
+                        now.getDate()
+                    ),
+                }
+            }
+        }
+
+        // Exclude user's own profile
+        if (options.excludeUserId) {
+            query.userId = { $ne: options.excludeUserId }
+        }
+
+        const [profiles, total] = await Promise.all([
+            Profile.find(query)
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limit)
+                .lean(),
+            Profile.countDocuments(query),
+        ])
+
+        return {
+            profiles,
+            pagination: {
+                page,
+                limit,
+                total,
+                totalPages: Math.ceil(total / limit),
+            },
+        }
+    }
+
+    /**
+     * Get primary photo for a profile
+     * @param {object} profile - Profile document
+     * @returns {object|null} Primary photo or first photo
+     */
+    getPrimaryPhoto(profile) {
+        if (!profile.photos || profile.photos.length === 0) return null
+        return (
+            profile.photos.find((p) => p.isPrimary) || profile.photos[0]
+        )
+    }
+
+    /**
+     * Get User ID from a Profile document
+     * @param {string|object} profileId - Profile ID or profile document
+     * @returns {Promise<string|null>} User ID or null
+     */
+    async getUserIdFromProfile(profileId) {
+        const profile = typeof profileId === "object" && profileId.userId
+            ? profileId
+            : await Profile.findById(profileId)
+        if (!profile) return null
+        return profile.userId.toString()
+    }
+
+    /**
+     * Calculate profile completion percentage
+     * @param {object} profile - Profile document
+     * @returns {number} Completion percentage
+     */
+    _calculateCompletion(profile) {
+        const fields = [
+            "dateOfBirth",
+            "gender",
+            "heightCm",
+            "religion",
+            "caste",
+            "maritalStatus",
+            "aboutMe",
+            "motherTongue",
+        ]
+
+        const nestedFields = {
+            location: ["city", "state", "country"],
+            education: ["highestDegree", "fieldOfStudy", "institution"],
+            career: ["occupation", "companyName", "annualIncome"],
+            family: [
+                "fatherOccupation",
+                "motherOccupation",
+                "familyType",
+                "familyValues",
+            ],
+        }
+
+        let filled = 0
+        let total = fields.length
+
+        for (const field of fields) {
+            if (profile[field]) filled++
+        }
+
+        for (const [group, subfields] of Object.entries(nestedFields)) {
+            for (const subfield of subfields) {
+                total++
+                if (profile[group] && profile[group][subfield]) filled++
+            }
+        }
+
+        // Photos
+        total++
+        if (profile.photos && profile.photos.length > 0) filled++
+
+        return Math.round((filled / total) * 100)
+    }
+}
+
+export default new ProfileService()

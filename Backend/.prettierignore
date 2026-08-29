@@ -1,0 +1,19 @@
+# Ignore node_modules
+node_modules/
+
+# Ignore build directories
+dist/
+build/
+
+# Ignore specific file types
+*.min.js
+*.bundle.js
+*.css
+
+# Ignore specific directories
+public/
+coverage/
+
+# Ignore specific files
+config/*.json
+legacy/*.js
