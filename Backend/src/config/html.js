@@ -100,6 +100,58 @@ export const getVerifyEmailHtml = ({ email, token, appName = "MeriJodi" }) => {
 </html>`
 }
 
+export const getResetPasswordHtml = ({ email, token, appName = "MeriJodi" }) => {
+    const baseUrl = config.frontendUrl || config.frontendDomain || "http://localhost:5173"
+    const resetUrl = `${baseUrl.replace(/\/+$/, "")}/reset-password/${encodeURIComponent(token)}`
+
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Reset your ${appName} Password</title>
+<style>
+  body { margin: 0; padding: 0; background: #FFF5F5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1F2937; }
+  .wrapper { width: 100%; padding: 40px 0; }
+  .container { width: 90%; max-width: 540px; background: #FFFFFF; border-radius: 16px; margin: 0 auto; overflow: hidden; box-shadow: 0 10px 25px rgba(237, 84, 99, 0.08); border: 1px solid #FFE4E6; }
+  .header { background: linear-gradient(135deg, #ED5463 0%, #D4384B 100%); padding: 32px 24px; text-align: center; color: #FFFFFF; }
+  .brand { font-size: 26px; font-weight: 800; letter-spacing: 0.5px; margin: 0; }
+  .tagline { font-size: 13px; color: #FFE4E6; margin-top: 4px; }
+  .content { padding: 36px 32px; text-align: center; }
+  .title { font-size: 22px; font-weight: 700; color: #111827; margin: 0 0 12px 0; }
+  .subtitle { font-size: 15px; line-height: 1.6; color: #4B5563; margin: 0 0 28px 0; }
+  .btn { display: inline-block; background: #ED5463; color: #FFFFFF !important; text-decoration: none; padding: 14px 32px; border-radius: 50px; font-weight: 700; font-size: 16px; box-shadow: 0 4px 12px rgba(237, 84, 99, 0.3); }
+  .note { font-size: 13px; color: #9CA3AF; line-height: 1.6; margin-top: 24px; }
+  .link-box { word-break: break-all; color: #ED5463; font-size: 12px; margin-top: 12px; }
+  .footer { background: #FAFAFA; padding: 20px; text-align: center; border-top: 1px solid #F3F4F6; font-size: 12px; color: #9CA3AF; }
+</style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="container">
+    <div class="header">
+      <h1 class="brand">${appName}</h1>
+      <div class="tagline">Where Beautiful Stories Begin</div>
+    </div>
+    <div class="content">
+      <h2 class="title">Reset Your Password</h2>
+      <p class="subtitle">We received a request to reset the password for your <strong>${appName}</strong> account (<strong>${email}</strong>). Click the button below to choose a new password.</p>
+      <div>
+        <a class="btn" href="${resetUrl}" target="_blank" rel="noopener">Reset My Password</a>
+      </div>
+      <p class="note">This password reset link is valid for <strong>15 minutes</strong>.</p>
+      <p class="note">If you did not request a password reset, you can safely ignore this email.</p>
+      <div class="link-box"><a href="${resetUrl}" style="color: #ED5463;">${resetUrl}</a></div>
+    </div>
+    <div class="footer">
+      © ${new Date().getFullYear()} ${appName}. All rights reserved.
+    </div>
+  </div>
+</div>
+</body>
+</html>`
+}
+
 export const getWelcomeHtml = ({ name, email, appName = "MeriJodi" }) => {
     return `<!DOCTYPE html>
 <html lang="en">
@@ -124,3 +176,4 @@ export const getWelcomeHtml = ({ name, email, appName = "MeriJodi" }) => {
 </body>
 </html>`
 }
+

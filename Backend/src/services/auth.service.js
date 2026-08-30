@@ -7,7 +7,7 @@ import { Profile } from "../models/Profile.js"
 import { USER_STATUS } from "../constants/index.js"
 import { redisClient } from "../config/redis.js"
 import sendMail from "../config/sendMail.js"
-import { getOtpHtml, getVerifyEmailHtml } from "../config/html.js"
+import { getOtpHtml, getVerifyEmailHtml, getResetPasswordHtml } from "../config/html.js"
 import {
     generateToken,
     generateAccessToken,
@@ -564,23 +564,8 @@ class AuthService {
 
         await redisClient.set(resetKey, JSON.stringify({ userId: user._id.toString(), email: cleanEmail }), { EX: 900 })
 
-        const resetUrl = `${config.frontendDomain}/reset-password/${resetToken}`
-        const subject = `${config.appName} - Reset Your Password`
-        const html = `
-            <div style="font-family: 'Inter', Arial, sans-serif; max-width: 520px; margin: 0 auto; padding: 32px 24px; background: #fff;">
-                <h2 style="color: #640515; font-size: 24px; margin-bottom: 16px;">Reset Your Password</h2>
-                <p style="color: #4B5563; font-size: 14px; line-height: 1.6; margin-bottom: 24px;">
-                    We received a request to reset the password for your ${config.appName} account. Click the button below to set a new password.
-                </p>
-                <a href="${resetUrl}" style="display: inline-block; padding: 12px 32px; background: #640515; color: #fff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px;">
-                    Reset Password
-                </a>
-                <p style="color: #9CA3AF; font-size: 12px; margin-top: 24px;">
-                    This link expires in 15 minutes. If you didn't request a password reset, you can safely ignore this email.
-                </p>
-            </div>
-        `
-        await sendMail({ email: cleanEmail, subject, html })
+        const html = getResetPasswordHtml({ email: cleanEmail, token: resetToken, appName: config.appName })
+        await sendMail({ email: cleanEmail, subject: `${config.appName} - Reset Your Password`, html })
 
         await redisClient.set(rateLimitKey, "true", { EX: 60 })
 

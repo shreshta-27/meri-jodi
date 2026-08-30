@@ -4,6 +4,8 @@ import { registerUser, googleAuth } from "../api/authApi"
 import { useAuth } from "../context/AuthContext"
 import logo from "../assets/logo2.png"
 
+import { useGoogleLogin } from "@react-oauth/google"
+
 const SignUpPage = () => {
     const navigate = useNavigate()
     const { signIn } = useAuth()
@@ -52,27 +54,55 @@ const SignUpPage = () => {
         }
     }
 
-    const handleGoogleRegister = async () => {
-        setError("")
-        setLoading(true)
-        try {
-            const dummyGoogleId = "google_" + Date.now()
-            const dummyEmail = email.trim() || `user_${Date.now().toString().slice(-4)}@gmail.com`
-            const dummyName = name.trim() || "New Member"
+    const googleRegisterHook = useGoogleLogin({
+        onSuccess: async (tokenResponse) => {
+            setLoading(true)
+            setError("")
+            try {
+                const data = await googleAuth({
+                    idToken: tokenResponse.access_token,
+                    credential: tokenResponse.access_token,
+                })
+                signIn(data.token || data.accessToken, data.user)
+                navigate("/complete-profile")
+            } catch (err) {
+                setError(err.response?.data?.message || "Google registration failed.")
+            } finally {
+                setLoading(false)
+            }
+        },
+        onError: () => {
+            setError("Google Registration was cancelled or failed.")
+        },
+    })
 
-            const data = await googleAuth({
-                googleId: dummyGoogleId,
-                email: dummyEmail,
-                name: dummyName,
-                avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80",
-            })
+    const handleGoogleRegister = () => {
+        if (import.meta.env.VITE_GOOGLE_CLIENT_ID) {
+            googleRegisterHook()
+        } else {
+            (async () => {
+                setError("")
+                setLoading(true)
+                try {
+                    const dummyGoogleId = "google_" + Date.now()
+                    const dummyEmail = email.trim() || `user_${Date.now().toString().slice(-4)}@gmail.com`
+                    const dummyName = name.trim() || "New Member"
 
-            signIn(data.token || data.accessToken, data.user)
-            navigate("/complete-profile")
-        } catch (err) {
-            setError(err.response?.data?.message || "Google registration failed.")
-        } finally {
-            setLoading(false)
+                    const data = await googleAuth({
+                        googleId: dummyGoogleId,
+                        email: dummyEmail,
+                        name: dummyName,
+                        avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80",
+                    })
+
+                    signIn(data.token || data.accessToken, data.user)
+                    navigate("/complete-profile")
+                } catch (err) {
+                    setError(err.response?.data?.message || "Google registration failed.")
+                } finally {
+                    setLoading(false)
+                }
+            })()
         }
     }
 

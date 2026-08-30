@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom"
 import { Bell, Check, Trash2, Heart, MessageCircle, Star, Info } from "lucide-react"
 import Navbar from "../Components/Navbar"
 import Footer from "../Components/Footer"
-import { getNotifications, markAsRead, markAllAsRead } from "../api/notificationApi"
+import { getNotifications, markNotificationRead, markAllNotificationsRead } from "../api/notificationApi"
 import { useToast } from "../context/ToastContext"
 
 export default function NotificationsPage() {
@@ -38,7 +38,7 @@ export default function NotificationsPage() {
 
     const handleMarkAsRead = async (id) => {
         try {
-            await markAsRead(id)
+            await markNotificationRead(id)
             setNotifications(notifications.map((n) => (n._id === id ? { ...n, isRead: true } : n)))
         } catch (err) {
             addToast("Failed to mark as read", "error")
@@ -47,7 +47,7 @@ export default function NotificationsPage() {
 
     const handleMarkAllAsRead = async () => {
         try {
-            await markAllAsRead()
+            await markAllNotificationsRead()
             setNotifications(notifications.map((n) => ({ ...n, isRead: true })))
             addToast("All notifications marked as read", "success")
         } catch (err) {

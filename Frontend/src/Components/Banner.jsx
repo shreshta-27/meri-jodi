@@ -11,25 +11,10 @@ const Banner = () => {
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
 
-  const handleRegister = async () => {
-    setError("")
-    const trimmedPhone = phone.trim()
-    if (!trimmedPhone.match(/^\d{10}$/)) {
-      setError("Enter a valid 10-digit phone number.")
-      return
-    }
-    setLoading(true)
-    try {
-      await sendOtp(`+91${trimmedPhone}`)
-      navigate("/verify-otp", {
-        state: { phone: `+91${trimmedPhone}`, name: name.trim() },
-      })
-    } catch (err) {
-      console.error(err)
-      setError(err.response?.data?.message || "Failed to send OTP. Please try again.")
-    } finally {
-      setLoading(false)
-    }
+  const handleRegister = () => {
+    navigate("/signup", {
+      state: { name: name.trim(), phone: phone.trim() },
+    })
   }
 
   return (
