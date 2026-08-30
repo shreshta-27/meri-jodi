@@ -34,6 +34,7 @@ function App() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<SignUpPage />} />
+          <Route path="/signup" element={<SignUpPage />} />
           <Route path="/verify-otp" element={<RegisterPage />} />
           <Route path="/verify-email/:token" element={<VerifyEmailPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />

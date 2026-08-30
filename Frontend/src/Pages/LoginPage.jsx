@@ -70,6 +70,103 @@ const LoginPage = () => {
             })()
         }
     }
+    useEffect(() => {
+        let timer
+        if (step === "otp" && resendTimer > 0 && !canResend) {
+            timer = setInterval(() => {
+                setResendTimer((prev) => {
+                    if (prev <= 1) {
+                        setCanResend(true)
+                        return 0
+                    }
+                    return prev - 1
+                })
+            }, 1000)
+        }
+        return () => clearInterval(timer)
+    }, [step, resendTimer, canResend])
+
+    // Step 1: Submit email & password
+    const handleCredentialsSubmit = async (e) => {
+        e.preventDefault()
+        setError("")
+        setInfoMsg("")
+
+        if (!email.trim() || !password) {
+            setError("Please enter your email and password.")
+            return
+        }
+
+        setLoading(true)
+        try {
+            const data = await loginWithEmail(email.trim(), password)
+            setInfoMsg(data.message || "Verification code sent to your email.")
+            setStep("otp")
+            setResendTimer(60)
+            setCanResend(false)
+        } catch (err) {
+            setError(err.response?.data?.message || "Invalid email or password.")
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    // Handle OTP 6-box input
+    const handleOtpChange = (index, value) => {
+        if (!/^\d?$/.test(value)) return
+        const newOtp = [...otp]
+        newOtp[index] = value
+        setOtp(newOtp)
+
+        // Auto-advance to next input
+        if (value && index < 5) {
+            document.getElementById(`login-otp-${index + 1}`)?.focus()
+        }
+    }
+
+    const handleOtpKeyDown = (index, e) => {
+        if (e.key === "Backspace" && !otp[index] && index > 0) {
+            document.getElementById(`login-otp-${index - 1}`)?.focus()
+        }
+    }
+
+    // Step 2: Submit OTP verification
+    const handleOtpSubmit = async (e) => {
+        e.preventDefault()
+        setError("")
+        const otpCode = otp.join("")
+        if (otpCode.length !== 6) {
+            setError("Please enter the complete 6-digit verification code.")
+            return
+        }
+
+        setLoading(true)
+        try {
+            const data = await verifyLoginOtp({ email: email.trim(), otp: otpCode })
+            signIn(data.token || data.accessToken, data.user)
+            navigate("/home")
+        } catch (err) {
+            setError(err.response?.data?.message || "Invalid or expired verification code.")
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    // Resend OTP code
+    const handleResendOtp = async () => {
+        setError("")
+        setLoading(true)
+        try {
+            await resendLoginOtp(email.trim())
+            setInfoMsg("A new verification code has been sent to your email.")
+            setResendTimer(60)
+            setCanResend(false)
+        } catch (err) {
+            setError(err.response?.data?.message || "Unable to resend code right now.")
+        } finally {
+            setLoading(false)
+        }
+    }
 
     return (
         <div className="min-h-screen w-full flex bg-[#FAF8F5]">
