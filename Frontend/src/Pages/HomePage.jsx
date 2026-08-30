@@ -111,8 +111,8 @@ const HomePage = () => {
         if (cancelled) return
         if (!profileData) { setStatus("empty"); return }
         setProfile(profileData)
-        setMatches(matchData.map(mapProfileToCard))
-        setWhoViewedYou(viewedData.map(mapProfileToCard))
+        setMatches((matchData || []).map(mapProfileToCard))
+        setWhoViewedYou((viewedData || []).map((v) => mapProfileToCard(v.profile || v)))
         setStatus("ready")
       } catch (err) {
         console.error("Failed to load dashboard:", err)

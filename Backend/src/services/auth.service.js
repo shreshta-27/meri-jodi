@@ -152,7 +152,7 @@ class AuthService {
 
         return {
             message: "A verification link has been sent to your email. It will expire in 5 minutes.",
-            verifyToken, // Useful in dev/test
+            verifyToken: config.env !== "production" ? verifyToken : undefined,
         }
     }
 
@@ -280,7 +280,7 @@ class AuthService {
 
         return {
             message: "A verification code has been sent to your email. It will be valid for 5 minutes.",
-            otp, // Sent in dev for smooth API verification
+            otp: config.env !== "production" ? otp : undefined,
         }
     }
 
@@ -376,7 +376,7 @@ class AuthService {
 
         return {
             message: "A new verification code has been sent to your email.",
-            otp,
+            otp: config.env !== "production" ? otp : undefined,
         }
     }
 
@@ -536,6 +536,150 @@ class AuthService {
             return user.toAuthJSON()
         }
         return null
+    }
+
+    /**
+     * Forgot Password:
+     * Generates a secure reset token, stores in Redis (15 min TTL), and sends reset link email.
+     */
+    async forgotPassword({ email, reqIp = "127.0.0.1" }) {
+        const cleanEmail = email.toLowerCase().trim()
+
+        const rateLimitKey = `forgot-password-rate:${reqIp}:${cleanEmail}`
+        if (await redisClient.get(rateLimitKey)) {
+            const error = new Error("Please wait before requesting another password reset.")
+            error.statusCode = 429
+            throw error
+        }
+
+        const user = await User.findOne({ email: cleanEmail })
+        if (!user) {
+            return {
+                message: "If an account with this email exists, a password reset link has been sent.",
+            }
+        }
+
+        const resetToken = crypto.randomBytes(32).toString("hex")
+        const resetKey = `password-reset:${resetToken}`
+
+        await redisClient.set(resetKey, JSON.stringify({ userId: user._id.toString(), email: cleanEmail }), { EX: 900 })
+
+        const resetUrl = `${config.frontendDomain}/reset-password/${resetToken}`
+        const subject = `${config.appName} - Reset Your Password`
+        const html = `
+            <div style="font-family: 'Inter', Arial, sans-serif; max-width: 520px; margin: 0 auto; padding: 32px 24px; background: #fff;">
+                <h2 style="color: #640515; font-size: 24px; margin-bottom: 16px;">Reset Your Password</h2>
+                <p style="color: #4B5563; font-size: 14px; line-height: 1.6; margin-bottom: 24px;">
+                    We received a request to reset the password for your ${config.appName} account. Click the button below to set a new password.
+                </p>
+                <a href="${resetUrl}" style="display: inline-block; padding: 12px 32px; background: #640515; color: #fff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px;">
+                    Reset Password
+                </a>
+                <p style="color: #9CA3AF; font-size: 12px; margin-top: 24px;">
+                    This link expires in 15 minutes. If you didn't request a password reset, you can safely ignore this email.
+                </p>
+            </div>
+        `
+        await sendMail({ email: cleanEmail, subject, html })
+
+        await redisClient.set(rateLimitKey, "true", { EX: 60 })
+
+        return {
+            message: "If an account with this email exists, a password reset link has been sent.",
+        }
+    }
+
+    /**
+     * Reset Password:
+     * Validates the reset token from Redis and updates the user's password.
+     */
+    async resetPassword({ token, newPassword }) {
+        if (!token || !newPassword) {
+            const error = new Error("Reset token and new password are required.")
+            error.statusCode = 400
+            throw error
+        }
+
+        if (newPassword.length < 6) {
+            const error = new Error("Password must be at least 6 characters long.")
+            error.statusCode = 400
+            throw error
+        }
+
+        const resetKey = `password-reset:${token}`
+        const dataJson = await redisClient.get(resetKey)
+
+        if (!dataJson) {
+            const error = new Error("Password reset link has expired or is invalid.")
+            error.statusCode = 400
+            throw error
+        }
+
+        await redisClient.del(resetKey)
+
+        const { userId } = JSON.parse(dataJson)
+        const user = await User.findById(userId)
+        if (!user) {
+            const error = new Error("User account not found.")
+            error.statusCode = 404
+            throw error
+        }
+
+        await user.setPassword(newPassword)
+        await user.save()
+
+        await redisClient.del(`user:${userId}`)
+
+        return {
+            message: "Your password has been reset successfully. You can now log in with your new password.",
+        }
+    }
+
+    /**
+     * Change Password:
+     * For authenticated users to update their password by providing old + new password.
+     */
+    async changePassword({ userId, currentPassword, newPassword }) {
+        if (!currentPassword || !newPassword) {
+            const error = new Error("Current password and new password are required.")
+            error.statusCode = 400
+            throw error
+        }
+
+        if (newPassword.length < 6) {
+            const error = new Error("New password must be at least 6 characters long.")
+            error.statusCode = 400
+            throw error
+        }
+
+        const user = await User.findById(userId)
+        if (!user) {
+            const error = new Error("User not found.")
+            error.statusCode = 404
+            throw error
+        }
+
+        if (!user.passwordHash) {
+            const error = new Error("Your account uses Google sign-in. Password change is not available.")
+            error.statusCode = 400
+            throw error
+        }
+
+        const isValid = await user.validatePassword(currentPassword)
+        if (!isValid) {
+            const error = new Error("Current password is incorrect.")
+            error.statusCode = 400
+            throw error
+        }
+
+        await user.setPassword(newPassword)
+        await user.save()
+
+        await redisClient.del(`user:${userId}`)
+
+        return {
+            message: "Your password has been changed successfully.",
+        }
     }
 }
 

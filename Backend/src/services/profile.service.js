@@ -17,12 +17,15 @@ const PROFILE_CREATE_FIELDS = [
     "gotham",
     "rashi",
     "nakshtra",
+    "manglik",
+    "complexion",
     "maritalStatus",
     "location",
     "education",
     "career",
     "family",
     "lifestyle",
+    "hobbiesAndInterests",
     "createdBy",
     "agreedToTerms",
     "agreedToPrivacyPolicy",
@@ -42,12 +45,15 @@ const PROFILE_UPDATE_FIELDS = [
     "gotham",
     "rashi",
     "nakshtra",
+    "manglik",
+    "complexion",
     "maritalStatus",
     "location",
     "education",
     "career",
     "family",
     "lifestyle",
+    "hobbiesAndInterests",
     "createdBy",
     "agreedToTerms",
     "agreedToPrivacyPolicy",
@@ -286,6 +292,10 @@ class ProfileService {
         // Photos
         total++
         if (profile.photos && profile.photos.length > 0) filled++
+
+        // Hobbies
+        total++
+        if (profile.hobbiesAndInterests && profile.hobbiesAndInterests.length > 0) filled++
 
         return Math.round((filled / total) * 100)
     }

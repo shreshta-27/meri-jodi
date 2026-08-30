@@ -153,3 +153,27 @@ export const verifyOtp = async (emailOrPhone, code, name) => {
     const res = await authApi.post("/verify", { email: emailOrPhone, otp: code })
     return unwrap(res)
 }
+
+/**
+ * Request a password reset email
+ */
+export const forgotPassword = async (email) => {
+    const res = await authApi.post("/forgot-password", { email })
+    return unwrap(res)
+}
+
+/**
+ * Reset password using the token from the email link
+ */
+export const resetPassword = async (token, newPassword) => {
+    const res = await authApi.post(`/reset-password/${token}`, { newPassword })
+    return unwrap(res)
+}
+
+/**
+ * Change password for authenticated users
+ */
+export const changePassword = async (currentPassword, newPassword) => {
+    const res = await authApi.put("/change-password", { currentPassword, newPassword })
+    return unwrap(res)
+}

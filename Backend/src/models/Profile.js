@@ -86,6 +86,8 @@ const profileSchema = new Schema(
         gotham: String,
         rashi: String,
         nakshtra: String,
+        manglik: String,
+        complexion: String,
         maritalStatus: {
             type: String,
             enum: Object.values(MARITAL_STATUS),
@@ -96,6 +98,7 @@ const profileSchema = new Schema(
         career: careerSchema,
         family: familySchema,
         lifestyle: lifestyleSchema,
+        hobbiesAndInterests: [{ type: String, trim: true }],
         photos: [
             {
                 url: { type: String, required: true },

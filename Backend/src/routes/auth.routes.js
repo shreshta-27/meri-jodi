@@ -232,6 +232,59 @@ router.get("/me", authenticate, attachUser, async (req, res) => {
     }
 })
 
+/**
+ * POST /api/auth/forgot-password
+ * Request a password reset link via email.
+ */
+router.post("/forgot-password", sanitizeBody, async (req, res) => {
+    const apiResponse = new ApiResponse(res)
+    try {
+        const { email } = req.body
+        if (!email) return apiResponse.error("Email is required", 400)
+
+        const reqIp = req.ip || req.connection?.remoteAddress || "127.0.0.1"
+        const result = await authService.forgotPassword({ email, reqIp })
+        return apiResponse.success(result, result.message, 200)
+    } catch (error) {
+        return apiResponse.error(error.message, error.statusCode || 400)
+    }
+})
+
+/**
+ * POST /api/auth/reset-password/:token
+ * Reset password using the token from the email link.
+ */
+router.post("/reset-password/:token", sanitizeBody, async (req, res) => {
+    const apiResponse = new ApiResponse(res)
+    try {
+        const { token } = req.params
+        const { newPassword } = req.body
+        const result = await authService.resetPassword({ token, newPassword })
+        return apiResponse.success(result, result.message, 200)
+    } catch (error) {
+        return apiResponse.error(error.message, error.statusCode || 400)
+    }
+})
+
+/**
+ * PUT /api/auth/change-password
+ * Change password for authenticated users (requires current + new password).
+ */
+router.put("/change-password", authenticate, sanitizeBody, async (req, res) => {
+    const apiResponse = new ApiResponse(res)
+    try {
+        const { currentPassword, newPassword } = req.body
+        const result = await authService.changePassword({
+            userId: req.userId,
+            currentPassword,
+            newPassword,
+        })
+        return apiResponse.success(result, result.message, 200)
+    } catch (error) {
+        return apiResponse.error(error.message, error.statusCode || 400)
+    }
+})
+
 /*
  * ==============================================================================
  * TWILIO SMS OTP ROUTES - COMMENTED FOR REFERENCE AS REQUESTED

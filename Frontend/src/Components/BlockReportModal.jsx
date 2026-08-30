@@ -5,9 +5,9 @@ import { reportProfile } from "../api/reportApi"
 
 const REPORT_REASONS = [
     { value: "fake_profile", label: "Fake or Inaccurate Profile" },
-    { value: "inappropriate_messages", label: "Inappropriate / Offensive Messages" },
+    { value: "inappropriate_content", label: "Inappropriate / Offensive Content" },
     { value: "harassment", label: "Harassment or Threatening Behavior" },
-    { value: "scam", label: "Scam, Fraud, or Money Request" },
+    { value: "spam", label: "Spam, Fraud, or Money Request" },
     { value: "other", label: "Other Reasons" },
 ]
 
