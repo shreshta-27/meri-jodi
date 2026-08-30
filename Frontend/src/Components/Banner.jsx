@@ -7,13 +7,14 @@ import star from "../assets/star.svg"
 const Banner = () => {
   const navigate = useNavigate()
   const [name, setName] = useState("")
-  const [phone, setPhone] = useState("")
+  const [email, setEmail] = useState("")
+  // const [phone, setPhone] = useState("") // Twilio phone registration state - commented for reference
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
 
   const handleRegister = () => {
     navigate("/signup", {
-      state: { name: name.trim(), phone: phone.trim() },
+      state: { name: name.trim(), email: email.trim() },
     })
   }
 
@@ -49,11 +50,25 @@ const Banner = () => {
             </div>
             <div className="p-6 space-y-4">
               <input
-                placeholder="Enter the name"
+                placeholder="Enter your name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full border border-gray-500 rounded-lg px-4 py-3 outline-none"
+                className="w-full border border-gray-300 rounded-lg px-4 py-3 outline-none focus:border-[#ED5463]"
               />
+
+              {/* Nodemailer Email Registration Input */}
+              <input
+                type="email"
+                placeholder="Enter your email address"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-4 py-3 outline-none focus:border-[#ED5463]"
+              />
+
+              {/* 
+              ==============================================================================
+              TWILIO MOBILE NUMBER REGISTRATION - COMMENTED FOR REFERENCE AS REQUESTED
+              ==============================================================================
               <div className="flex gap-3">
                 <input type="text" value="+91" disabled className="w-16 border border-gray-300 rounded-lg px-4 py-3 text-gray-800 outline-none" />
                 <input
@@ -64,15 +79,19 @@ const Banner = () => {
                   className="flex-1 border border-gray-300 rounded-lg px-4 py-3 outline-none"
                 />
               </div>
-              {error && <p className="text-xs text-red-500">{error}</p>}
               <p className="text-xs text-gray-500">OTP will be sent to this number</p>
+              ==============================================================================
+              */}
+
+              {error && <p className="text-xs text-red-500">{error}</p>}
+              <p className="text-xs text-gray-500">A verification link will be sent to your email</p>
               <button
                 type="button"
                 onClick={handleRegister}
                 disabled={loading}
                 className="w-full bg-[#ED5463] hover:bg-[#EE7985] text-white font-semibold py-4 rounded-full transition disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                {loading ? "Sending OTP..." : "Register Now for free"}
+                {loading ? "Processing..." : "Register Now for free"}
               </button>
               <div className="text-center text-xs text-gray-500 leading-relaxed">
                 By clicking register now for free, I agree to the

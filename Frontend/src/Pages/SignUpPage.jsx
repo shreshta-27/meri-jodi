@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { useNavigate, Link } from "react-router-dom"
+import { useNavigate, useLocation, Link } from "react-router-dom"
 import { registerUser, googleAuth } from "../api/authApi"
 import { useAuth } from "../context/AuthContext"
 import logo from "../assets/logo2.png"
@@ -8,10 +8,11 @@ import { useGoogleLogin } from "@react-oauth/google"
 
 const SignUpPage = () => {
     const navigate = useNavigate()
+    const location = useLocation()
     const { signIn } = useAuth()
 
-    const [name, setName] = useState("")
-    const [email, setEmail] = useState("")
+    const [name, setName] = useState(location.state?.name || "")
+    const [email, setEmail] = useState(location.state?.email || "")
     const [password, setPassword] = useState("")
     const [gender, setGender] = useState("male")
     const [phone, setPhone] = useState("")
