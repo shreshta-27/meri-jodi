@@ -1,4 +1,5 @@
 import { Profile } from "../models/Profile.js"
+import { User } from "../models/User.js"
 import { deleteFromCloudinary } from "../config/cloudinary.js"
 
 class PhotoService {
@@ -38,6 +39,10 @@ class PhotoService {
         profile.photos.push(photo)
         await profile.save()
 
+        if (isPrimary) {
+            await User.findByIdAndUpdate(userId, { avatar: photo.url })
+        }
+
         return profile
     }
 
@@ -70,6 +75,9 @@ class PhotoService {
         // If deleted photo was primary, set first remaining as primary
         if (photo.isPrimary && profile.photos.length > 0) {
             profile.photos[0].isPrimary = true
+            await User.findByIdAndUpdate(userId, { avatar: profile.photos[0].url })
+        } else if (profile.photos.length === 0) {
+            await User.findByIdAndUpdate(userId, { avatar: null })
         }
 
         await profile.save()
@@ -93,6 +101,7 @@ class PhotoService {
         photo.isPrimary = true
 
         await profile.save()
+        await User.findByIdAndUpdate(userId, { avatar: photo.url })
         return profile
     }
 }

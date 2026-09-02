@@ -25,6 +25,15 @@ class VerificationService {
     }
 
     /**
+     * Get user's verification status by profile ID
+     * @param {string} profileId
+     * @returns {Promise<object|null>}
+     */
+    async getByProfileId(profileId) {
+        return Verification.findOne({ profileId }).sort({ createdAt: -1 })
+    }
+
+    /**
      * Get all verifications (admin)
      * @param {object} options
      * @returns {Promise<object>}
@@ -45,7 +54,7 @@ class VerificationService {
                 .sort({ createdAt: -1 })
                 .skip(skip)
                 .limit(limit)
-                .populate("profileId", "gender location"),
+                .populate("profileId", "name photos gender location religion caste"),
             Verification.countDocuments(query),
         ])
 

@@ -1,22 +1,11 @@
 import { useState, useEffect, useRef } from 'react'
-import { Search, Send, ArrowLeft, User } from 'lucide-react'
+import { Search, Send, ArrowLeft, User, ShieldCheck, CheckCheck, Clock } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 import { io } from 'socket.io-client'
 import Navbar from '../Components/Navbar'
-import Footer from '../Components/Footer'
 import { getConversations, getConversationHistory } from '../api/messageApi'
 import { getProfileById } from '../api/matchingApi'
 import { getMyProfile } from '../api/profileApi'
-
-const COLORS = {
-  primary: '#852231',
-  primaryHover: '#6b1b27',
-  sidebarBg: '#F5F3F3',
-  mainBg: '#ffffff',
-  textDark: '#640515',
-  textMuted: '#6b5d60',
-  borderTone: '#DDC0BF',
-}
 
 export default function Chatapp() {
   const [searchParams] = useSearchParams()
@@ -32,11 +21,13 @@ export default function Chatapp() {
   const [socket, setSocket] = useState(null)
   const [typingProfiles, setTypingProfiles] = useState({})
   const [myProfileId, setMyProfileId] = useState(null)
-  const messagesEndRef = useRef(null)
+  const messagesContainerRef = useRef(null)
   const typingTimeoutRef = useRef(null)
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight
+    }
   }
 
   useEffect(() => {
@@ -54,7 +45,7 @@ export default function Chatapp() {
         ])
         if (!cancelled) {
           setConversations(Array.isArray(convos) ? convos : [])
-          if (myProfile?._id) setMyProfileId(myProfile._id)
+          if (myProfile?._id) setMyProfileId(String(myProfile._id))
           setLoading(false)
         }
       } catch (err) {
@@ -72,53 +63,55 @@ export default function Chatapp() {
       setActiveChat(initialTargetProfileId)
       getProfileById(initialTargetProfileId)
         .then(setActiveProfile)
-        .catch(() => {})
+        .catch(() => { })
     }
   }, [initialTargetProfileId])
 
   // Setup Socket.io
   useEffect(() => {
-    const setupSocket = () => {
-      const token = localStorage.getItem('accessToken') || localStorage.getItem('token')
-      if (!token) return
-      const SOCKET_URL = import.meta.env.VITE_API_BASE_URL
-        ? import.meta.env.VITE_API_BASE_URL.replace('/api/v1', '')
-        : 'http://localhost:5000'
+    const token = localStorage.getItem('accessToken') || localStorage.getItem('token')
+    if (!token) return
 
-      const s = io(SOCKET_URL, {
-        auth: { token },
-        transports: ['websocket', 'polling'],
+    const SOCKET_URL = import.meta.env.VITE_API_BASE_URL
+      ? import.meta.env.VITE_API_BASE_URL.replace('/api/v1', '')
+      : 'http://localhost:5000'
+
+    const s = io(SOCKET_URL, {
+      auth: { token },
+      transports: ['websocket', 'polling'],
+    })
+
+    s.on('connect', () => console.log('Socket connected'))
+
+    s.on('new_message', (message) => {
+      const msgId = String(message._id || message.id)
+      setMessages((prev) => {
+        if (prev.some((m) => String(m._id || m.id) === msgId)) return prev
+        return [...prev, message]
       })
+      // Refresh conversations list
+      getConversations().then((data) => {
+        if (Array.isArray(data)) setConversations(data)
+      }).catch(() => { })
+    })
 
-      s.on('connect', () => console.log('Socket connected'))
-      s.on('new_message', (message) => {
-        setMessages((prev) => {
-          const exists = prev.some((m) => m._id === message._id)
-          return exists ? prev : [...prev, message]
+    s.on('user_typing', (data) => {
+      setTypingProfiles((prev) => ({ ...prev, [data.profileId]: data.isTyping }))
+    })
+
+    s.on('messages_read', (data) => {
+      setMessages((prev) =>
+        prev.map((m) => {
+          const receiver = typeof m.receiverProfileId === 'object' ? m.receiverProfileId._id : m.receiverProfileId
+          return String(receiver) === String(data.readBy) ? { ...m, isRead: true } : m
         })
-      })
-      s.on('new_message_notification', () => {
-        getConversations().then((data) => {
-          if (Array.isArray(data)) setConversations(data)
-        }).catch(() => {})
-      })
-      s.on('user_typing', (data) => {
-        setTypingProfiles((prev) => ({ ...prev, [data.profileId]: data.isTyping }))
-      })
-      s.on('messages_read', (data) => {
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.receiverProfileId === data.readBy ? { ...m, isRead: true } : m
-          )
-        )
-      })
+      )
+    })
 
-      setSocket(s)
-      return () => {
-        s.disconnect()
-      }
+    setSocket(s)
+    return () => {
+      s.disconnect()
     }
-    setupSocket()
   }, [myProfileId])
 
   // Load conversation when active chat changes
@@ -128,7 +121,6 @@ export default function Chatapp() {
     const fetchMessages = async () => {
       try {
         const data = await getConversationHistory(activeChat)
-        // Backend returns descending order (newest first). Reverse once to chronological order.
         setMessages(Array.isArray(data) ? [...data].reverse() : [])
       } catch (err) {
         console.error('Failed to fetch messages:', err)
@@ -137,7 +129,7 @@ export default function Chatapp() {
     }
     fetchMessages()
 
-    getProfileById(activeChat).then(setActiveProfile).catch(() => {})
+    getProfileById(activeChat).then(setActiveProfile).catch(() => { })
 
     if (socket) {
       socket.emit('join_conversation', activeChat)
@@ -153,16 +145,22 @@ export default function Chatapp() {
 
   const handleSendMessage = (e) => {
     e.preventDefault()
-    if (!newMessage.trim() || !socket || !activeChat) return
+    const content = newMessage.trim()
+    if (!content || !socket || !activeChat) return
 
     socket.emit('send_message', {
       receiverProfileId: activeChat,
-      content: newMessage.trim(),
+      content,
     }, (response) => {
-      if (response?.success) {
-        setMessages((prev) => [...prev, response.message])
-      } else if (response?.error) {
-        alert(response.error)
+      if (response?.success && response.message) {
+        const msgId = String(response.message._id || response.message.id)
+        setMessages((prev) => {
+          if (prev.some((m) => String(m._id || m.id) === msgId)) return prev
+          return [...prev, response.message]
+        })
+        getConversations().then((data) => {
+          if (Array.isArray(data)) setConversations(data)
+        }).catch(() => { })
       }
     })
 
@@ -195,18 +193,17 @@ export default function Chatapp() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FBF9F9] flex flex-col font-sans">
+    <div className="h-screen w-screen flex flex-col bg-[#FBF9F9] overflow-hidden font-sans">
       <Navbar />
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 flex items-center justify-center">
-        <div
-          className="w-full h-[650px] sm:h-[750px] rounded-3xl overflow-hidden flex border border-[#FFE4E8] shadow-sm bg-white"
-        >
-          {/* Sidebar */}
+      <main className="flex-1 w-full max-w-7xl mx-auto p-2 sm:p-4 md:p-6 overflow-hidden flex flex-col min-h-0">
+        <div className="flex-1 w-full h-full rounded-2xl md:rounded-3xl overflow-hidden flex border border-[#FFE4E8] shadow-sm bg-white min-h-0">
+          
+          {/* Left Sidebar: Conversations List */}
           <aside
-            className={`${activeChat ? 'hidden md:flex' : 'flex'} w-full md:w-[340px] flex-col border-r border-[#FFE4E8] shrink-0 bg-[#FFF9FA]`}
+            className={`${activeChat ? 'hidden md:flex' : 'flex'} w-full md:w-[340px] lg:w-[380px] flex-col border-r border-[#FFE4E8] shrink-0 bg-[#FFF9FA] min-h-0 h-full`}
           >
-            <div className="p-5 border-b border-[#FFE4E8]">
-              <h1 className="text-xl font-serif font-bold text-[#640515] mb-3">
+            <div className="p-4 sm:p-5 border-b border-[#FFE4E8] shrink-0">
+              <h1 className="text-lg sm:text-xl font-serif font-bold text-[#640515] mb-2 sm:mb-3">
                 Messages
               </h1>
               <div className="relative">
@@ -221,7 +218,7 @@ export default function Chatapp() {
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto divide-y divide-gray-100">
+            <div className="flex-1 overflow-y-auto divide-y divide-gray-100 min-h-0">
               {loading ? (
                 <div className="p-8 text-center text-xs text-gray-400">Loading messages...</div>
               ) : filteredConversations.length === 0 ? (
@@ -236,15 +233,16 @@ export default function Chatapp() {
                     conv.partner?.photos?.find((p) => p.isPrimary)?.url ||
                     conv.partner?.photos?.[0]?.url
                   const msg = conv.lastMessage
+                  const isSelected = String(activeChat) === String(partnerId)
 
                   return (
                     <div
                       key={partnerId}
                       onClick={() => setActiveChat(partnerId)}
-                      className={`flex gap-3 p-4 items-start cursor-pointer transition-colors relative ${activeChat === partnerId ? 'bg-[#FFF0F2]' : 'hover:bg-gray-50'}`}
+                      className={`flex gap-3 p-3.5 sm:p-4 items-start cursor-pointer transition-colors relative ${isSelected ? 'bg-[#FFF0F2]' : 'hover:bg-gray-50'}`}
                     >
-                      {activeChat === partnerId && (
-                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#842029]" />
+                      {isSelected && (
+                        <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-[#842029]" />
                       )}
                       <div className="w-11 h-11 rounded-full overflow-hidden shrink-0 border border-gray-200 bg-gray-100 flex items-center justify-center">
                         {partnerPhoto ? (
@@ -264,8 +262,8 @@ export default function Chatapp() {
                           {msg?.content || 'No messages yet'}
                         </p>
                         {conv.unreadCount > 0 && (
-                          <span className="inline-flex items-center justify-center px-1.5 py-0.5 rounded-full text-[10px] font-bold text-white bg-[#842029] mt-1">
-                            {conv.unreadCount}
+                          <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[10px] font-bold text-white bg-[#842029] mt-1">
+                            {conv.unreadCount} new
                           </span>
                         )}
                       </div>
@@ -276,81 +274,107 @@ export default function Chatapp() {
             </div>
           </aside>
 
-          {/* Chat Area */}
-          <main
-            className={`${!activeChat ? 'hidden md:flex' : 'flex'} flex-1 flex-col bg-white`}
+          {/* Right Main Area: Active Chat */}
+          <section
+            className={`${!activeChat ? 'hidden md:flex' : 'flex'} flex-1 flex-col bg-white min-h-0 h-full overflow-hidden`}
           >
             {!activeChat ? (
-              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
+              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-gray-50/50">
                 <div className="w-16 h-16 rounded-full bg-[#FFF0F2] text-[#842029] flex items-center justify-center mb-4">
                   <User size={28} />
                 </div>
-                <h2 className="text-2xl font-serif font-bold text-[#640515] mb-2">
+                <h2 className="text-xl sm:text-2xl font-serif font-bold text-[#640515] mb-2">
                   Direct Messages
                 </h2>
                 <p className="text-xs sm:text-sm text-gray-500 max-w-sm">
-                  Select a match from the conversation list to start communicating securely.
+                  Select a match from the conversation list to start communicating securely in real time.
                 </p>
               </div>
             ) : (
-              <>
-                {/* Chat Header */}
-                <div className="flex items-center gap-3 px-5 py-4 border-b border-[#FFE4E8] bg-[#FFF9FA]">
-                  <button onClick={() => setActiveChat(null)} className="md:hidden p-1 text-gray-600">
-                    <ArrowLeft className="w-5 h-5" />
-                  </button>
-                  <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-100 shrink-0 border border-gray-200 flex items-center justify-center">
-                    {getChatPartnerPhoto() ? (
-                      <img src={getChatPartnerPhoto()} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      <User size={18} className="text-gray-400" />
-                    )}
+              <div className="flex-1 flex flex-col min-h-0 h-full overflow-hidden">
+                {/* Fixed Top Chat Header */}
+                <header className="flex items-center justify-between px-4 sm:px-6 py-3.5 border-b border-[#FFE4E8] bg-[#FFF9FA] shrink-0">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <button
+                      onClick={() => setActiveChat(null)}
+                      className="md:hidden p-1.5 -ml-1 text-gray-700 hover:bg-gray-100 rounded-lg cursor-pointer"
+                      title="Back to conversations"
+                    >
+                      <ArrowLeft className="w-5 h-5 text-[#842029]" />
+                    </button>
+                    <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-100 shrink-0 border border-gray-200 flex items-center justify-center">
+                      {getChatPartnerPhoto() ? (
+                        <img src={getChatPartnerPhoto()} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <User size={18} className="text-gray-400" />
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <h3 className="font-bold text-sm sm:text-base text-gray-900 font-serif truncate">
+                          {getChatPartnerName()}
+                        </h3>
+                        {activeProfile?.isVerified && (
+                          <ShieldCheck size={14} className="text-emerald-600 shrink-0" />
+                        )}
+                      </div>
+                      {typingProfiles[activeChat] ? (
+                        <p className="text-[11px] text-[#842029] font-medium animate-pulse">typing...</p>
+                      ) : (
+                        <p className="text-[11px] text-emerald-600 font-medium flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping inline-block" /> Online
+                        </p>
+                      )}
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-bold text-sm text-gray-900 font-serif">
-                      {getChatPartnerName()}
-                    </h3>
-                    {typingProfiles[activeChat] ? (
-                      <p className="text-[11px] text-[#842029] font-medium animate-pulse">typing...</p>
-                    ) : (
-                      <p className="text-[11px] text-emerald-600 font-medium">Online</p>
-                    )}
-                  </div>
-                </div>
+                </header>
 
-                {/* Messages Feed */}
-                <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3">
+                {/* Scrollable Messages Area */}
+                <div
+                  ref={messagesContainerRef}
+                  className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3 min-h-0 bg-[#FCFAFA]"
+                >
                   {messages.length === 0 ? (
-                    <div className="text-center text-xs text-gray-400 mt-12">
-                      No messages yet. Say hello to begin your conversation!
+                    <div className="h-full flex flex-col items-center justify-center text-center p-6 text-gray-400">
+                      <div className="w-12 h-12 rounded-full bg-rose-50 flex items-center justify-center text-[#842029] mb-2">
+                        <Send size={20} />
+                      </div>
+                      <p className="text-xs font-medium text-gray-500">No messages yet.</p>
+                      <p className="text-[11px] text-gray-400 mt-0.5">Send a message below to begin your conversation!</p>
                     </div>
                   ) : (
                     messages.map((msg) => {
-                      const senderId = typeof msg.senderProfileId === 'object' ? msg.senderProfileId._id : msg.senderProfileId
-                      const isMine = myProfileId ? senderId === myProfileId : false
+                      const senderId = String(typeof msg.senderProfileId === 'object' ? msg.senderProfileId._id : msg.senderProfileId)
+                      const myId = String(myProfileId)
+                      const isMine = myProfileId ? senderId === myId : false
+
                       return (
-                        <div key={msg._id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
+                        <div key={msg._id || msg.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
                           <div
-                            className={`max-w-[75%] rounded-2xl px-4 py-2.5 shadow-2xs ${
-                              isMine
-                                ? 'bg-[#842029] text-white rounded-br-xs'
-                                : 'bg-gray-100 text-gray-800 rounded-bl-xs'
+                            className={`max-w-[80%] sm:max-w-[70%] rounded-2xl px-4 py-2.5 shadow-2xs ${isMine
+                              ? 'bg-[#842029] text-white rounded-br-xs'
+                              : 'bg-white text-gray-800 border border-gray-100 rounded-bl-xs'
                             }`}
                           >
-                            <p className="text-xs sm:text-sm leading-relaxed">{msg.content}</p>
-                            <p className="text-[9px] mt-1 text-right opacity-70">
-                              {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </p>
+                            <p className="text-xs sm:text-sm leading-relaxed whitespace-pre-wrap break-words">{msg.content}</p>
+                            <div className={`flex items-center justify-end gap-1 text-[10px] mt-1 ${isMine ? 'text-rose-200' : 'text-gray-400'}`}>
+                              <span>{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                              {isMine && (
+                                msg.isRead ? <CheckCheck size={12} className="text-emerald-300" /> : <Clock size={10} />
+                              )}
+                            </div>
                           </div>
                         </div>
                       )
                     })
                   )}
-                  <div ref={messagesEndRef} />
                 </div>
 
-                {/* Message Input Box */}
-                <form onSubmit={handleSendMessage} className="p-4 border-t border-gray-100 flex gap-3">
+                {/* Fixed Bottom Chat Input Bar */}
+                <form
+                  onSubmit={handleSendMessage}
+                  className="p-3 sm:p-4 border-t border-gray-100 bg-white flex items-center gap-2 sm:gap-3 shrink-0"
+                >
                   <input
                     type="text"
                     value={newMessage}
@@ -360,22 +384,21 @@ export default function Chatapp() {
                     }}
                     onBlur={() => handleTyping(false)}
                     placeholder="Type your message..."
-                    className="flex-1 px-4 py-2.5 rounded-full bg-gray-50 border border-gray-200 focus:bg-white focus:border-[#842029] text-xs sm:text-sm outline-none"
+                    className="flex-1 px-4 py-2.5 rounded-full bg-gray-50 border border-gray-200 focus:bg-white focus:border-[#842029] text-xs sm:text-sm outline-none transition-all"
                   />
                   <button
                     type="submit"
                     disabled={!newMessage.trim()}
-                    className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-[#842029] hover:bg-[#6b1b27] disabled:opacity-40 transition-colors shadow-xs"
+                    className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-[#842029] hover:bg-[#6b1b27] disabled:opacity-40 transition-colors shadow-xs shrink-0 cursor-pointer"
                   >
                     <Send className="w-4 h-4" />
                   </button>
                 </form>
-              </>
+              </div>
             )}
-          </main>
+          </section>
         </div>
       </main>
-      <Footer />
     </div>
   )
 }

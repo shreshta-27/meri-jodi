@@ -20,242 +20,274 @@ export const createProfile = [
         .isIn(genderValues)
         .withMessage(`Gender must be one of: ${genderValues.join(", ")}`),
     body("heightCm")
-        .optional()
+        .optional({ values: "falsy" })
         .isFloat({ min: 100, max: 250 })
         .withMessage("Height must be between 100 and 250 cm"),
     body("religion")
-        .optional()
+        .optional({ values: "falsy" })
         .trim()
         .isLength({ min: 1, max: 50 }),
     body("caste")
-        .optional()
+        .optional({ values: "falsy" })
         .trim()
         .isLength({ min: 1, max: 50 }),
     body("maritalStatus")
-        .optional()
+        .optional({ values: "falsy" })
         .isIn(maritalStatusValues),
     body("aboutMe")
-        .optional()
+        .optional({ values: "falsy" })
         .trim()
-        .isLength({ min: 50, max: 1000 })
-        .withMessage("About me must be between 50 and 1000 characters"),
+        .isLength({ min: 1, max: 2000 })
+        .withMessage("About me must not exceed 2000 characters"),
     body("motherTongue")
-        .optional()
+        .optional({ values: "falsy" })
         .trim()
         .isLength({ min: 1, max: 50 }),
     body("location.city")
-        .optional()
+        .optional({ values: "falsy" })
         .trim()
         .isLength({ min: 1, max: 100 }),
     body("location.state")
-        .optional()
+        .optional({ values: "falsy" })
         .trim()
         .isLength({ min: 1, max: 100 }),
     body("location.country")
-        .optional()
+        .optional({ values: "falsy" })
         .trim()
         .isLength({ min: 1, max: 100 }),
     body("location.pincode")
-        .optional()
+        .optional({ values: "falsy" })
         .trim()
         .isLength({ min: 3, max: 10 }),
     body("location.willingToRelocate")
-        .optional()
+        .optional({ values: "falsy" })
         .isBoolean(),
     body("education.highestDegree")
-        .optional()
+        .optional({ values: "falsy" })
         .trim()
         .isLength({ min: 1, max: 100 }),
     body("education.fieldOfStudy")
-        .optional()
+        .optional({ values: "falsy" })
         .trim()
         .isLength({ min: 1, max: 100 }),
     body("education.institution")
-        .optional()
+        .optional({ values: "falsy" })
         .trim()
         .isLength({ min: 1, max: 200 }),
     body("education.graduationYear")
-        .optional()
+        .optional({ values: "falsy" })
         .isInt({ min: 1950, max: 2030 }),
     body("career.occupation")
-        .optional()
+        .optional({ values: "falsy" })
         .trim()
         .isLength({ min: 1, max: 100 }),
     body("career.companyName")
-        .optional()
+        .optional({ values: "falsy" })
         .trim()
         .isLength({ min: 1, max: 200 }),
     body("career.industry")
-        .optional()
+        .optional({ values: "falsy" })
         .trim()
         .isLength({ min: 1, max: 100 }),
     body("career.annualIncome")
-        .optional()
+        .optional({ values: "falsy" })
         .trim()
         .isLength({ min: 1, max: 50 }),
     body("career.workLocation")
-        .optional()
+        .optional({ values: "falsy" })
         .trim()
         .isLength({ min: 1, max: 100 }),
     body("family.fatherOccupation")
-        .optional()
+        .optional({ values: "falsy" })
         .trim()
         .isLength({ min: 1, max: 100 }),
     body("family.motherOccupation")
-        .optional()
+        .optional({ values: "falsy" })
         .trim()
         .isLength({ min: 1, max: 100 }),
     body("family.numBrothers")
-        .optional()
+        .optional({ values: "falsy" })
         .isInt({ min: 0, max: 20 }),
     body("family.numSisters")
-        .optional()
+        .optional({ values: "falsy" })
         .isInt({ min: 0, max: 20 }),
     body("family.familyType")
-        .optional()
+        .optional({ values: "falsy" })
         .isIn(familyTypeValues),
     body("family.familyValues")
-        .optional()
+        .optional({ values: "falsy" })
         .isIn(familyValuesValues),
     body("family.familyAffluence")
-        .optional()
+        .optional({ values: "falsy" })
         .isIn(familyAffluenceValues),
+    body("lifestyle.diet")
+        .optional({ values: "falsy" })
+        .trim()
+        .isLength({ min: 1, max: 100 }),
+    body("lifestyle.smoking")
+        .optional({ values: "falsy" })
+        .isBoolean(),
+    body("lifestyle.drinking")
+        .optional({ values: "falsy" })
+        .isBoolean(),
+    body("hobbiesAndInterests")
+        .optional({ values: "falsy" })
+        .isArray(),
+    body("manglik")
+        .optional({ values: "falsy" })
+        .trim()
+        .isLength({ min: 1, max: 50 }),
+    body("complexion")
+        .optional({ values: "falsy" })
+        .trim()
+        .isLength({ min: 1, max: 50 }),
     body("createdBy")
-        .optional()
+        .optional({ values: "falsy" })
         .isIn(createdByValues),
 ]
 
 export const updateProfile = [
     body("dateOfBirth")
-        .optional()
+        .optional({ values: "falsy" })
         .isISO8601()
         .withMessage("Invalid date format"),
     body("gender")
-        .optional()
+        .optional({ values: "falsy" })
         .isIn(genderValues),
     body("heightCm")
-        .optional()
+        .optional({ values: "falsy" })
         .isFloat({ min: 100, max: 250 }),
     body("religion")
-        .optional()
+        .optional({ values: "falsy" })
         .trim()
         .isLength({ min: 1, max: 50 }),
     body("caste")
-        .optional()
+        .optional({ values: "falsy" })
         .trim()
         .isLength({ min: 1, max: 50 }),
     body("maritalStatus")
-        .optional()
+        .optional({ values: "falsy" })
         .isIn(maritalStatusValues),
     body("aboutMe")
-        .optional()
+        .optional({ values: "falsy" })
         .trim()
-        .isLength({ min: 50, max: 1000 }),
+        .isLength({ min: 1, max: 2000 }),
     body("motherTongue")
-        .optional()
+        .optional({ values: "falsy" })
         .trim()
         .isLength({ min: 1, max: 50 }),
     body("location.city")
-        .optional()
+        .optional({ values: "falsy" })
         .trim()
         .isLength({ min: 1, max: 100 }),
     body("location.state")
-        .optional()
+        .optional({ values: "falsy" })
         .trim()
         .isLength({ min: 1, max: 100 }),
     body("location.country")
-        .optional()
+        .optional({ values: "falsy" })
         .trim()
         .isLength({ min: 1, max: 100 }),
     body("location.pincode")
-        .optional()
+        .optional({ values: "falsy" })
         .trim()
         .isLength({ min: 3, max: 10 }),
     body("location.willingToRelocate")
-        .optional()
+        .optional({ values: "falsy" })
         .isBoolean(),
     body("education.highestDegree")
-        .optional()
+        .optional({ values: "falsy" })
         .trim()
         .isLength({ min: 1, max: 100 }),
     body("education.fieldOfStudy")
-        .optional()
+        .optional({ values: "falsy" })
         .trim()
         .isLength({ min: 1, max: 100 }),
     body("education.institution")
-        .optional()
+        .optional({ values: "falsy" })
         .trim()
         .isLength({ min: 1, max: 200 }),
     body("education.graduationYear")
-        .optional()
+        .optional({ values: "falsy" })
         .isInt({ min: 1950, max: 2030 }),
     body("career.occupation")
-        .optional()
+        .optional({ values: "falsy" })
         .trim()
         .isLength({ min: 1, max: 100 }),
     body("career.companyName")
-        .optional()
+        .optional({ values: "falsy" })
         .trim()
         .isLength({ min: 1, max: 200 }),
     body("career.industry")
-        .optional()
+        .optional({ values: "falsy" })
         .trim()
         .isLength({ min: 1, max: 100 }),
     body("career.annualIncome")
-        .optional()
+        .optional({ values: "falsy" })
         .trim()
         .isLength({ min: 1, max: 50 }),
     body("career.workLocation")
-        .optional()
+        .optional({ values: "falsy" })
         .trim()
         .isLength({ min: 1, max: 100 }),
     body("family.fatherOccupation")
-        .optional()
+        .optional({ values: "falsy" })
         .trim()
         .isLength({ min: 1, max: 100 }),
     body("family.motherOccupation")
-        .optional()
+        .optional({ values: "falsy" })
         .trim()
         .isLength({ min: 1, max: 100 }),
     body("family.numBrothers")
-        .optional()
+        .optional({ values: "falsy" })
         .isInt({ min: 0, max: 20 }),
     body("family.numSisters")
-        .optional()
+        .optional({ values: "falsy" })
         .isInt({ min: 0, max: 20 }),
     body("family.familyType")
-        .optional()
+        .optional({ values: "falsy" })
         .isIn(familyTypeValues),
     body("family.familyValues")
-        .optional()
+        .optional({ values: "falsy" })
         .isIn(familyValuesValues),
     body("family.familyAffluence")
-        .optional()
+        .optional({ values: "falsy" })
         .isIn(familyAffluenceValues),
     body("gotham")
-        .optional()
+        .optional({ values: "falsy" })
         .trim()
         .isLength({ min: 1, max: 50 }),
     body("rashi")
-        .optional()
+        .optional({ values: "falsy" })
         .trim()
         .isLength({ min: 1, max: 50 }),
     body("nakshtra")
-        .optional()
+        .optional({ values: "falsy" })
         .trim()
         .isLength({ min: 1, max: 50 }),
     body("lifestyle.diet")
-        .optional()
+        .optional({ values: "falsy" })
         .trim()
         .isLength({ min: 1, max: 100 }),
     body("lifestyle.smoking")
-        .optional()
+        .optional({ values: "falsy" })
         .isBoolean(),
     body("lifestyle.drinking")
-        .optional()
+        .optional({ values: "falsy" })
         .isBoolean(),
+    body("hobbiesAndInterests")
+        .optional({ values: "falsy" })
+        .isArray(),
+    body("manglik")
+        .optional({ values: "falsy" })
+        .trim()
+        .isLength({ min: 1, max: 50 }),
+    body("complexion")
+        .optional({ values: "falsy" })
+        .trim()
+        .isLength({ min: 1, max: 50 }),
     body("createdBy")
-        .optional()
+        .optional({ values: "falsy" })
         .isIn(createdByValues),
 ]
 

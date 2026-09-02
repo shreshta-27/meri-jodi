@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { useNavigate, useLocation, Link } from "react-router-dom"
-import { registerUser, googleAuth } from "../api/authApi"
+import { registerUser, verifyEmailToken, googleAuth } from "../api/authApi"
 import { useAuth } from "../context/AuthContext"
 import logo from "../assets/logo2.png"
 
@@ -20,6 +20,9 @@ const SignUpPage = () => {
     const [verifyToken, setVerifyToken] = useState("")
     const [successMsg, setSuccessMsg] = useState("")
     const [loading, setLoading] = useState(false)
+    const [otpInput, setOtpInput] = useState("")
+    const [verifyingOtp, setVerifyingOtp] = useState(false)
+    const [otpError, setOtpError] = useState("")
 
     const handleSubmit = async (e) => {
         e.preventDefault()
@@ -57,6 +60,25 @@ const SignUpPage = () => {
             setError(err.response?.data?.message || "Registration failed. Please try again.")
         } finally {
             setLoading(false)
+        }
+    }
+
+    const handleOtpVerify = async (e) => {
+        e.preventDefault()
+        setOtpError("")
+        if (!otpInput.trim()) {
+            setOtpError("Please enter your 6-digit verification code.")
+            return
+        }
+        setVerifyingOtp(true)
+        try {
+            const data = await verifyEmailToken(otpInput.trim())
+            signIn(data.token || data.accessToken, data.user)
+            navigate("/complete-profile")
+        } catch (err) {
+            setOtpError(err.response?.data?.message || "Invalid or expired verification code.")
+        } finally {
+            setVerifyingOtp(false)
         }
     }
 
@@ -153,30 +175,72 @@ const SignUpPage = () => {
                     </div>
 
                     {successMsg ? (
-                        <div className="bg-white p-8 rounded-2xl shadow-lg border border-green-200 text-center space-y-4">
+                        <div className="bg-white p-8 rounded-2xl shadow-lg border border-green-200 text-center space-y-5">
                             <div className="w-14 h-14 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-2xl mx-auto">
                                 ✉️
                             </div>
-                            <h3 className="text-xl font-bold text-gray-900 font-serif">Check Your Email</h3>
-                            <p className="text-sm text-gray-600 leading-relaxed">{successMsg}</p>
-                            
+                            <div>
+                                <h3 className="text-xl font-bold text-gray-900 font-serif mb-2">Check Your Email</h3>
+                                <p className="text-sm text-gray-600 leading-relaxed">
+                                    We sent a 6-digit verification code and link to{" "}
+                                    <strong className="text-gray-900">{email}</strong>.
+                                </p>
+                            </div>
+
+                            {/* Direct OTP input box */}
+                            <form onSubmit={handleOtpVerify} className="p-4 bg-[#FFF5F6] rounded-xl border border-[#FFE4E8] space-y-3">
+                                <label className="block text-xs font-bold text-[#842029] uppercase tracking-wider">
+                                    Enter 6-Digit Code from Email
+                                </label>
+                                <input
+                                    type="text"
+                                    placeholder="e.g. 123456"
+                                    value={otpInput}
+                                    onChange={(e) => setOtpInput(e.target.value.trim())}
+                                    maxLength={6}
+                                    className="w-full text-center tracking-widest text-xl font-bold border-2 border-[#FFE4E8] focus:border-[#ED5463] rounded-xl px-4 py-2.5 outline-none bg-white transition-colors"
+                                />
+                                {otpError && (
+                                    <p className="text-xs text-red-600 font-semibold">{otpError}</p>
+                                )}
+                                <button
+                                    type="submit"
+                                    disabled={!otpInput.trim() || verifyingOtp}
+                                    className="w-full rounded-full bg-[#ED5463] py-2.5 text-white font-semibold text-sm hover:bg-[#D4384B] disabled:opacity-50 transition-all shadow-sm cursor-pointer"
+                                >
+                                    {verifyingOtp ? "Verifying Code..." : "Verify Code & Start Setup →"}
+                                </button>
+                            </form>
+
+                            <p className="text-xs text-gray-500">
+                                Or click the verification link sent directly to your inbox.
+                            </p>
+
                             {verifyToken && (
                                 <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-left text-xs text-amber-800 space-y-2">
-                                    <p className="font-semibold">⚡ Dev Mode Testing Link:</p>
+                                    <p className="font-semibold">⚡ Quick Verification Link:</p>
                                     <Link
                                         to={`/verify-email/${verifyToken}`}
                                         className="block text-center font-bold text-white bg-[#842029] hover:bg-[#6b1b27] py-2.5 px-4 rounded-lg transition-colors"
                                     >
-                                        Verify Email & Log In Now →
+                                        Verify Email & Continue →
                                     </Link>
                                 </div>
                             )}
 
-                            <div className="pt-4 border-t border-gray-100">
-                                <Link
-                                    to="/login"
-                                    className="inline-block w-full rounded-full bg-[#ED5463] py-3 text-white font-semibold text-sm hover:bg-[#D4384B] transition-all shadow-md"
+                            <div className="pt-3 border-t border-gray-100 flex justify-between items-center text-xs">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setSuccessMsg("")
+                                        setError("")
+                                        setOtpError("")
+                                    }}
+                                    className="text-gray-500 hover:text-gray-800 underline"
                                 >
+                                    ← Change Email
+                                </button>
+                                <Link to="/login" className="text-[#ED5463] font-semibold hover:underline">
                                     Proceed to Sign In
                                 </Link>
                             </div>

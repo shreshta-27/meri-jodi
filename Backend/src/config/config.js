@@ -2,14 +2,15 @@ import { config as conf } from "dotenv"
 conf()
 
 const requiredEnvVars = [
-    "DB_URI",
     "JWT_SECRET",
-    "FRONTEND_DOMAIN",
     "CLOUDINARY_CLOUD_NAME",
     "CLOUDINARY_API_KEY",
     "CLOUDINARY_API_SECRET",
 ]
 const missingEnvVars = requiredEnvVars.filter((envVar) => !process.env[envVar])
+if (!process.env.DB_URI && !process.env.MONGO_URI) {
+    missingEnvVars.push("DB_URI or MONGO_URI")
+}
 
 if (missingEnvVars.length > 0) {
     console.error(
@@ -20,7 +21,7 @@ if (missingEnvVars.length > 0) {
 
 const _config = {
     port: process.env.PORT || 5000,
-    dbURL: process.env.DB_URI,
+    dbURL: process.env.DB_URI || process.env.MONGO_URI,
     env: process.env.NODE_ENV || "development",
     frontendDomain: process.env.FRONTEND_DOMAIN || "http://localhost:5173",
     frontendUrl: process.env.FRONTEND_URL || process.env.FRONTEND_DOMAIN || "http://localhost:5173",

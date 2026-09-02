@@ -110,15 +110,13 @@ export default function BasicInfo({
 
     if (!formData.gender) err.gender = "Select gender";
 
-    if (!formData.email) err.email = "Email required";
-    else if (!/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(formData.email))
-      err.email = "Invalid email";
+    if (formData.email && !/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(formData.email)) {
+      err.email = "Invalid email format";
+    }
 
-    if (!formData.password) err.password = "Password required";
-    else if (
-      !/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$/.test(formData.password)
-    )
-      err.password = "Weak password (needs 8+ chars, upper, lower, number, special)";
+    if (formData.password && formData.password.length < 6) {
+      err.password = "Password must be at least 6 characters";
+    }
 
     setErrors(err);
     return Object.keys(err).length === 0;

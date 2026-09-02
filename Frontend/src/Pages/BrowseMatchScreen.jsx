@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import {
     Heart,
     Star,
@@ -6,16 +6,19 @@ import {
     Sparkles,
     MapPinned,
     ChevronRight,
-    ChevronDown,
+    Search,
     SlidersHorizontal,
+    CheckCircle,
 } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import Navbar from "../Components/Navbar"
 import Footer from "../Components/Footer"
 import home1 from "../assets/home1.png"
 import { getMyMatches } from "../api/matchingApi"
+import { getMyProfile } from "../api/profileApi"
 import { sendInterest } from "../api/interestApi"
 import { toggleShortlist, getShortlistedProfiles } from "../api/shortlistApi"
+import { getWhoViewedYou } from "../api/dashboardApi"
 
 const COLORS = {
     pageBg: "#FBF9F9",
@@ -41,10 +44,14 @@ const mapProfileToCard = (profile) => ({
     age: calculateAge(profile.dateOfBirth),
     match: profile.compatibilityScore,
     location: profile.location?.city || "India",
+    state: profile.location?.state || "",
     education: profile.education?.highestDegree || "",
     occupation: profile.career?.occupation || "Professional",
     tags: [profile.religion, profile.caste, profile.lifestyle?.diet].filter(Boolean),
     quote: profile.aboutMe ? `"${profile.aboutMe.slice(0, 140)}..."` : "",
+    isVerified: !!profile.isVerified,
+    hasPhoto: !!(profile.photos && profile.photos.length > 0 && profile.photos[0]?.url),
+    createdAt: profile.createdAt ? new Date(profile.createdAt) : null,
     image:
         profile.photos?.find((p) => p.isPrimary)?.url ||
         profile.photos?.[0]?.url ||
@@ -62,6 +69,7 @@ const MatchCard = ({
     occupation,
     tags = [],
     quote,
+    isVerified,
     isShortlisted,
     onToggleShortlist,
     onSendInterest,
@@ -79,6 +87,11 @@ const MatchCard = ({
                 >
                     <Star className="w-3 h-3" fill="#fff" color="#fff" />
                     {match}% Match
+                </span>
+            )}
+            {isVerified && (
+                <span className="absolute top-3 left-3 px-2.5 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-bold shadow flex items-center gap-1">
+                    <CheckCircle size={10} /> Verified
                 </span>
             )}
             <button
@@ -99,9 +112,11 @@ const MatchCard = ({
 
         <div className="flex-1 min-w-0 flex flex-col justify-between">
             <div>
-                <h2 className="font-serif font-bold text-xl sm:text-2xl text-[#640515]">
-                    {name}{typeof age === "number" ? `, ${age}` : ""}
-                </h2>
+                <div className="flex items-center justify-between gap-2">
+                    <h2 className="font-serif font-bold text-xl sm:text-2xl text-[#640515]">
+                        {name}{typeof age === "number" ? `, ${age}` : ""}
+                    </h2>
+                </div>
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-xs sm:text-sm text-gray-600">
                     {location && <span>📍 {location}</span>}
                     {education && <span>🎓 {education}</span>}
@@ -130,14 +145,14 @@ const MatchCard = ({
                 <button
                     type="button"
                     onClick={onSendInterest}
-                    className="flex-1 rounded-full py-2.5 text-xs sm:text-sm font-semibold text-white hover:opacity-90 transition-opacity bg-[#AE2539] shadow-xs flex items-center justify-center gap-1.5"
+                    className="flex-1 rounded-full py-2.5 text-xs sm:text-sm font-semibold text-white hover:opacity-90 transition-opacity bg-[#AE2539] shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                     <Heart size={14} fill="currentColor" /> Express Interest
                 </button>
                 <button
                     type="button"
                     onClick={onViewProfile}
-                    className="flex-1 rounded-full py-2.5 text-xs sm:text-sm font-semibold border border-[#AE2539] text-[#AE2539] hover:bg-[#AE2539] hover:text-white transition-colors"
+                    className="flex-1 rounded-full py-2.5 text-xs sm:text-sm font-semibold border border-[#AE2539] text-[#AE2539] hover:bg-[#AE2539] hover:text-white transition-colors cursor-pointer"
                 >
                     View Profile
                 </button>
@@ -150,7 +165,7 @@ const SidebarRow = ({ label, subtitle, icon: Icon, active, onClick }) => (
     <button
         type="button"
         onClick={onClick}
-        className={`w-full flex items-start gap-3 rounded-2xl px-3.5 py-3 text-left transition-colors ${
+        className={`w-full flex items-start gap-3 rounded-2xl px-3.5 py-3 text-left transition-colors cursor-pointer ${
             active ? "bg-[#FFF0F2] text-[#842029]" : "hover:bg-gray-50 text-gray-800"
         }`}
     >
@@ -178,10 +193,15 @@ const sidebarLinks = [
 export default function BrowseMatchScreen() {
     const navigate = useNavigate()
     const [matches, setMatches] = useState([])
+    const [myProfile, setMyProfile] = useState(null)
+    const [whoViewedYouList, setWhoViewedYouList] = useState([])
+    const [shortlistedProfilesList, setShortlistedProfilesList] = useState([])
     const [shortlistedIds, setShortlistedIds] = useState(new Set())
     const [loading, setLoading] = useState(true)
     const [visibleCount, setVisibleCount] = useState(6)
-    const [activeFilter, setActiveFilter] = useState("All")
+    const [activeSidebar, setActiveSidebar] = useState("Your Matches")
+    const [activeFilter, setActiveFilter] = useState("All Matches")
+    const [searchQuery, setSearchQuery] = useState("")
     const [toastMessage, setToastMessage] = useState("")
 
     const showToast = (msg) => {
@@ -192,11 +212,19 @@ export default function BrowseMatchScreen() {
     const fetchData = async () => {
         setLoading(true)
         try {
-            const [matchResult, shortlists] = await Promise.all([
-                getMyMatches({ limit: 40 }),
+            const [matchResult, shortlists, viewed, myProf] = await Promise.all([
+                getMyMatches({ limit: 50 }).catch(() => ({ matches: [] })),
                 getShortlistedProfiles().catch(() => []),
+                getWhoViewedYou(30).catch(() => []),
+                getMyProfile().catch(() => null),
             ])
             setMatches((matchResult?.matches ?? []).map(mapProfileToCard))
+            setMyProfile(myProf)
+            setWhoViewedYouList((viewed || []).map((v) => mapProfileToCard(v.profile || v)))
+            setShortlistedProfilesList(
+                (shortlists || []).map((s) => mapProfileToCard(s.shortlistedProfileId || s))
+            )
+
             const sIds = new Set(
                 shortlists.map((s) => {
                     const p = s.shortlistedProfileId
@@ -241,9 +269,77 @@ export default function BrowseMatchScreen() {
         }
     }
 
+    // Dynamic filtering pipeline
+    const filteredMatches = useMemo(() => {
+        let list = [...matches]
+
+        // 1. Sidebar tab filter
+        if (activeSidebar === "Short Listed By You") {
+            list = list.filter((m) => shortlistedIds.has(m.id))
+            if (list.length === 0 && shortlistedProfilesList.length > 0) {
+                list = shortlistedProfilesList
+            }
+        } else if (activeSidebar === "Viewed you") {
+            list = whoViewedYouList
+        } else if (activeSidebar === "Newly Joined") {
+            const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+            list = list.filter((m) => !m.createdAt || m.createdAt >= thirtyDaysAgo)
+        } else if (activeSidebar === "Nearby Matches") {
+            const myCity = (myProfile?.location?.city || "").toLowerCase().trim()
+            const myState = (myProfile?.location?.state || "").toLowerCase().trim()
+            if (myCity || myState) {
+                list = list.filter((m) => {
+                    const loc = (m.location || "").toLowerCase()
+                    const st = (m.state || "").toLowerCase()
+                    return (myCity && loc.includes(myCity)) || (myState && (loc.includes(myState) || st.includes(myState)))
+                })
+            }
+        }
+
+        // 2. Quick filter chips
+        if (activeFilter === "Profiles with photo") {
+            list = list.filter((m) => m.hasPhoto)
+        } else if (activeFilter === "Newly Joined") {
+            const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+            list = list.filter((m) => !m.createdAt || m.createdAt >= thirtyDaysAgo)
+        } else if (activeFilter === "Same City") {
+            const myCity = (myProfile?.location?.city || "").toLowerCase().trim()
+            if (myCity) {
+                list = list.filter((m) => (m.location || "").toLowerCase().includes(myCity))
+            }
+        } else if (activeFilter === "Verified") {
+            list = list.filter((m) => m.isVerified)
+        }
+
+        // 3. Live search query
+        if (searchQuery.trim()) {
+            const q = searchQuery.toLowerCase().trim()
+            list = list.filter((m) => {
+                return (
+                    m.name.toLowerCase().includes(q) ||
+                    m.location.toLowerCase().includes(q) ||
+                    m.occupation.toLowerCase().includes(q) ||
+                    m.education.toLowerCase().includes(q) ||
+                    m.tags.some((t) => t.toLowerCase().includes(q))
+                )
+            })
+        }
+
+        return list
+    }, [
+        matches,
+        activeSidebar,
+        activeFilter,
+        searchQuery,
+        shortlistedIds,
+        shortlistedProfilesList,
+        whoViewedYouList,
+        myProfile,
+    ])
+
     const PAGE_SIZE = 4
     const loadMoreMatches = () => {
-        setVisibleCount((prev) => Math.min(prev + PAGE_SIZE, matches.length))
+        setVisibleCount((prev) => Math.min(prev + PAGE_SIZE, filteredMatches.length))
     }
 
     return (
@@ -263,14 +359,14 @@ export default function BrowseMatchScreen() {
                             <h2 className="px-3 pt-2 pb-3 font-serif font-bold text-lg text-[#640515]">
                                 Match Filters
                             </h2>
-                            {sidebarLinks.map((l, i) => (
+                            {sidebarLinks.map((l) => (
                                 <SidebarRow
                                     key={l.label}
                                     {...l}
-                                    active={i === 0}
+                                    active={activeSidebar === l.label}
                                     onClick={() => {
-                                        if (l.label === "Short Listed By You") navigate("/shortlist")
-                                        else if (l.label === "Viewed you") navigate("/home")
+                                        setActiveSidebar(l.label)
+                                        setVisibleCount(6)
                                     }}
                                 />
                             ))}
@@ -279,14 +375,26 @@ export default function BrowseMatchScreen() {
 
                     {/* Main Match List */}
                     <div className="flex-1 min-w-0">
-                        <div className="flex flex-wrap items-center justify-between gap-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                             <div>
                                 <h1 className="font-serif font-bold text-2xl sm:text-3xl lg:text-4xl text-[#640515]">
-                                    Recommended Matches
+                                    {activeSidebar}
                                 </h1>
                                 <p className="text-gray-600 text-xs sm:text-sm mt-1">
-                                    High-compatibility profiles tailored to your partner preferences.
+                                    {filteredMatches.length} {filteredMatches.length === 1 ? "profile" : "profiles"} found
                                 </p>
+                            </div>
+
+                            {/* Search bar */}
+                            <div className="relative max-w-xs w-full">
+                                <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                                <input
+                                    type="text"
+                                    placeholder="Search by city, name, job..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="w-full pl-9 pr-4 py-2 rounded-full border border-gray-200 text-xs sm:text-sm bg-white focus:outline-none focus:border-[#842029]"
+                                />
                             </div>
                         </div>
 
@@ -297,8 +405,11 @@ export default function BrowseMatchScreen() {
                                     <button
                                         key={chip}
                                         type="button"
-                                        onClick={() => setActiveFilter(chip)}
-                                        className={`px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all border ${
+                                        onClick={() => {
+                                            setActiveFilter(chip)
+                                            setVisibleCount(6)
+                                        }}
+                                        className={`px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all border cursor-pointer ${
                                             activeFilter === chip
                                                 ? "bg-[#842029] text-white border-[#842029]"
                                                 : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
@@ -312,22 +423,34 @@ export default function BrowseMatchScreen() {
 
                         {loading ? (
                             <div className="py-20 text-center text-gray-500">Loading matches...</div>
-                        ) : matches.length === 0 ? (
+                        ) : filteredMatches.length === 0 ? (
                             <div className="mt-8 bg-white rounded-3xl p-12 text-center border border-dashed border-gray-200">
                                 <p className="text-gray-500 text-sm">
-                                    No matches found for your current preferences. Try adjusting your age or location filters.
+                                    No matches found for your current filter or search criteria. Try selecting "All Matches" or adjusting your partner preferences.
                                 </p>
-                                <button
-                                    onClick={() => navigate("/profile")}
-                                    className="mt-4 px-6 py-2 rounded-full bg-[#842029] text-white text-xs font-semibold hover:bg-[#6b1b27]"
-                                >
-                                    Adjust Partner Preferences
-                                </button>
+                                <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
+                                    <button
+                                        onClick={() => {
+                                            setActiveSidebar("Your Matches")
+                                            setActiveFilter("All Matches")
+                                            setSearchQuery("")
+                                        }}
+                                        className="px-5 py-2 rounded-full border border-gray-300 text-gray-700 text-xs font-semibold hover:bg-gray-50 cursor-pointer"
+                                    >
+                                        Reset Filters
+                                    </button>
+                                    <button
+                                        onClick={() => navigate("/profile")}
+                                        className="px-6 py-2 rounded-full bg-[#842029] text-white text-xs font-semibold hover:bg-[#6b1b27] cursor-pointer"
+                                    >
+                                        Adjust Partner Preferences
+                                    </button>
+                                </div>
                             </div>
                         ) : (
                             <>
                                 <div className="mt-6 space-y-6">
-                                    {matches.slice(0, visibleCount).map((m) => (
+                                    {filteredMatches.slice(0, visibleCount).map((m) => (
                                         <MatchCard
                                             key={m.id}
                                             {...m}
@@ -339,13 +462,13 @@ export default function BrowseMatchScreen() {
                                     ))}
                                 </div>
 
-                                {visibleCount < matches.length && (
+                                {visibleCount < filteredMatches.length && (
                                     <div className="flex justify-center mt-8 mb-6">
                                         <button
                                             onClick={loadMoreMatches}
-                                            className="px-8 py-3 rounded-full border-2 border-[#AE2539] text-[#AE2539] font-semibold text-xs sm:text-sm hover:bg-[#AE2539] hover:text-white transition-all shadow-xs"
+                                            className="px-8 py-3 rounded-full border-2 border-[#AE2539] text-[#AE2539] font-semibold text-xs sm:text-sm hover:bg-[#AE2539] hover:text-white transition-all shadow-xs cursor-pointer"
                                         >
-                                            Load More Matches ({matches.length - visibleCount} remaining)
+                                            Load More Matches ({filteredMatches.length - visibleCount} remaining)
                                         </button>
                                     </div>
                                 )}

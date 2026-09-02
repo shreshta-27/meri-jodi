@@ -1,53 +1,64 @@
-import { useEffect, useState } from "react"
-import { useParams, useNavigate, Link } from "react-router-dom"
+import { useEffect, useState, useRef } from "react"
+import { useParams, useSearchParams, useNavigate, Link } from "react-router-dom"
 import { useAuth } from "../context/AuthContext"
 import { verifyEmailToken } from "../api/authApi"
 import logo from "../assets/logo2.png"
 
 const VerifyEmailPage = () => {
-    const { token } = useParams()
+    const { token: routeToken } = useParams()
+    const [searchParams] = useSearchParams()
     const navigate = useNavigate()
     const { signIn } = useAuth()
 
-    const [status, setStatus] = useState("verifying") // 'verifying' | 'success' | 'error'
+    const token = routeToken || searchParams.get("token") || searchParams.get("code") || ""
+
+    const [status, setStatus] = useState(token ? "verifying" : "input") // 'verifying' | 'success' | 'error' | 'input'
     const [message, setMessage] = useState("")
+    const [manualCode, setManualCode] = useState("")
+    const [submitting, setSubmitting] = useState(false)
+    const hasCalledRef = useRef(false)
+
+    const doVerify = async (tokenToVerify) => {
+        setSubmitting(true)
+        setStatus("verifying")
+        try {
+            const data = await verifyEmailToken(tokenToVerify)
+            setStatus("success")
+            setMessage(data.message || "Your email has been verified successfully!")
+            if (data.token || data.accessToken) {
+                signIn(data.token || data.accessToken, data.user)
+            }
+            setTimeout(() => {
+                navigate("/complete-profile")
+            }, 2500)
+        } catch (err) {
+            setStatus("error")
+            setMessage(
+                err.response?.data?.message ||
+                    "Verification link or code has expired or is invalid. Please enter your 6-digit code or sign up again."
+            )
+        } finally {
+            setSubmitting(false)
+        }
+    }
 
     useEffect(() => {
         if (!token) {
-            setStatus("error")
-            setMessage("Invalid verification link. Token is missing.")
+            setStatus("input")
             return
         }
 
-        let isMounted = true
-        verifyEmailToken(token)
-            .then((data) => {
-                if (isMounted) {
-                    setStatus("success")
-                    setMessage(data.message || "Your email has been verified successfully!")
-                    if (data.token || data.accessToken) {
-                        signIn(data.token || data.accessToken, data.user)
-                    }
-                    // Redirect to profile setup after 3 seconds
-                    setTimeout(() => {
-                        navigate("/complete-profile")
-                    }, 3000)
-                }
-            })
-            .catch((err) => {
-                if (isMounted) {
-                    setStatus("error")
-                    setMessage(
-                        err.response?.data?.message ||
-                            "Verification link has expired or is invalid. Please sign up or request a new link."
-                    )
-                }
-            })
+        if (hasCalledRef.current) return
+        hasCalledRef.current = true
 
-        return () => {
-            isMounted = false
-        }
-    }, [token, signIn, navigate])
+        doVerify(token)
+    }, [token])
+
+    const handleManualSubmit = (e) => {
+        e.preventDefault()
+        if (!manualCode.trim()) return
+        doVerify(manualCode.trim())
+    }
 
     return (
         <div className="min-h-screen bg-[#FAF8F5] flex flex-col justify-center items-center px-4 py-12">
@@ -71,33 +82,68 @@ const VerifyEmailPage = () => {
                         </div>
                         <h2 className="text-2xl font-bold text-gray-900 mb-2 font-serif">Account Verified!</h2>
                         <p className="text-sm text-[#4B5563] mb-6">{message}</p>
-                        <p className="text-xs text-[#9CA3AF] mb-6">Redirecting to your profile setup in a few seconds...</p>
+                        <p className="text-xs text-[#9CA3AF] mb-6">Redirecting to profile setup in a few seconds...</p>
                         <button
                             onClick={() => navigate("/complete-profile")}
-                            className="w-full rounded-full bg-[#ED5463] py-3 text-white font-semibold text-sm hover:bg-[#D4384B] transition-all shadow-md"
+                            className="w-full rounded-full bg-[#ED5463] py-3 text-white font-semibold text-sm hover:bg-[#D4384B] transition-all shadow-md cursor-pointer"
                         >
                             Continue to Profile Setup →
                         </button>
                     </div>
                 )}
 
-                {status === "error" && (
-                    <div className="py-6">
-                        <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center text-3xl mx-auto mb-5">
-                            ⚠️
-                        </div>
-                        <h2 className="text-2xl font-bold text-gray-900 mb-2 font-serif">Verification Failed</h2>
-                        <p className="text-sm text-[#4B5563] mb-6">{message}</p>
-                        <div className="space-y-3">
+                {(status === "error" || status === "input") && (
+                    <div className="py-4">
+                        {status === "error" ? (
+                            <div className="mb-6">
+                                <div className="w-14 h-14 bg-red-100 text-red-600 rounded-full flex items-center justify-center text-2xl mx-auto mb-3">
+                                    ⚠️
+                                </div>
+                                <h2 className="text-xl font-bold text-gray-900 mb-2 font-serif">Verification Needed</h2>
+                                <p className="text-xs text-[#6B7280] mb-4">{message}</p>
+                            </div>
+                        ) : (
+                            <div className="mb-6">
+                                <div className="w-14 h-14 bg-[#FFF0F2] text-[#ED5463] rounded-full flex items-center justify-center text-2xl mx-auto mb-3">
+                                    ✉️
+                                </div>
+                                <h2 className="text-xl font-bold text-gray-900 mb-2 font-serif">Verify Your Account</h2>
+                                <p className="text-xs text-[#6B7280] mb-4">
+                                    Please enter the 6-digit verification code sent to your email.
+                                </p>
+                            </div>
+                        )}
+
+                        <form onSubmit={handleManualSubmit} className="space-y-4">
+                            <div>
+                                <input
+                                    type="text"
+                                    placeholder="Enter 6-digit code"
+                                    value={manualCode}
+                                    onChange={(e) => setManualCode(e.target.value.trim())}
+                                    maxLength={32}
+                                    className="w-full text-center tracking-widest text-lg font-bold border-2 border-[#FFE4E8] focus:border-[#ED5463] rounded-xl px-4 py-3 outline-none transition-colors"
+                                />
+                            </div>
+                            <button
+                                type="submit"
+                                disabled={!manualCode.trim() || submitting}
+                                className="w-full rounded-full bg-[#ED5463] py-3 text-white font-semibold text-sm hover:bg-[#D4384B] disabled:opacity-50 transition-all shadow-md cursor-pointer"
+                            >
+                                {submitting ? "Verifying..." : "Verify Code →"}
+                            </button>
+                        </form>
+
+                        <div className="mt-6 pt-6 border-t border-gray-100 space-y-2">
                             <Link
                                 to="/register"
-                                className="block w-full rounded-full bg-[#ED5463] py-3 text-white font-semibold text-sm hover:bg-[#D4384B] transition-all shadow-md"
+                                className="block text-xs text-[#ED5463] font-semibold hover:underline"
                             >
-                                Create New Account
+                                Need a new account? Sign up here
                             </Link>
                             <Link
                                 to="/login"
-                                className="block w-full rounded-full border border-gray-300 py-3 text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-all"
+                                className="block text-xs text-gray-500 hover:text-gray-700"
                             >
                                 Back to Sign In
                             </Link>

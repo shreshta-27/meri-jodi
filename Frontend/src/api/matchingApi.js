@@ -2,10 +2,14 @@ import axiosInstance from "./axiosInstance"
 
 const unwrap = (response) => response.data?.data ?? response.data
 
-export const getMyMatches = async (page = 1, limit = 20) => {
-  const response = await axiosInstance.get("/matches", {
-    params: { page, limit },
-  })
+export const getMyMatches = async (pageOrOptions = 1, maybeLimit = 20) => {
+  let params = {}
+  if (typeof pageOrOptions === "object" && pageOrOptions !== null) {
+    params = pageOrOptions
+  } else {
+    params = { page: pageOrOptions, limit: maybeLimit }
+  }
+  const response = await axiosInstance.get("/matches", { params })
   return unwrap(response)
 }
 

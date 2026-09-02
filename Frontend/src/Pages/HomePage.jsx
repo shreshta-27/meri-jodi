@@ -229,7 +229,7 @@ const HomePage = () => {
           <div className="p-6 sm:p-7 md:p-9 flex flex-col justify-center">
             <span className="text-sm font-bold tracking-[0.12em]" style={{ color: COLORS.accentRed }}>SUCCESS STORIES</span>
             <p className="font-display font-bold text-2xl sm:text-3xl md:text-4xl leading-snug mt-3" style={{ color: COLORS.maroon }}>
-              &ldquo;We found our forever on EternalUnion.&rdquo;
+              &ldquo;We found our forever on MeriJodi.&rdquo;
             </p>
             <p className="text-sm leading-relaxed mt-3" style={{ color: COLORS.bodyGray }}>
               Priya and Sameer met through our curated recommendations in late 2022. Today, they are happily married and building a life of shared dreams.
