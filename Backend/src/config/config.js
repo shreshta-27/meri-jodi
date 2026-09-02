@@ -1,15 +1,18 @@
 import { config as conf } from "dotenv"
 conf()
 
+const dbURL = process.env.DB_URI || process.env.MONGO_URI
+const frontendDomain = process.env.FRONTEND_DOMAIN || process.env.FRONTEND_URL || "http://localhost:5173"
+
 const requiredEnvVars = [
-    "DB_URI",
-    "JWT_SECRET",
-    "FRONTEND_DOMAIN",
-    "CLOUDINARY_CLOUD_NAME",
-    "CLOUDINARY_API_KEY",
-    "CLOUDINARY_API_SECRET",
+    { name: "DB_URI/MONGO_URI", value: dbURL },
+    { name: "JWT_SECRET", value: process.env.JWT_SECRET },
+    { name: "FRONTEND_DOMAIN/FRONTEND_URL", value: frontendDomain },
+    { name: "CLOUDINARY_CLOUD_NAME", value: process.env.CLOUDINARY_CLOUD_NAME },
+    { name: "CLOUDINARY_API_KEY", value: process.env.CLOUDINARY_API_KEY },
+    { name: "CLOUDINARY_API_SECRET", value: process.env.CLOUDINARY_API_SECRET },
 ]
-const missingEnvVars = requiredEnvVars.filter((envVar) => !process.env[envVar])
+const missingEnvVars = requiredEnvVars.filter((envVar) => !envVar.value).map((envVar) => envVar.name)
 
 if (missingEnvVars.length > 0) {
     console.error(
@@ -20,10 +23,10 @@ if (missingEnvVars.length > 0) {
 
 const _config = {
     port: process.env.PORT || 5000,
-    dbURL: process.env.DB_URI,
+    dbURL,
     env: process.env.NODE_ENV || "development",
-    frontendDomain: process.env.FRONTEND_DOMAIN || "http://localhost:5173",
-    frontendUrl: process.env.FRONTEND_URL || process.env.FRONTEND_DOMAIN || "http://localhost:5173",
+    frontendDomain,
+    frontendUrl: process.env.FRONTEND_URL || frontendDomain,
     appName: process.env.APP_NAME || "MeriJodi",
     jwtSecret: process.env.JWT_SECRET,
     refreshSecret: process.env.REFRESH_SECRET || process.env.JWT_SECRET + "_refresh",
@@ -40,16 +43,11 @@ const _config = {
         clientId: process.env.GOOGLE_CLIENT_ID || "",
     },
 
-    /*
-     * Twilio (SMS OTP) - Commented for reference as requested
-     */
-    /*
     twilio: {
-        accountSid: process.env.TWILIO_ACCOUNT_SID,
-        authToken: process.env.TWILIO_AUTH_TOKEN,
-        verifyServiceSid: process.env.TWILIO_VERIFY_SERVICE_SID,
+        accountSid: process.env.TWILIO_ACCOUNT_SID || "",
+        authToken: process.env.TWILIO_AUTH_TOKEN || "",
+        verifyServiceSid: process.env.TWILIO_VERIFY_SERVICE_SID || "",
     },
-    */
 
     cloudinary: {
         cloudName: process.env.CLOUDINARY_CLOUD_NAME,
