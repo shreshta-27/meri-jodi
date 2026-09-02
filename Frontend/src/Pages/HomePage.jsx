@@ -196,11 +196,17 @@ const HomePage = () => {
           </div>
           <div className="flex flex-wrap gap-3 sm:gap-4 md:gap-6">
             {[
-              { label: "Add Photo", icon: Camera },
-              { label: "Add Hobbies", icon: Heart },
-              { label: "Add Family Details", icon: Users },
-            ].map(({ label, icon: Icon }) => (
-              <button key={label} type="button" onClick={() => navigate("/profile")} className="flex items-center gap-3 bg-white rounded-full pl-2 pr-4 py-2 text-sm font-medium shadow-sm hover:shadow-md transition-shadow" style={{ color: "#2b2b2b" }}>
+              { label: "Add Photo", icon: Camera, section: "basic" },
+              { label: "Add Hobbies", icon: Heart, section: "lifestyle" },
+              { label: "Add Family Details", icon: Users, section: "family" },
+            ].map(({ label, icon: Icon, section }) => (
+              <button
+                key={label}
+                type="button"
+                onClick={() => navigate("/profile", { state: { editSection: section } })}
+                className="flex items-center gap-3 bg-white rounded-full pl-2 pr-4 py-2 text-sm font-medium shadow-xs hover:shadow-md transition-shadow cursor-pointer"
+                style={{ color: "#2b2b2b" }}
+              >
                 <span className="w-7 h-7 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: COLORS.pillBg, color: COLORS.maroon }}>
                   <Icon className="w-3.5 h-3.5" />
                 </span>
@@ -211,7 +217,17 @@ const HomePage = () => {
         </div>
 
         <section className="mt-10">
-          <SectionHeading action={<a href="/browse-matches" className="text-sm font-semibold hover:underline" style={{ color: COLORS.accentRed }}>View All Matches</a>}>
+          <SectionHeading
+            action={
+              <button
+                onClick={() => navigate("/browse-matches")}
+                className="text-sm font-semibold hover:underline cursor-pointer"
+                style={{ color: COLORS.accentRed }}
+              >
+                View All Matches &rarr;
+              </button>
+            }
+          >
             Matches for You
           </SectionHeading>
           {matches.length === 0 ? (
@@ -234,7 +250,13 @@ const HomePage = () => {
             <p className="text-sm leading-relaxed mt-3" style={{ color: COLORS.bodyGray }}>
               Priya and Sameer met through our curated recommendations in late 2022. Today, they are happily married and building a life of shared dreams.
             </p>
-            <a href="#" className="text-sm font-semibold mt-4 hover:underline" style={{ color: COLORS.accentRed }}>Read more stories</a>
+            <button
+              onClick={() => navigate("/browse-matches")}
+              className="text-left text-sm font-semibold mt-4 hover:underline cursor-pointer"
+              style={{ color: COLORS.accentRed }}
+            >
+              Explore Compatible Profiles &rarr;
+            </button>
           </div>
           <img src={home4} alt="Married couple success story" className="w-full h-56 sm:h-64 md:h-full object-cover" />
         </section>

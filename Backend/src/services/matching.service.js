@@ -124,7 +124,7 @@ class MatchingService {
         const skip = (page - 1) * limit
         const fetchLimit = Math.max(skip + limit * 3, 100)
 
-        const [allCandidates, total] = await Promise.all([
+        let [allCandidates, total] = await Promise.all([
             Profile.find(query)
                 .sort({ createdAt: -1 })
                 .limit(fetchLimit)
@@ -132,6 +132,25 @@ class MatchingService {
                 .lean(),
             Profile.countDocuments(query),
         ])
+
+        // Fallback: If 0 candidates found because user interacted with all, relax interest exclusion
+        if (allCandidates.length === 0) {
+            const fallbackQuery = {
+                _id: { $ne: profileId, $nin: blockedIds },
+            }
+            if (query.gender) fallbackQuery.gender = query.gender
+
+            const [fallbackCandidates, fallbackTotal] = await Promise.all([
+                Profile.find(fallbackQuery)
+                    .sort({ createdAt: -1 })
+                    .limit(fetchLimit)
+                    .populate("userId", "name avatar")
+                    .lean(),
+                Profile.countDocuments(fallbackQuery),
+            ])
+            allCandidates = fallbackCandidates
+            total = fallbackTotal
+        }
 
         // Calculate compatibility score for each candidate
         const candidatesWithScore = allCandidates.map((match) => ({
