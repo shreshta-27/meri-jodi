@@ -81,6 +81,19 @@ const AddDetailsManually = () => {
     occupation: extractedData.personal_details?.organization_name || extractedData.occupation || "",
     income: extractedData.personal_details?.annual_income || extractedData.income || "",
     city: extractedData.contact_details?.city || extractedData.city || "",
+    religion: extractedData.personal_details?.religion || extractedData.religion || "",
+    caste: extractedData.personal_details?.caste || extractedData.caste || "",
+    gotham: extractedData.personal_details?.gotra || extractedData.gotham || "",
+    rashi: extractedData.personal_details?.rashi || extractedData.rashi || "",
+    nakshtra: extractedData.personal_details?.nakshatra || extractedData.nakshtra || "",
+    manglik: extractedData.personal_details?.manglik || extractedData.manglik || "",
+    complexion: extractedData.personal_details?.complexion || extractedData.complexion || "",
+    maritalStatus: extractedData.personal_details?.marital_status || extractedData.maritalStatus || "",
+    hobbies: Array.isArray(extractedData.personal_details?.hobbies)
+      ? extractedData.personal_details.hobbies
+      : Array.isArray(extractedData.hobbies)
+      ? extractedData.hobbies
+      : [],
   })
   const [errors, setErrors] = useState({})
 

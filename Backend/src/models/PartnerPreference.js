@@ -23,16 +23,16 @@ const partnerPreferenceSchema = new Schema(
         education: String,
         occupation: String,
         annualIncome: String,
+        diet: String,
         hobbiesAndInterests: {
             type: [String],
-            enum: HOBBIES_LIST,
             default: [],
         },
         heightMinCm: Number,
         heightMaxCm: Number,
         maritalStatus: {
             type: [String],
-            enum: Object.values(MARITAL_STATUS),
+            default: [],
         },
         willingToRelocate: Boolean,
     },

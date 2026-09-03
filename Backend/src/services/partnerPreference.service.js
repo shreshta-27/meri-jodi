@@ -11,6 +11,7 @@ const PREFERENCE_UPDATE_FIELDS = [
     "education",
     "occupation",
     "annualIncome",
+    "diet",
     "hobbiesAndInterests",
     "heightMinCm",
     "heightMaxCm",
@@ -33,6 +34,23 @@ class PartnerPreferenceService {
             }
         }
 
+        // Normalize maritalStatus
+        if (sanitized.maritalStatus) {
+            if (typeof sanitized.maritalStatus === "string") {
+                sanitized.maritalStatus = [sanitized.maritalStatus]
+            }
+            if (Array.isArray(sanitized.maritalStatus)) {
+                sanitized.maritalStatus = sanitized.maritalStatus.map((s) =>
+                    s === "never" ? "never_married" : s
+                )
+            }
+        }
+
+        // Normalize willingToRelocate
+        if (sanitized.willingToRelocate !== undefined) {
+            sanitized.willingToRelocate = sanitized.willingToRelocate === true || sanitized.willingToRelocate === "true"
+        }
+
         // Ensure gender is present for upserts (required field not enforced by $set)
         if (!sanitized.gender) {
             const existing = await PartnerPreference.findOne({ profileId })
@@ -50,14 +68,14 @@ class PartnerPreferenceService {
 
         // Cross-validation: ageMin <= ageMax
         if (sanitized.ageMin !== undefined && sanitized.ageMax !== undefined) {
-            if (sanitized.ageMin > sanitized.ageMax) {
+            if (Number(sanitized.ageMin) > Number(sanitized.ageMax)) {
                 throw new Error("Minimum age must be less than or equal to maximum age")
             }
         }
 
         // Cross-validation: heightMinCm <= heightMaxCm
         if (sanitized.heightMinCm !== undefined && sanitized.heightMaxCm !== undefined) {
-            if (sanitized.heightMinCm > sanitized.heightMaxCm) {
+            if (Number(sanitized.heightMinCm) > Number(sanitized.heightMaxCm)) {
                 throw new Error("Minimum height must be less than or equal to maximum height")
             }
         }

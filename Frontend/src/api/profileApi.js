@@ -81,17 +81,27 @@ export const getChatSuggestions = async (partnerDetails, lastMessage = "", categ
 
 export const buildProfilePayload = (formData) => {
   const dateOfBirth = getDateOfBirth(formData)
-  return {
+  const maritalStatus = formData.maritalStatus
+    ? formData.maritalStatus === "never"
+      ? "never_married"
+      : formData.maritalStatus
+    : undefined
+
+  const payload = {
     dateOfBirth,
-    placeOfBirth: formData.birthPlace || undefined,
+    placeOfBirth: formData.birthPlace || formData.placeOfBirth || undefined,
     gender: formData.gender ? String(formData.gender).toLowerCase() : undefined,
     motherTongue: formData.motherTongue || undefined,
     aboutMe: formData.about || formData.aboutMe || undefined,
     heightCm: parseHeightCm(formData.height || formData.heightCm),
     religion: formData.religion || undefined,
     caste: formData.caste || undefined,
+    gotham: formData.gotham || formData.gotra || undefined,
+    rashi: formData.rashi || undefined,
+    nakshtra: formData.nakshtra || formData.nakshatra || undefined,
     manglik: formData.manglik || undefined,
     complexion: formData.complexion || undefined,
+    maritalStatus,
     hobbiesAndInterests: Array.isArray(formData.hobbies)
       ? formData.hobbies
       : Array.isArray(formData.hobbiesAndInterests)
@@ -105,7 +115,7 @@ export const buildProfilePayload = (formData) => {
       willingToRelocate: formData.willingToRelocate === true || formData.willingToRelocate === "true",
     },
     education: {
-      highestDegree: formData.education || undefined,
+      highestDegree: formData.education || formData.highestDegree || undefined,
       institution: formData.institution || undefined,
       fieldOfStudy: formData.fieldOfStudy || undefined,
       graduationYear: formData.graduationYear ? Number(formData.graduationYear) : undefined,
@@ -117,8 +127,24 @@ export const buildProfilePayload = (formData) => {
       industry: formData.industry || undefined,
       workLocation: formData.workLocation || undefined,
     },
-    agreedToTerms: formData.acceptTerms || undefined,
+    family: {
+      fatherOccupation: formData.fatherOccupation || undefined,
+      motherOccupation: formData.motherOccupation || undefined,
+      familyType: formData.familyType || undefined,
+      familyValues: formData.familyValues || undefined,
+      familyAffluence: formData.familyAffluence || undefined,
+      numBrothers: formData.numBrothers !== undefined && formData.numBrothers !== "" ? Number(formData.numBrothers) : undefined,
+      numSisters: formData.numSisters !== undefined && formData.numSisters !== "" ? Number(formData.numSisters) : undefined,
+    },
+    lifestyle: {
+      diet: formData.diet || undefined,
+      smoking: formData.smoking === true || formData.smoking === "true",
+      drinking: formData.drinking === true || formData.drinking === "true",
+    },
+    agreedToTerms: formData.acceptTerms || formData.agreedToTerms || undefined,
   }
+
+  return payload
 }
 
 export const createProfile = async (formData) => {

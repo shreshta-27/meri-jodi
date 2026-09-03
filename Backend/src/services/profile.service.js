@@ -69,10 +69,18 @@ class ProfileService {
      * @returns {Promise<object>} Created profile
      */
     async create(userId, data) {
+        // Normalize aliases
+        const normalized = { ...data }
+        if (normalized.gotra && !normalized.gotham) normalized.gotham = normalized.gotra
+        if (normalized.nakshatra && !normalized.nakshtra) normalized.nakshtra = normalized.nakshatra
+        if (normalized.birthPlace && !normalized.placeOfBirth) normalized.placeOfBirth = normalized.birthPlace
+        if (normalized.about && !normalized.aboutMe) normalized.aboutMe = normalized.about
+        if (normalized.hobbies && !normalized.hobbiesAndInterests) normalized.hobbiesAndInterests = normalized.hobbies
+
         const sanitized = {}
         for (const field of PROFILE_CREATE_FIELDS) {
-            if (data[field] !== undefined) {
-                sanitized[field] = data[field]
+            if (normalized[field] !== undefined) {
+                sanitized[field] = normalized[field]
             }
         }
 
@@ -112,10 +120,18 @@ class ProfileService {
      * @returns {Promise<object>} Updated profile
      */
     async update(userId, data) {
+        // Normalize aliases
+        const normalized = { ...data }
+        if (normalized.gotra && !normalized.gotham) normalized.gotham = normalized.gotra
+        if (normalized.nakshatra && !normalized.nakshtra) normalized.nakshtra = normalized.nakshatra
+        if (normalized.birthPlace && !normalized.placeOfBirth) normalized.placeOfBirth = normalized.birthPlace
+        if (normalized.about && !normalized.aboutMe) normalized.aboutMe = normalized.about
+        if (normalized.hobbies && !normalized.hobbiesAndInterests) normalized.hobbiesAndInterests = normalized.hobbies
+
         const sanitized = {}
         for (const field of PROFILE_UPDATE_FIELDS) {
-            if (data[field] !== undefined) {
-                sanitized[field] = data[field]
+            if (normalized[field] !== undefined) {
+                sanitized[field] = normalized[field]
             }
         }
 
@@ -321,11 +337,13 @@ class ProfileService {
             "maritalStatus",
             "aboutMe",
             "motherTongue",
+            "placeOfBirth",
+            "manglik",
         ]
 
         const nestedFields = {
-            location: ["city", "state", "country"],
-            education: ["highestDegree", "fieldOfStudy", "institution"],
+            location: ["city", "state"],
+            education: ["highestDegree", "institution"],
             career: ["occupation", "companyName", "annualIncome"],
             family: [
                 "fatherOccupation",
@@ -333,6 +351,7 @@ class ProfileService {
                 "familyType",
                 "familyValues",
             ],
+            lifestyle: ["diet"],
         }
 
         let filled = 0
@@ -357,7 +376,7 @@ class ProfileService {
         total++
         if (profile.hobbiesAndInterests && profile.hobbiesAndInterests.length > 0) filled++
 
-        return Math.round((filled / total) * 100)
+        return Math.min(100, Math.max(0, Math.round((filled / total) * 100)))
     }
 
     async recordView(viewerUserId, targetProfileId) {

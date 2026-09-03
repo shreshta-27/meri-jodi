@@ -29,6 +29,10 @@ const biodataSchema = {
                 annual_income: { type: Type.STRING },
                 about_me: { type: Type.STRING },
                 mother_tongue: { type: Type.STRING },
+                religion: { type: Type.STRING },
+                caste: { type: Type.STRING },
+                gotra: { type: Type.STRING },
+                hobbies: { type: Type.ARRAY, items: { type: Type.STRING } },
             },
         },
         family_details: {
