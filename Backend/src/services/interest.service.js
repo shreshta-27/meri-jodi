@@ -1,5 +1,6 @@
 import { Interest } from "../models/Interest.js"
 import { Block } from "../models/Block.js"
+import { Profile } from "../models/Profile.js"
 
 class InterestService {
     /**
@@ -9,6 +10,16 @@ class InterestService {
      * @returns {Promise<object>} Created interest (or matched interest if mutual)
      */
     async send(senderProfileId, receiverProfileId) {
+        if (senderProfileId === receiverProfileId) {
+            throw new Error("Cannot send interest to yourself")
+        }
+
+        // Verify receiver profile exists
+        const receiverProfile = await Profile.findById(receiverProfileId)
+        if (!receiverProfile) {
+            throw new Error("Recipient profile not found or no longer exists")
+        }
+
         // Check if blocked
         const blocked = await Block.findOne({
             $or: [
@@ -117,7 +128,7 @@ class InterestService {
     }
 
     /**
-     * Get sent interests
+     * Get sent interests, excluding deleted/non-existent profiles
      * @param {string} profileId
      * @returns {Promise<Array>} Sent interests
      */
@@ -131,19 +142,19 @@ class InterestService {
             })
             .lean()
 
-        return interests.map((item) => {
-            if (item.receiverProfileId) {
+        return interests
+            .filter((item) => item.receiverProfileId && (item.receiverProfileId.userId || item.receiverProfileId.name))
+            .map((item) => {
                 item.receiverProfileId.name =
                     item.receiverProfileId.name ||
                     item.receiverProfileId.userId?.name ||
                     "MeriJodi Member"
-            }
-            return item
-        })
+                return item
+            })
     }
 
     /**
-     * Get received interests
+     * Get received interests, excluding deleted/non-existent profiles
      * @param {string} profileId
      * @returns {Promise<Array>} Received interests
      */
@@ -157,15 +168,15 @@ class InterestService {
             })
             .lean()
 
-        return interests.map((item) => {
-            if (item.senderProfileId) {
+        return interests
+            .filter((item) => item.senderProfileId && (item.senderProfileId.userId || item.senderProfileId.name))
+            .map((item) => {
                 item.senderProfileId.name =
                     item.senderProfileId.name ||
                     item.senderProfileId.userId?.name ||
                     "MeriJodi Member"
-            }
-            return item
-        })
+                return item
+            })
     }
 
     /**

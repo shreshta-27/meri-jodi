@@ -111,8 +111,17 @@ const HomePage = () => {
         if (cancelled) return
         if (!profileData) { setStatus("empty"); return }
         setProfile(profileData)
-        setMatches((matchData || []).map(mapProfileToCard))
-        setWhoViewedYou((viewedData || []).map((v) => mapProfileToCard(v.profile || v)))
+        setMatches(
+          (matchData || [])
+            .filter((m) => m && (m._id || m.id))
+            .map(mapProfileToCard)
+        )
+        setWhoViewedYou(
+          (viewedData || [])
+            .map((v) => v.profile || v)
+            .filter((p) => p && (p._id || p.id))
+            .map(mapProfileToCard)
+        )
         setStatus("ready")
       } catch (err) {
         console.error("Failed to load dashboard:", err)

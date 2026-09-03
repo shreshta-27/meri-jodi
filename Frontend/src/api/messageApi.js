@@ -23,3 +23,13 @@ export const getUnreadCount = async () => {
   const response = await axiosInstance.get("/messages/unread-count")
   return unwrap(response)
 }
+
+export const getChatSuggestions = async (partnerDetails, lastMessage = "", category = "icebreaker") => {
+  const response = await axiosInstance.post("/extraction/chat-suggestions", {
+    partnerDetails,
+    lastMessage,
+    category,
+  })
+  const data = unwrap(response)
+  return data?.suggestions || data || []
+}

@@ -1,4 +1,6 @@
+import { Link } from 'react-router-dom'
 import logo2 from '../assets/logo2.png'
+
 const Footer = () => {
   return (
     <div>
@@ -8,15 +10,18 @@ const Footer = () => {
           
           {/* Brand Logo Header */}
           <div className="logo">
-            <img src={logo2} alt="MeriJodi Logo" className="mx-auto w-40 h-12 mb-4" />
+            <Link to="/">
+              <img src={logo2} alt="MeriJodi Logo" className="mx-auto w-40 h-12 mb-4" />
+            </Link>
           </div>
 
           {/* Navigation Links */}
           <nav className="flex flex-wrap justify-center gap-x-8 gap-y-3 text-xs sm:text-sm font-normal mb-8">
-            <a href="#home" className="text-[#842029] ">Home</a>
-            <a href="#about" className="text-gray-400 hover:text-[#842029] transition-colors">About us</a>
-            <a href="#browse" className="text-gray-400 hover:text-[#842029] transition-colors">Browse Match</a>
-            <a href="#faqs" className="text-gray-400 hover:text-[#842029] transition-colors">FAQs</a>
+            <a href="/#home" className="text-[#842029] hover:underline">Home</a>
+            <a href="/#about" className="text-gray-600 hover:text-[#842029] transition-colors">About us</a>
+            <Link to="/browse-matches" className="text-gray-600 hover:text-[#842029] transition-colors">Browse Matches</Link>
+            <a href="/#stories" className="text-gray-600 hover:text-[#842029] transition-colors">Success Stories</a>
+            <a href="/#faqs" className="text-gray-600 hover:text-[#842029] transition-colors">FAQs</a>
           </nav>
 
           {/* Social Icons */}

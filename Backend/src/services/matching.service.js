@@ -155,8 +155,20 @@ class MatchingService {
             total = fallbackTotal
         }
 
-        // Calculate compatibility score for each candidate
-        const candidatesWithScore = allCandidates.map((match) => ({
+        // Filter out invalid/orphan records and deduplicate candidates by unique user/profile ID
+        const seenCandidateIds = new Set()
+        const validCandidates = []
+        for (const c of allCandidates) {
+            if (!c) continue
+            const cId = c._id?.toString()
+            const uId = c.userId?._id?.toString() || c.userId?.toString() || cId
+            if (!uId || seenCandidateIds.has(uId) || seenCandidateIds.has(cId)) continue
+            seenCandidateIds.add(uId)
+            seenCandidateIds.add(cId)
+            validCandidates.push(c)
+        }
+
+        const candidatesWithScore = validCandidates.map((match) => ({
             ...match,
             name: match.name || match.userId?.name || "MeriJodi Member",
             age: calculateAge(match.dateOfBirth),

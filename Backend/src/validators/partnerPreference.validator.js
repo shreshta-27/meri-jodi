@@ -38,28 +38,23 @@ export const createOrUpdatePreferences = [
         .trim()
         .isLength({ min: 1, max: 100 }),
     body("annualIncome")
-        .optional()
+        .optional({ values: "falsy" })
         .trim()
         .isLength({ min: 1, max: 50 }),
+    body("diet")
+        .optional({ values: "falsy" })
+        .trim()
+        .isLength({ min: 1, max: 100 }),
     body("heightMinCm")
-        .optional()
+        .optional({ values: "falsy" })
         .isFloat({ min: 100, max: 250 }),
     body("heightMaxCm")
-        .optional()
+        .optional({ values: "falsy" })
         .isFloat({ min: 100, max: 250 }),
     body("maritalStatus")
-        .optional()
-        .isArray(),
-    body("maritalStatus.*")
-        .optional()
-        .isIn(maritalStatusValues),
+        .optional({ values: "falsy" }),
     body("willingToRelocate")
-        .optional()
-        .isBoolean(),
+        .optional({ values: "falsy" }),
     body("hobbiesAndInterests")
-        .optional()
-        .isArray(),
-    body("hobbiesAndInterests.*")
-        .optional()
-        .isIn(HOBBIES_LIST),
+        .optional({ values: "falsy" }),
 ]

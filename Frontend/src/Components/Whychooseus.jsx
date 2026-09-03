@@ -13,7 +13,7 @@ import  centerimg from '../assets/centerimg.jpg';
 
 const Whychooseus = () => {
   return (
-    <section className="bg-white py-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto font-sans overflow-hidden">
+    <section id="why-us" className="bg-white py-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto font-sans overflow-hidden">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
         
         {/* Left Content Column */}

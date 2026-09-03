@@ -30,6 +30,67 @@ const calculateAge = (dateOfBirth) => {
     return Math.floor((Date.now() - dob.getTime()) / (365.25 * 24 * 60 * 60 * 1000))
 }
 
+const formatDate = (dateOfBirth) => {
+    if (!dateOfBirth) return null
+    const dob = new Date(dateOfBirth)
+    if (Number.isNaN(dob.getTime())) return null
+    return dob.toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" })
+}
+
+const formatHeight = (heightCm) => {
+    if (!heightCm) return null
+    const totalInches = heightCm / 2.54
+    const feet = Math.floor(totalInches / 12)
+    const inches = Math.round(totalInches % 12)
+    return `${feet}ft ${inches}in (${heightCm}cm)`
+}
+
+const formatSiblings = (numBrothers, numSisters) => {
+    if (numBrothers == null && numSisters == null) return null
+    const parts = []
+    if (numBrothers) parts.push(`${numBrothers} Brother${numBrothers > 1 ? "s" : ""}`)
+    if (numSisters) parts.push(`${numSisters} Sister${numSisters > 1 ? "s" : ""}`)
+    return parts.length ? parts.join(", ") : "None"
+}
+
+const formatAffluence = (val) => {
+    if (!val) return null
+    const map = {
+        affluent: "Rich / Affluent",
+        upper_middle: "Upper Middle Class",
+        middle: "Middle Class",
+        lower_middle: "Lower Middle Class",
+    }
+    return map[val] || val.replace(/_/g, " ")
+}
+
+const formatFamilyValues = (val) => {
+    if (!val) return null
+    const map = {
+        traditional: "Traditional",
+        moderate: "Moderate",
+        liberal: "Liberal",
+    }
+    return map[val] || val.charAt(0).toUpperCase() + val.slice(1)
+}
+
+const formatFamilyType = (val) => {
+    if (!val) return null
+    const map = {
+        nuclear: "Nuclear",
+        joint: "Joint",
+        extended: "Extended / Other",
+    }
+    return map[val] || val.charAt(0).toUpperCase() + val.slice(1)
+}
+
+const DetailItem = ({ label, value }) => (
+    <div className="flex justify-between py-2 border-b border-gray-100/80 last:border-0 text-xs sm:text-sm">
+        <span className="text-gray-500 font-medium">{label}</span>
+        <span className="font-semibold text-gray-800 text-right">{value || "—"}</span>
+    </div>
+)
+
 export default function DetailsPage_BrowsematchScreen() {
     const { id } = useParams()
     const navigate = useNavigate()
@@ -162,12 +223,15 @@ export default function DetailsPage_BrowsematchScreen() {
         )
     }
 
-    const name = profile.name || "MeriJodi Member"
+    const name = profile.name || profile.userId?.name || "MeriJodi Member"
     const age = calculateAge(profile.dateOfBirth)
     const displayName = age ? `${name}, ${age}` : name
+    const getPhotoUrl = (p) => (typeof p === "string" ? p : p?.url)
+    const primaryPhoto = profile.photos?.find((p) => typeof p === "object" && p?.isPrimary)
     const photoUrl =
-        profile.photos?.find((p) => p.isPrimary)?.url ||
-        profile.photos?.[0]?.url ||
+        getPhotoUrl(primaryPhoto) ||
+        getPhotoUrl(profile.photos?.[0]) ||
+        profile.avatar ||
         ProfileImage
     const values = [profile.religion, profile.motherTongue, profile.lifestyle?.diet].filter(Boolean)
 
@@ -298,89 +362,135 @@ export default function DetailsPage_BrowsematchScreen() {
                         </div>
 
                         {/* About Section */}
-                        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-gray-100 shadow-xs space-y-3">
+                        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-gray-100 shadow-xs space-y-4">
                             <h2 className="text-xl sm:text-2xl font-bold font-serif text-[#640515]">
                                 About {name.split(" ")[0]}
                             </h2>
                             <p className="text-xs sm:text-sm text-gray-700 leading-relaxed">
                                 {profile.aboutMe || "No detailed description provided by this member."}
                             </p>
-                            {values.length > 0 && (
-                                <div className="pt-3 flex flex-wrap gap-2">
-                                    {values.map((v) => (
-                                        <span
-                                            key={v}
-                                            className="px-3.5 py-1 rounded-full bg-[#FFF0F2] text-[#842029] text-xs font-semibold"
-                                        >
-                                            {v}
+
+                            {/* Lifestyle & Habits Pills */}
+                            <div className="pt-2">
+                                <h3 className="text-xs font-bold uppercase tracking-wider text-[#842029] mb-2">
+                                    Lifestyle &amp; Habits
+                                </h3>
+                                <div className="flex flex-wrap gap-2">
+                                    {profile.lifestyle?.diet && (
+                                        <span className="px-3.5 py-1.5 rounded-full bg-[#FFF0F2] text-[#842029] text-xs font-semibold border border-rose-100">
+                                            🥗 {profile.lifestyle.diet}
                                         </span>
-                                    ))}
+                                    )}
+                                    {profile.lifestyle?.smoking !== undefined && (
+                                        <span className="px-3.5 py-1.5 rounded-full bg-[#FFF0F2] text-[#842029] text-xs font-semibold border border-rose-100">
+                                            🚬 {profile.lifestyle.smoking ? "Smoker" : "Non-Smoker"}
+                                        </span>
+                                    )}
+                                    {profile.lifestyle?.drinking !== undefined && (
+                                        <span className="px-3.5 py-1.5 rounded-full bg-[#FFF0F2] text-[#842029] text-xs font-semibold border border-rose-100">
+                                            🍷 {profile.lifestyle.drinking ? "Drinks Alcohol" : "Non-Drinker"}
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Hobbies & Interests */}
+                            {Array.isArray(profile.hobbiesAndInterests) && profile.hobbiesAndInterests.length > 0 && (
+                                <div className="pt-3 border-t border-gray-100">
+                                    <h3 className="text-xs font-bold uppercase tracking-wider text-[#842029] mb-2">
+                                        Hobbies &amp; Interests
+                                    </h3>
+                                    <div className="flex flex-wrap gap-1.5">
+                                        {profile.hobbiesAndInterests.map((h) => (
+                                            <span
+                                                key={h}
+                                                className="bg-gray-50 text-gray-800 px-3 py-1 rounded-full text-xs font-medium border border-gray-200"
+                                            >
+                                                {h}
+                                            </span>
+                                        ))}
+                                    </div>
                                 </div>
                             )}
                         </div>
 
-                        {/* Education & Career Grid */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-xs space-y-2">
-                                <div className="flex items-center gap-2 text-[#842029]">
+                        {/* 4 Detail Grid Cards */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {/* 1. Personal Details */}
+                            <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-xs">
+                                <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100 text-[#842029]">
+                                    <Heart size={18} />
+                                    <h2 className="text-base font-bold text-gray-900 font-serif">
+                                        Personal Details
+                                    </h2>
+                                </div>
+                                <div className="space-y-1">
+                                    <DetailItem label="Age" value={calculateAge(profile.dateOfBirth) ? `${calculateAge(profile.dateOfBirth)} Years` : null} />
+                                    <DetailItem label="Height" value={formatHeight(profile.heightCm)} />
+                                    <DetailItem label="Date of Birth" value={formatDate(profile.dateOfBirth)} />
+                                    <DetailItem label="Place of Birth" value={profile.placeOfBirth} />
+                                    <DetailItem label="Gender" value={profile.gender ? profile.gender.charAt(0).toUpperCase() + profile.gender.slice(1) : null} />
+                                    <DetailItem label="Marital Status" value={profile.maritalStatus?.replace(/_/g, " ")} />
+                                    <DetailItem label="Manglik Status" value={profile.manglik} />
+                                    <DetailItem label="Complexion" value={profile.complexion} />
+                                    <DetailItem label="Willing to Relocate" value={profile.location?.willingToRelocate ? "Yes" : "No"} />
+                                </div>
+                            </div>
+
+                            {/* 2. Family Background */}
+                            <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-xs">
+                                <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100 text-[#842029]">
+                                    <Users size={18} />
+                                    <h2 className="text-base font-bold text-gray-900 font-serif">
+                                        Family Background
+                                    </h2>
+                                </div>
+                                <div className="space-y-1">
+                                    <DetailItem label="Mother Tongue" value={profile.motherTongue} />
+                                    <DetailItem label="Family Type" value={formatFamilyType(profile.family?.familyType)} />
+                                    <DetailItem label="Father's Occupation" value={profile.family?.fatherOccupation} />
+                                    <DetailItem label="Mother's Occupation" value={profile.family?.motherOccupation} />
+                                    <DetailItem label="Family Values" value={formatFamilyValues(profile.family?.familyValues)} />
+                                    <DetailItem label="Family Affluence" value={formatAffluence(profile.family?.familyAffluence)} />
+                                    <DetailItem label="Siblings" value={formatSiblings(profile.family?.numBrothers, profile.family?.numSisters)} />
+                                </div>
+                            </div>
+
+                            {/* 3. Career & Education */}
+                            <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-xs">
+                                <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100 text-[#842029]">
                                     <GraduationCap size={18} />
-                                    <h3 className="text-sm font-bold font-serif text-gray-900 uppercase tracking-wider">
-                                        Education
-                                    </h3>
+                                    <h2 className="text-base font-bold text-gray-900 font-serif">
+                                        Career &amp; Education
+                                    </h2>
                                 </div>
-                                <p className="text-sm font-semibold text-gray-800">
-                                    {profile.education?.highestDegree || "Not specified"}
-                                </p>
-                                {profile.education?.institution && (
-                                    <p className="text-xs text-gray-500">{profile.education.institution}</p>
-                                )}
+                                <div className="space-y-1">
+                                    <DetailItem label="Highest Degree" value={profile.education?.highestDegree} />
+                                    <DetailItem label="Field of Study" value={profile.education?.fieldOfStudy} />
+                                    <DetailItem label="Institution" value={profile.education?.institution} />
+                                    <DetailItem label="Graduation Year" value={profile.education?.graduationYear} />
+                                    <DetailItem label="Occupation" value={profile.career?.occupation} />
+                                    <DetailItem label="Company Name" value={profile.career?.companyName} />
+                                    <DetailItem label="Industry" value={profile.career?.industry} />
+                                    <DetailItem label="Annual Income" value={profile.career?.annualIncome} />
+                                    <DetailItem label="Work Location" value={profile.career?.workLocation} />
+                                </div>
                             </div>
 
-                            <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-xs space-y-2">
-                                <div className="flex items-center gap-2 text-[#842029]">
-                                    <BriefcaseBusiness size={18} />
-                                    <h3 className="text-sm font-bold font-serif text-gray-900 uppercase tracking-wider">
-                                        Career &amp; Income
-                                    </h3>
+                            {/* 4. Religion & Astrological Details */}
+                            <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-xs">
+                                <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100 text-[#842029]">
+                                    <Star size={18} />
+                                    <h2 className="text-base font-bold text-gray-900 font-serif">
+                                        Religion &amp; Astrology
+                                    </h2>
                                 </div>
-                                <p className="text-sm font-semibold text-gray-800">
-                                    {profile.career?.occupation || "Not specified"}
-                                </p>
-                                <p className="text-xs text-gray-500">
-                                    {[profile.career?.companyName, profile.career?.annualIncome].filter(Boolean).join(" • ") || "Details withheld"}
-                                </p>
-                            </div>
-                        </div>
-
-                        {/* Family & Religious Details */}
-                        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-gray-100 shadow-xs space-y-4">
-                            <h2 className="text-lg font-bold font-serif text-[#640515]">
-                                Background &amp; Religious Details
-                            </h2>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-xs sm:text-sm">
-                                <div className="flex justify-between py-1 border-b border-gray-50">
-                                    <span className="text-gray-500">Religion</span>
-                                    <span className="font-semibold text-gray-800">{profile.religion || "—"}</span>
-                                </div>
-                                <div className="flex justify-between py-1 border-b border-gray-50">
-                                    <span className="text-gray-500">Caste</span>
-                                    <span className="font-semibold text-gray-800">{profile.caste || "—"}</span>
-                                </div>
-                                <div className="flex justify-between py-1 border-b border-gray-50">
-                                    <span className="text-gray-500">Gotra</span>
-                                    <span className="font-semibold text-gray-800">{profile.gotham || "—"}</span>
-                                </div>
-                                <div className="flex justify-between py-1 border-b border-gray-50">
-                                    <span className="text-gray-500">Mother Tongue</span>
-                                    <span className="font-semibold text-gray-800">{profile.motherTongue || "—"}</span>
-                                </div>
-                                <div className="flex justify-between py-1 border-b border-gray-50">
-                                    <span className="text-gray-500">Family Type</span>
-                                    <span className="font-semibold text-gray-800">{profile.family?.familyType || "—"}</span>
-                                </div>
-                                <div className="flex justify-between py-1 border-b border-gray-50">
-                                    <span className="text-gray-500">Father's Profession</span>
-                                    <span className="font-semibold text-gray-800">{profile.family?.fatherOccupation || "—"}</span>
+                                <div className="space-y-1">
+                                    <DetailItem label="Religion" value={profile.religion} />
+                                    <DetailItem label="Caste / Sub-caste" value={profile.caste} />
+                                    <DetailItem label="Gotra" value={profile.gotham} />
+                                    <DetailItem label="Rashi" value={profile.rashi} />
+                                    <DetailItem label="Nakshatra" value={profile.nakshtra} />
                                 </div>
                             </div>
                         </div>

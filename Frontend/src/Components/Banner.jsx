@@ -20,7 +20,7 @@ const Banner = () => {
 
   return (
     <div>
-      <section className="relative w-full min-h-[620px] bg-cover bg-center"
+      <section id="home" className="relative w-full min-h-[620px] bg-cover bg-center"
         style={{ backgroundImage: `url(${bannerimg1})` }}
       >
         <div className="absolute inset-0 bg-black/30"></div>

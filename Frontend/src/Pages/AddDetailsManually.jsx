@@ -73,7 +73,6 @@ const AddDetailsManually = () => {
   const location = useLocation()
   const navigate = useNavigate()
   const extractedData = location.state?.initialData || {}
-
   const [step, setStep] = useState(() => {
     try {
       const savedStep = localStorage.getItem(STORAGE_KEY_STEP)
@@ -168,9 +167,51 @@ const AddDetailsManually = () => {
         savedData.city ||
         extractedData.city ||
         "",
+      religion:
+        extractedData.personal_details?.religion ||
+        savedData.religion ||
+        extractedData.religion ||
+        "",
+      caste:
+        extractedData.personal_details?.caste ||
+        savedData.caste ||
+        extractedData.caste ||
+        "",
+      gotham:
+        extractedData.personal_details?.gotra ||
+        savedData.gotham ||
+        extractedData.gotham ||
+        "",
+      rashi:
+        extractedData.personal_details?.rashi ||
+        savedData.rashi ||
+        extractedData.rashi ||
+        "",
+      nakshtra:
+        extractedData.personal_details?.nakshatra ||
+        savedData.nakshtra ||
+        extractedData.nakshtra ||
+        "",
+      manglik:
+        extractedData.personal_details?.manglik ||
+        savedData.manglik ||
+        extractedData.manglik ||
+        "",
+      complexion:
+        extractedData.personal_details?.complexion ||
+        savedData.complexion ||
+        extractedData.complexion ||
+        "",
+      maritalStatus:
+        extractedData.personal_details?.marital_status ||
+        savedData.maritalStatus ||
+        extractedData.maritalStatus ||
+        "",
       hobbies:
         Array.isArray(savedData.hobbies)
           ? savedData.hobbies
+          : Array.isArray(extractedData.personal_details?.hobbies)
+          ? extractedData.personal_details.hobbies
           : Array.isArray(extractedData.hobbies)
           ? extractedData.hobbies
           : [],

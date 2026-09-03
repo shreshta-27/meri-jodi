@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
-import { Search, Send, ArrowLeft, User, ShieldCheck, CheckCheck, Clock } from 'lucide-react'
+import { Search, Send, ArrowLeft, User, ShieldCheck, CheckCheck, Clock, Sparkles, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 import { io } from 'socket.io-client'
 import Navbar from '../Components/Navbar'
-import { getConversations, getConversationHistory } from '../api/messageApi'
+import { getConversations, getConversationHistory, getChatSuggestions } from '../api/messageApi'
 import { getProfileById } from '../api/matchingApi'
 import { getMyProfile } from '../api/profileApi'
 
@@ -21,8 +21,13 @@ export default function Chatapp() {
   const [socket, setSocket] = useState(null)
   const [typingProfiles, setTypingProfiles] = useState({})
   const [myProfileId, setMyProfileId] = useState(null)
+  const [suggestions, setSuggestions] = useState([])
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false)
+  const [activeCategory, setActiveCategory] = useState('icebreaker')
+  const [showAiBar, setShowAiBar] = useState(true)
   const messagesContainerRef = useRef(null)
   const typingTimeoutRef = useRef(null)
+  const messageInputRef = useRef(null)
 
   const scrollToBottom = () => {
     if (messagesContainerRef.current) {
@@ -44,7 +49,11 @@ export default function Chatapp() {
           getMyProfile(),
         ])
         if (!cancelled) {
-          setConversations(Array.isArray(convos) ? convos : [])
+          // Filter out null/invalid conversation objects
+          const validConvos = Array.isArray(convos)
+            ? convos.filter((c) => c && c._id && (c.partnerName || c.partner))
+            : []
+          setConversations(validConvos)
           if (myProfile?._id) setMyProfileId(String(myProfile._id))
           setLoading(false)
         }
@@ -91,7 +100,9 @@ export default function Chatapp() {
       })
       // Refresh conversations list
       getConversations().then((data) => {
-        if (Array.isArray(data)) setConversations(data)
+        if (Array.isArray(data)) {
+          setConversations(data.filter((c) => c && c._id && (c.partnerName || c.partner)))
+        }
       }).catch(() => { })
     })
 
@@ -129,7 +140,12 @@ export default function Chatapp() {
     }
     fetchMessages()
 
-    getProfileById(activeChat).then(setActiveProfile).catch(() => { })
+    getProfileById(activeChat)
+      .then(setActiveProfile)
+      .catch((err) => {
+        console.warn('Could not load chat partner profile:', err)
+        setActiveProfile(null)
+      })
 
     if (socket) {
       socket.emit('join_conversation', activeChat)
@@ -142,6 +158,59 @@ export default function Chatapp() {
       }
     }
   }, [activeChat, socket])
+
+  // Fetch AI chat suggestions when activeProfile or category changes
+  const fetchAiSuggestions = async (cat = activeCategory) => {
+    if (!activeProfile) return
+    setSuggestionsLoading(true)
+    try {
+      const partnerDetails = {
+        name: activeProfile.name || activeProfile.userId?.name || 'Partner',
+        occupation: activeProfile.career?.occupation || '',
+        education: activeProfile.education?.highestDegree || '',
+        city: activeProfile.location?.city || '',
+        hobbies: activeProfile.hobbiesAndInterests || [],
+        religion: activeProfile.religion || '',
+        aboutMe: activeProfile.aboutMe || '',
+      }
+      const lastMsg = messages.length > 0 ? messages[messages.length - 1]?.content : ''
+      const res = await getChatSuggestions(partnerDetails, lastMsg, cat)
+      if (Array.isArray(res) && res.length > 0) {
+        setSuggestions(res)
+      } else {
+        setSuggestions([
+          `Hi ${partnerDetails.name.split(' ')[0]}! I noticed your profile and would love to connect.`,
+          `Hello! How has your week been going so far?`,
+          `Hi! I saw you are based in ${partnerDetails.city || 'India'}—what do you enjoy doing in your free time?`,
+          `Namaste! I really appreciated your profile and wanted to introduce myself.`,
+        ])
+      }
+    } catch (err) {
+      console.warn('Failed to load AI suggestions:', err)
+      const name = activeProfile.name || 'there'
+      setSuggestions([
+        `Hi ${name.split(' ')[0]}! I saw your profile and thought we would connect really well.`,
+        `Hello ${name.split(' ')[0]}! How are you doing today?`,
+        `Hi! I'd love to learn more about your passions and values.`,
+        `Namaste! Hope you're having a wonderful week!`,
+      ])
+    } finally {
+      setSuggestionsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (activeProfile) {
+      fetchAiSuggestions(activeCategory)
+    }
+  }, [activeProfile, activeCategory])
+
+  const handleSelectSuggestion = (text) => {
+    setNewMessage(text)
+    if (messageInputRef.current) {
+      messageInputRef.current.focus()
+    }
+  }
 
   const handleSendMessage = (e) => {
     e.preventDefault()
@@ -159,7 +228,9 @@ export default function Chatapp() {
           return [...prev, response.message]
         })
         getConversations().then((data) => {
-          if (Array.isArray(data)) setConversations(data)
+          if (Array.isArray(data)) {
+            setConversations(data.filter((c) => c && c._id && (c.partnerName || c.partner)))
+          }
         }).catch(() => { })
       }
     })
@@ -180,6 +251,7 @@ export default function Chatapp() {
   }
 
   const filteredConversations = conversations.filter((conv) => {
+    if (!conv || !conv._id) return false
     const name = conv.partnerName || conv.partner?.name || conv.partner?.userId?.name || ''
     return name.toLowerCase().includes(searchQuery.toLowerCase())
   })
@@ -327,6 +399,18 @@ export default function Chatapp() {
                       )}
                     </div>
                   </div>
+
+                  {/* Toggle AI Bar Button */}
+                  <button
+                    type="button"
+                    onClick={() => setShowAiBar(!showAiBar)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#FFF0F2] text-[#842029] text-xs font-semibold hover:bg-[#FFE4E8] transition-colors cursor-pointer border border-[#FFE4E8]"
+                    title="Toggle AI Suggestions"
+                  >
+                    <Sparkles size={14} />
+                    <span className="hidden sm:inline">AI Suggestions</span>
+                    {showAiBar ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+                  </button>
                 </header>
 
                 {/* Scrollable Messages Area */}
@@ -340,7 +424,7 @@ export default function Chatapp() {
                         <Send size={20} />
                       </div>
                       <p className="text-xs font-medium text-gray-500">No messages yet.</p>
-                      <p className="text-[11px] text-gray-400 mt-0.5">Send a message below to begin your conversation!</p>
+                      <p className="text-[11px] text-gray-400 mt-0.5">Use the AI suggestions below or type a message to start chatting!</p>
                     </div>
                   ) : (
                     messages.map((msg) => {
@@ -370,12 +454,79 @@ export default function Chatapp() {
                   )}
                 </div>
 
+                {/* AI Chat Suggestion Bar */}
+                {showAiBar && activeProfile && (
+                  <div className="px-3 sm:px-4 py-2.5 bg-[#FFF9FA] border-t border-[#FFE4E8] shrink-0">
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none]">
+                        <span className="text-[11px] font-bold text-[#842029] flex items-center gap-1 uppercase tracking-wider shrink-0 mr-1">
+                          <Sparkles size={13} /> AI Prompts:
+                        </span>
+                        {[
+                          { id: 'icebreaker', label: '✨ Icebreaker' },
+                          { id: 'shared_interests', label: '🌟 Passions' },
+                          { id: 'thoughtful', label: '💬 Meaningful' },
+                          { id: 'compliments', label: '❤️ Compliment' },
+                        ].map((cat) => (
+                          <button
+                            key={cat.id}
+                            type="button"
+                            onClick={() => {
+                              setActiveCategory(cat.id)
+                              fetchAiSuggestions(cat.id)
+                            }}
+                            className={`px-2.5 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                              activeCategory === cat.id
+                                ? 'bg-[#842029] text-white shadow-2xs'
+                                : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+                            }`}
+                          >
+                            {cat.label}
+                          </button>
+                        ))}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => fetchAiSuggestions(activeCategory)}
+                        disabled={suggestionsLoading}
+                        className="p-1.5 rounded-full text-[#842029] hover:bg-rose-100 transition-colors shrink-0 cursor-pointer disabled:opacity-50"
+                        title="Generate New Suggestions"
+                      >
+                        <RefreshCw size={13} className={suggestionsLoading ? 'animate-spin' : ''} />
+                      </button>
+                    </div>
+
+                    {/* Suggestion Chips */}
+                    <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]">
+                      {suggestionsLoading ? (
+                        <div className="flex items-center gap-2 py-1 text-xs text-gray-400 animate-pulse">
+                          <Sparkles size={13} className="text-[#842029]" /> Generating smart suggestions...
+                        </div>
+                      ) : (
+                        suggestions.map((text, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => handleSelectSuggestion(text)}
+                            className="bg-white border border-rose-200 hover:border-[#842029] hover:bg-[#FFF0F2] text-gray-700 hover:text-[#842029] text-xs px-3 py-1.5 rounded-xl whitespace-nowrap transition-all shadow-2xs cursor-pointer max-w-[280px] truncate shrink-0 text-left"
+                            title={text}
+                          >
+                            &ldquo;{text}&rdquo;
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {/* Fixed Bottom Chat Input Bar */}
                 <form
                   onSubmit={handleSendMessage}
                   className="p-3 sm:p-4 border-t border-gray-100 bg-white flex items-center gap-2 sm:gap-3 shrink-0"
                 >
                   <input
+                    ref={messageInputRef}
                     type="text"
                     value={newMessage}
                     onChange={(e) => {
@@ -383,7 +534,7 @@ export default function Chatapp() {
                       handleTyping(true)
                     }}
                     onBlur={() => handleTyping(false)}
-                    placeholder="Type your message..."
+                    placeholder="Type your message or click an AI suggestion..."
                     className="flex-1 px-4 py-2.5 rounded-full bg-gray-50 border border-gray-200 focus:bg-white focus:border-[#842029] text-xs sm:text-sm outline-none transition-all"
                   />
                   <button
