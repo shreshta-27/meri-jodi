@@ -27,6 +27,22 @@ class ExtractionController {
             return apiResponse.error(error.message, error.statusCode || 500)
         }
     }
+
+    async generateChatSuggestions(req, res) {
+        const apiResponse = new ApiResponse(res)
+        try {
+            const { partnerDetails, lastMessage, category } = req.body
+            const suggestions = await extractionService.generateChatSuggestions(
+                partnerDetails || {},
+                lastMessage || "",
+                category || "icebreaker"
+            )
+            return apiResponse.success({ suggestions }, "Chat suggestions generated successfully")
+        } catch (error) {
+            console.error("Chat suggestion generation error:", error)
+            return apiResponse.error(error.message, error.statusCode || 500)
+        }
+    }
 }
 
 export default new ExtractionController()

@@ -1,6 +1,7 @@
 import mongoose from "mongoose"
 import { Message } from "../models/Message.js"
 import { Block } from "../models/Block.js"
+import { Profile } from "../models/Profile.js"
 
 class MessageService {
     /**
@@ -11,6 +12,12 @@ class MessageService {
      * @returns {Promise<object>} Created message
      */
     async send(senderProfileId, receiverProfileId, content) {
+        // Verify receiver profile exists
+        const receiverProfile = await Profile.findById(receiverProfileId)
+        if (!receiverProfile) {
+            throw new Error("Recipient profile not found or no longer exists")
+        }
+
         // Check if blocked
         const blocked = await Block.findOne({
             $or: [
@@ -28,7 +35,7 @@ class MessageService {
             throw new Error("Cannot send message to this user")
         }
 
-        return Message.create({ senderProfileId, receiverProfileId, content })
+        return Message.create({ senderProfileId, receiverProfileId, content: content.trim() })
     }
 
     /**
@@ -43,7 +50,7 @@ class MessageService {
         const limit = options.limit || 50
         const skip = (page - 1) * limit
 
-        return Message.find({
+        const messages = await Message.find({
             $or: [
                 {
                     senderProfileId: profileId1,
@@ -60,6 +67,8 @@ class MessageService {
             .limit(limit)
             .populate("senderProfileId", "name photos gender")
             .populate("receiverProfileId", "name photos gender")
+
+        return messages
     }
 
     /**
@@ -77,7 +86,8 @@ class MessageService {
     }
 
     /**
-     * Get all conversations for a profile with populated partner profile details
+     * Get all conversations for a profile with populated partner profile details.
+     * Excludes orphan conversations where the partner or user does not exist in the database.
      * @param {string} profileId
      * @returns {Promise<Array>} Latest message from each conversation
      */
@@ -136,7 +146,7 @@ class MessageService {
             {
                 $unwind: {
                     path: "$partnerProfile",
-                    preserveNullAndEmptyArrays: true,
+                    preserveNullAndEmptyArrays: false,
                 },
             },
             {
@@ -150,7 +160,7 @@ class MessageService {
             {
                 $unwind: {
                     path: "$partnerUser",
-                    preserveNullAndEmptyArrays: true,
+                    preserveNullAndEmptyArrays: false,
                 },
             },
             {
@@ -166,6 +176,18 @@ class MessageService {
                     },
                     partnerPhotos: { $ifNull: ["$partnerProfile.photos", []] },
                     partnerGender: "$partnerProfile.gender",
+                    partner: {
+                        _id: "$partnerProfile._id",
+                        name: {
+                            $ifNull: [
+                                "$partnerProfile.name",
+                                { $ifNull: ["$partnerUser.name", "MeriJodi Member"] },
+                            ],
+                        },
+                        photos: "$partnerProfile.photos",
+                        gender: "$partnerProfile.gender",
+                        location: "$partnerProfile.location",
+                    },
                 },
             },
             { $sort: { "lastMessage.createdAt": -1 } },

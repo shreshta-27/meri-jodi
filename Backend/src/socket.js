@@ -74,6 +74,12 @@ const setupSocket = (httpServer) => {
                     return
                 }
 
+                const receiverProfile = await Profile.findById(receiverProfileId)
+                if (!receiverProfile) {
+                    callback?.({ error: "Recipient profile not found or no longer exists" })
+                    return
+                }
+
                 const blocked = await Block.findOne({
                     $or: [
                         { blockerProfileId: receiverProfileId, blockedProfileId: socket.profileId },

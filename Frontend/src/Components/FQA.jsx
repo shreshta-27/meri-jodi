@@ -35,7 +35,7 @@ const FQA = () => {
   };
 
   return (
-    <div className="bg-white min-h-screen font-sans flex flex-col justify-between">
+    <div id="faqs" className="bg-white min-h-screen font-sans flex flex-col justify-between">
       
       {/* FAQ Accordion Section */}
       <section className="py-20 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto w-full">

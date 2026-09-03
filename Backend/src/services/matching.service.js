@@ -152,8 +152,10 @@ class MatchingService {
             total = fallbackTotal
         }
 
-        // Calculate compatibility score for each candidate
-        const candidatesWithScore = allCandidates.map((match) => ({
+        // Calculate compatibility score for each candidate (filtering out orphan records without valid user/profile)
+        const validCandidates = allCandidates.filter((c) => c && (c.userId || c.name))
+
+        const candidatesWithScore = validCandidates.map((match) => ({
             ...match,
             name: match.name || match.userId?.name || "MeriJodi Member",
             age: calculateAge(match.dateOfBirth),

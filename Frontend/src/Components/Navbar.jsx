@@ -76,13 +76,13 @@ export default function Navbar() {
                     </div>
                 ) : (
                     <div className="hidden md:flex items-center gap-8">
-                        <a href="#home" className="text-sm font-semibold text-gray-700 hover:text-[#842029] transition-colors">
+                        <a href="/#home" className="text-sm font-semibold text-gray-700 hover:text-[#842029] transition-colors">
                             Home
                         </a>
-                        <a href="#about" className="text-sm font-semibold text-gray-700 hover:text-[#842029] transition-colors">
+                        <a href="/#about" className="text-sm font-semibold text-gray-700 hover:text-[#842029] transition-colors">
                             About
                         </a>
-                        <Link to="/login" className="text-sm font-semibold text-gray-700 hover:text-[#842029] transition-colors">
+                        <Link to="/browse-matches" className="text-sm font-semibold text-gray-700 hover:text-[#842029] transition-colors">
                             Browse Matches
                         </Link>
                     </div>
@@ -217,13 +217,16 @@ export default function Navbar() {
                         </>
                     ) : (
                         <div className="space-y-3 text-sm font-semibold text-gray-700">
-                            <a href="#home" onClick={() => setMobileMenuOpen(false)} className="block py-1.5 hover:text-[#842029]">
+                            <a href="/#home" onClick={() => setMobileMenuOpen(false)} className="block py-1.5 hover:text-[#842029]">
                                 Home
                             </a>
-                            <a href="#about" onClick={() => setMobileMenuOpen(false)} className="block py-1.5 hover:text-[#842029]">
+                            <a href="/#about" onClick={() => setMobileMenuOpen(false)} className="block py-1.5 hover:text-[#842029]">
                                 About
                             </a>
-                            <Link to="/login" onClick={() => setMobileMenuOpen(false)} className="block py-1.5 hover:text-[#842029]">
+                            <Link to="/browse-matches" onClick={() => setMobileMenuOpen(false)} className="block py-1.5 hover:text-[#842029]">
+                                Browse Matches
+                            </Link>
+                            <Link to="/login" onClick={() => setMobileMenuOpen(false)} className="block py-1.5 text-gray-700">
                                 Login
                             </Link>
                             <Link to="/register" onClick={() => setMobileMenuOpen(false)} className="block py-1.5 text-[#842029]">

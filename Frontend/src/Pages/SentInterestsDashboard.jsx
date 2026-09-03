@@ -111,9 +111,13 @@ export default function SentInterestsDashboard() {
         setLoading(true)
         try {
             const data = await getSentInterests()
-            setInterests(Array.isArray(data) ? data : [])
+            const valid = (Array.isArray(data) ? data : []).filter(
+                (item) => item && item.receiverProfileId && (item.receiverProfileId.name || item.receiverProfileId.userId)
+            )
+            setInterests(valid)
         } catch (err) {
             console.error("Failed to fetch sent interests:", err)
+            setInterests([])
         } finally {
             setLoading(false)
         }

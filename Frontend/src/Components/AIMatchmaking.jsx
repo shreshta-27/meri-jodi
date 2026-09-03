@@ -58,7 +58,7 @@ const AIMatchmaking = () => {
   ];
 
   return (
-    <section className="bg-white py-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto font-sans">
+    <section id="about" className="bg-white py-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto font-sans">
       {/* Header Section */}
       <div className="text-center max-w-3xl mx-auto mb-16">
         <h2 className="text-3xl sm:text-4xl font-serif text-gray-900 mb-4 tracking-wide">

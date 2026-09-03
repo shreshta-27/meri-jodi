@@ -218,18 +218,33 @@ export default function BrowseMatchScreen() {
                 getWhoViewedYou(30).catch(() => []),
                 getMyProfile().catch(() => null),
             ])
-            setMatches((matchResult?.matches ?? []).map(mapProfileToCard))
+            setMatches(
+                (matchResult?.matches ?? [])
+                    .filter((m) => m && (m._id || m.id))
+                    .map(mapProfileToCard)
+            )
             setMyProfile(myProf)
-            setWhoViewedYouList((viewed || []).map((v) => mapProfileToCard(v.profile || v)))
+            setWhoViewedYouList(
+                (viewed || [])
+                    .map((v) => v.profile || v)
+                    .filter((p) => p && (p._id || p.id))
+                    .map(mapProfileToCard)
+            )
             setShortlistedProfilesList(
-                (shortlists || []).map((s) => mapProfileToCard(s.shortlistedProfileId || s))
+                (shortlists || [])
+                    .map((s) => s.shortlistedProfileId || s)
+                    .filter((p) => p && (p._id || p.id))
+                    .map(mapProfileToCard)
             )
 
             const sIds = new Set(
-                shortlists.map((s) => {
-                    const p = s.shortlistedProfileId
-                    return typeof p === "object" ? p._id : p
-                })
+                (shortlists || [])
+                    .filter((s) => s && s.shortlistedProfileId)
+                    .map((s) => {
+                        const p = s.shortlistedProfileId
+                        return typeof p === "object" ? p._id : p
+                    })
+                    .filter(Boolean)
             )
             setShortlistedIds(sIds)
         } catch (err) {

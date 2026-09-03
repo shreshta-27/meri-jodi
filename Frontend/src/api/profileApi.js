@@ -69,6 +69,16 @@ export const generateAIBio = async (profileDetails) => {
   return data?.bio || data
 }
 
+export const getChatSuggestions = async (partnerDetails, lastMessage = "", category = "icebreaker") => {
+  const response = await axiosInstance.post("/extraction/chat-suggestions", {
+    partnerDetails,
+    lastMessage,
+    category,
+  })
+  const data = unwrap(response)
+  return data?.suggestions || data || []
+}
+
 export const buildProfilePayload = (formData) => {
   const dateOfBirth = getDateOfBirth(formData)
   return {

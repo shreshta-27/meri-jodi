@@ -31,9 +31,13 @@ export default function ShortlistPage() {
         setLoading(true)
         try {
             const data = await getShortlistedProfiles()
-            setShortlists(Array.isArray(data) ? data : [])
+            const valid = (Array.isArray(data) ? data : []).filter(
+                (item) => item && item.shortlistedProfileId && (item.shortlistedProfileId.name || item.shortlistedProfileId.userId)
+            )
+            setShortlists(valid)
         } catch (err) {
             console.error("Failed to load shortlists:", err)
+            setShortlists([])
         } finally {
             setLoading(false)
         }

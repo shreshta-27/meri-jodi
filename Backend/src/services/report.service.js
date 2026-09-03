@@ -44,8 +44,16 @@ class ReportService {
                 .sort({ createdAt: -1 })
                 .skip(skip)
                 .limit(limit)
-                .populate("reporterProfileId", "gender location")
-                .populate("reportedProfileId", "gender location"),
+                .populate({
+                    path: "reporterProfileId",
+                    select: "name photos gender location",
+                    populate: { path: "userId", select: "name avatar" },
+                })
+                .populate({
+                    path: "reportedProfileId",
+                    select: "name photos gender location",
+                    populate: { path: "userId", select: "name avatar" },
+                }),
             Report.countDocuments(query),
         ])
 

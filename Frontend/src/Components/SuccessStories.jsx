@@ -81,7 +81,7 @@ const SuccessStories = () => {
   const doubleStories = [...stories, ...stories];
 
   return (
-    <section className="bg-[#842029] py-20 overflow-hidden w-full font-sans">
+    <section id="stories" className="bg-[#842029] py-20 overflow-hidden w-full font-sans">
       {/* Title Header */}
       <div className="text-center max-w-3xl mx-auto mb-14 px-4">
         <h2 className="text-3xl sm:text-4xl font-serif text-white mb-4 tracking-wide">
