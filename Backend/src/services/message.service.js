@@ -175,6 +175,12 @@ class MessageService {
                         ],
                     },
                     partnerPhotos: { $ifNull: ["$partnerProfile.photos", []] },
+                    partnerAvatar: {
+                        $ifNull: [
+                            "$partnerProfile.avatar",
+                            "$partnerUser.avatar",
+                        ],
+                    },
                     partnerGender: "$partnerProfile.gender",
                     partner: {
                         _id: "$partnerProfile._id",
@@ -185,6 +191,12 @@ class MessageService {
                             ],
                         },
                         photos: "$partnerProfile.photos",
+                        avatar: {
+                            $ifNull: [
+                                "$partnerProfile.avatar",
+                                "$partnerUser.avatar",
+                            ],
+                        },
                         gender: "$partnerProfile.gender",
                         location: "$partnerProfile.location",
                     },

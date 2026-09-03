@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
-import { Search, Send, ArrowLeft, User, ShieldCheck, CheckCheck, Clock, Sparkles, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react'
-import { useSearchParams } from 'react-router-dom'
+import { Search, Send, ArrowLeft, User, ShieldCheck, CheckCheck, Clock, Sparkles, RefreshCw, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import { io } from 'socket.io-client'
 import Navbar from '../Components/Navbar'
 import { getConversations, getConversationHistory, getChatSuggestions } from '../api/messageApi'
@@ -8,6 +8,7 @@ import { getProfileById } from '../api/matchingApi'
 import { getMyProfile } from '../api/profileApi'
 
 export default function Chatapp() {
+  const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const initialTargetProfileId = searchParams.get('profileId') || searchParams.get('userId')
 
@@ -261,7 +262,20 @@ export default function Chatapp() {
   }
 
   const getChatPartnerPhoto = () => {
-    return activeProfile?.photos?.find((p) => p.isPrimary)?.url || activeProfile?.photos?.[0]?.url || null
+    const p = activeProfile
+    if (!p) return null
+    const photos = p.photos || []
+    const primary = photos.find((x) => typeof x === 'object' && x?.isPrimary)?.url
+    const first = typeof photos[0] === 'object' ? photos[0]?.url : photos[0]
+    return primary || first || p.avatar || p.userId?.avatar || null
+  }
+
+  const getConvPartnerPhoto = (conv) => {
+    if (!conv) return null
+    const photos = conv.partnerPhotos || conv.partner?.photos || []
+    const primary = photos.find((x) => typeof x === 'object' && x?.isPrimary)?.url
+    const first = typeof photos[0] === 'object' ? photos[0]?.url : photos[0]
+    return primary || first || conv.partnerAvatar || conv.partner?.avatar || null
   }
 
   return (
@@ -299,11 +313,7 @@ export default function Chatapp() {
                 filteredConversations.map((conv) => {
                   const partnerId = conv._id
                   const partnerName = conv.partnerName || conv.partner?.name || conv.partner?.userId?.name || 'Member'
-                  const partnerPhoto =
-                    conv.partnerPhotos?.find((p) => p.isPrimary)?.url ||
-                    conv.partnerPhotos?.[0]?.url ||
-                    conv.partner?.photos?.find((p) => p.isPrimary)?.url ||
-                    conv.partner?.photos?.[0]?.url
+                  const partnerPhoto = getConvPartnerPhoto(conv)
                   const msg = conv.lastMessage
                   const isSelected = String(activeChat) === String(partnerId)
 
@@ -316,11 +326,13 @@ export default function Chatapp() {
                       {isSelected && (
                         <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-[#842029]" />
                       )}
-                      <div className="w-11 h-11 rounded-full overflow-hidden shrink-0 border border-gray-200 bg-gray-100 flex items-center justify-center">
+                      <div className="w-11 h-11 rounded-full overflow-hidden shrink-0 border border-gray-200 bg-[#FFF0F2] flex items-center justify-center">
                         {partnerPhoto ? (
                           <img src={partnerPhoto} alt={partnerName} className="w-full h-full object-cover" />
                         ) : (
-                          <User size={18} className="text-gray-400" />
+                          <span className="font-serif font-bold text-sm text-[#842029]">
+                            {partnerName.charAt(0).toUpperCase()}
+                          </span>
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -374,16 +386,21 @@ export default function Chatapp() {
                     >
                       <ArrowLeft className="w-5 h-5 text-[#842029]" />
                     </button>
-                    <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-100 shrink-0 border border-gray-200 flex items-center justify-center">
+                    <div
+                      onClick={() => navigate(`/match-details/${activeChat}`)}
+                      className="w-10 h-10 rounded-full overflow-hidden bg-[#FFF0F2] shrink-0 border border-gray-200 flex items-center justify-center cursor-pointer hover:opacity-90"
+                    >
                       {getChatPartnerPhoto() ? (
                         <img src={getChatPartnerPhoto()} alt="" className="w-full h-full object-cover" />
                       ) : (
-                        <User size={18} className="text-gray-400" />
+                        <span className="font-serif font-bold text-sm text-[#842029]">
+                          {getChatPartnerName().charAt(0).toUpperCase()}
+                        </span>
                       )}
                     </div>
-                    <div className="min-w-0">
+                    <div className="min-w-0 cursor-pointer" onClick={() => navigate(`/match-details/${activeChat}`)}>
                       <div className="flex items-center gap-1.5">
-                        <h3 className="font-bold text-sm sm:text-base text-gray-900 font-serif truncate">
+                        <h3 className="font-bold text-sm sm:text-base text-gray-900 font-serif truncate hover:text-[#842029] transition-colors">
                           {getChatPartnerName()}
                         </h3>
                         {activeProfile?.isVerified && (
@@ -400,17 +417,27 @@ export default function Chatapp() {
                     </div>
                   </div>
 
-                  {/* Toggle AI Bar Button */}
-                  <button
-                    type="button"
-                    onClick={() => setShowAiBar(!showAiBar)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#FFF0F2] text-[#842029] text-xs font-semibold hover:bg-[#FFE4E8] transition-colors cursor-pointer border border-[#FFE4E8]"
-                    title="Toggle AI Suggestions"
-                  >
-                    <Sparkles size={14} />
-                    <span className="hidden sm:inline">AI Suggestions</span>
-                    {showAiBar ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
-                  </button>
+                  {/* Actions: View Profile & Toggle AI Bar */}
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/match-details/${activeChat}`)}
+                      className="px-3 py-1.5 rounded-full border border-gray-200 text-gray-700 hover:border-[#842029] hover:text-[#842029] text-xs font-semibold hover:bg-[#FFF0F2] transition-colors cursor-pointer flex items-center gap-1"
+                    >
+                      <ExternalLink size={12} />
+                      <span className="hidden sm:inline">View Profile</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowAiBar(!showAiBar)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#FFF0F2] text-[#842029] text-xs font-semibold hover:bg-[#FFE4E8] transition-colors cursor-pointer border border-[#FFE4E8]"
+                      title="Toggle AI Suggestions"
+                    >
+                      <Sparkles size={14} />
+                      <span className="hidden sm:inline">AI Suggestions</span>
+                      {showAiBar ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+                    </button>
+                  </div>
                 </header>
 
                 {/* Scrollable Messages Area */}

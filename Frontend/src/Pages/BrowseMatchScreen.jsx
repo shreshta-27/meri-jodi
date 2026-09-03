@@ -9,6 +9,8 @@ import {
     Search,
     SlidersHorizontal,
     CheckCircle,
+    MessageSquare,
+    Clock,
 } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import Navbar from "../Components/Navbar"
@@ -16,7 +18,7 @@ import Footer from "../Components/Footer"
 import home1 from "../assets/home1.png"
 import { getMyMatches } from "../api/matchingApi"
 import { getMyProfile } from "../api/profileApi"
-import { sendInterest } from "../api/interestApi"
+import { sendInterest, getSentInterests, getReceivedInterests } from "../api/interestApi"
 import { toggleShortlist, getShortlistedProfiles } from "../api/shortlistApi"
 import { getWhoViewedYou } from "../api/dashboardApi"
 
@@ -71,9 +73,12 @@ const MatchCard = ({
     quote,
     isVerified,
     isShortlisted,
+    interestStatus,
     onToggleShortlist,
     onSendInterest,
     onViewProfile,
+    onNavigateChat,
+    onNavigateReceived,
 }) => (
     <div
         className="relative bg-white rounded-3xl border border-gray-100 p-4 sm:p-5 flex flex-col sm:flex-row gap-5 shadow-xs hover:shadow-md transition-all"
@@ -142,13 +147,39 @@ const MatchCard = ({
             </div>
 
             <div className="flex gap-3 mt-5 pt-3 border-t border-gray-50">
-                <button
-                    type="button"
-                    onClick={onSendInterest}
-                    className="flex-1 rounded-full py-2.5 text-xs sm:text-sm font-semibold text-white hover:opacity-90 transition-opacity bg-[#AE2539] shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
-                >
-                    <Heart size={14} fill="currentColor" /> Express Interest
-                </button>
+                {interestStatus === "accepted" ? (
+                    <button
+                        type="button"
+                        onClick={onNavigateChat}
+                        className="flex-1 rounded-full py-2.5 text-xs sm:text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 transition-colors shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                        <MessageSquare size={14} /> Send Message
+                    </button>
+                ) : interestStatus === "pending" ? (
+                    <button
+                        type="button"
+                        disabled
+                        className="flex-1 rounded-full py-2.5 text-xs sm:text-sm font-semibold text-white bg-amber-500 opacity-90 shadow-xs flex items-center justify-center gap-1.5 cursor-default"
+                    >
+                        <Clock size={14} /> Interest Sent
+                    </button>
+                ) : interestStatus === "received_pending" ? (
+                    <button
+                        type="button"
+                        onClick={onNavigateReceived}
+                        className="flex-1 rounded-full py-2.5 text-xs sm:text-sm font-semibold text-white bg-rose-700 hover:bg-rose-800 transition-colors shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                        <Heart size={14} fill="currentColor" /> Respond to Interest
+                    </button>
+                ) : (
+                    <button
+                        type="button"
+                        onClick={onSendInterest}
+                        className="flex-1 rounded-full py-2.5 text-xs sm:text-sm font-semibold text-white hover:opacity-90 transition-opacity bg-[#AE2539] shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                        <Heart size={14} fill="currentColor" /> Express Interest
+                    </button>
+                )}
                 <button
                     type="button"
                     onClick={onViewProfile}
@@ -197,6 +228,7 @@ export default function BrowseMatchScreen() {
     const [whoViewedYouList, setWhoViewedYouList] = useState([])
     const [shortlistedProfilesList, setShortlistedProfilesList] = useState([])
     const [shortlistedIds, setShortlistedIds] = useState(new Set())
+    const [interestStatuses, setInterestStatuses] = useState({})
     const [loading, setLoading] = useState(true)
     const [visibleCount, setVisibleCount] = useState(6)
     const [activeSidebar, setActiveSidebar] = useState("Your Matches")
@@ -212,11 +244,13 @@ export default function BrowseMatchScreen() {
     const fetchData = async () => {
         setLoading(true)
         try {
-            const [matchResult, shortlists, viewed, myProf] = await Promise.all([
+            const [matchResult, shortlists, viewed, myProf, sentInterests, receivedInterests] = await Promise.all([
                 getMyMatches({ limit: 50 }).catch(() => ({ matches: [] })),
                 getShortlistedProfiles().catch(() => []),
                 getWhoViewedYou(30).catch(() => []),
                 getMyProfile().catch(() => null),
+                getSentInterests().catch(() => []),
+                getReceivedInterests().catch(() => []),
             ])
             setMatches(
                 (matchResult?.matches ?? [])
@@ -247,6 +281,26 @@ export default function BrowseMatchScreen() {
                     .filter(Boolean)
             )
             setShortlistedIds(sIds)
+
+            // Build interest map
+            const intMap = {}
+            for (const item of (sentInterests || [])) {
+                const rId = typeof item.receiverProfileId === "object" ? item.receiverProfileId?._id : item.receiverProfileId
+                if (rId) {
+                    intMap[String(rId)] = item.status === "accepted" ? "accepted" : "pending"
+                }
+            }
+            for (const item of (receivedInterests || [])) {
+                const sId = typeof item.senderProfileId === "object" ? item.senderProfileId?._id : item.senderProfileId
+                if (sId) {
+                    if (item.status === "accepted") {
+                        intMap[String(sId)] = "accepted"
+                    } else if (item.status === "pending" && !intMap[String(sId)]) {
+                        intMap[String(sId)] = "received_pending"
+                    }
+                }
+            }
+            setInterestStatuses(intMap)
         } catch (err) {
             console.error("Failed to fetch matches:", err)
         } finally {
@@ -261,6 +315,7 @@ export default function BrowseMatchScreen() {
     const handleSendInterest = async (profileId) => {
         try {
             await sendInterest(profileId)
+            setInterestStatuses((prev) => ({ ...prev, [String(profileId)]: "pending" }))
             showToast("Interest sent successfully!")
         } catch (err) {
             const msg = err.response?.data?.message || "Failed to send interest"
@@ -470,9 +525,12 @@ export default function BrowseMatchScreen() {
                                             key={m.id}
                                             {...m}
                                             isShortlisted={shortlistedIds.has(m.id)}
+                                            interestStatus={interestStatuses[String(m.id)]}
                                             onToggleShortlist={handleToggleShortlist}
                                             onSendInterest={() => handleSendInterest(m.id)}
                                             onViewProfile={() => navigate(`/match-details/${m.id}`)}
+                                            onNavigateChat={() => navigate(`/chat?profileId=${m.id}`)}
+                                            onNavigateReceived={() => navigate("/interests-received")}
                                         />
                                     ))}
                                 </div>

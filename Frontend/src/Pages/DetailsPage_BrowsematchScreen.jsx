@@ -13,6 +13,8 @@ import {
     CheckCircle,
     Copy,
     Check,
+    Users,
+    Clock,
 } from "lucide-react"
 import Navbar from "../Components/Navbar.jsx"
 import Footer from "../Components/Footer.jsx"
@@ -20,7 +22,7 @@ import ConfirmInterestModal from "../Components/ConfirmInterestModal.jsx"
 import BlockReportModal from "../Components/BlockReportModal.jsx"
 import ProfileImage from "../assets/female_profile2.jpg"
 import { getProfileById } from "../api/matchingApi"
-import { sendInterest } from "../api/interestApi"
+import { sendInterest, getSentInterests, getReceivedInterests } from "../api/interestApi"
 import { toggleShortlist, getShortlistedProfiles } from "../api/shortlistApi"
 
 const calculateAge = (dateOfBirth) => {
@@ -94,9 +96,11 @@ const DetailItem = ({ label, value }) => (
 export default function DetailsPage_BrowsematchScreen() {
     const { id } = useParams()
     const navigate = useNavigate()
+
     const [profile, setProfile] = useState(null)
     const [loading, setLoading] = useState(true)
     const [isShortlisted, setIsShortlisted] = useState(false)
+    const [interestStatus, setInterestStatus] = useState(null)
     const [showInterestModal, setShowInterestModal] = useState(false)
     const [showBlockReportModal, setShowBlockReportModal] = useState(false)
     const [toastMessage, setToastMessage] = useState("")
@@ -109,20 +113,42 @@ export default function DetailsPage_BrowsematchScreen() {
 
         const fetchDetails = async () => {
             try {
-                const [pData, shortlists] = await Promise.all([
+                const [pData, shortlists, sentInterests, receivedInterests] = await Promise.all([
                     getProfileById(id),
                     getShortlistedProfiles().catch(() => []),
+                    getSentInterests().catch(() => []),
+                    getReceivedInterests().catch(() => []),
                 ])
                 setProfile(pData)
 
                 // Check if this profile is already shortlisted
-                const isShort = shortlists.some((item) => {
-                    const sId = typeof item.shortlistedProfileId === "object"
-                        ? item.shortlistedProfileId._id
-                        : item.shortlistedProfileId
-                    return sId === id
+                const isShort = (shortlists || []).some((item) => {
+                    const sId = typeof item?.shortlistedProfileId === "object"
+                        ? item?.shortlistedProfileId?._id
+                        : item?.shortlistedProfileId
+                    return String(sId) === String(id)
                 })
                 setIsShortlisted(isShort)
+
+                // Check interest status
+                let intStatus = null
+                for (const item of (sentInterests || [])) {
+                    const rId = typeof item.receiverProfileId === "object" ? item.receiverProfileId?._id : item.receiverProfileId
+                    if (String(rId) === String(id)) {
+                        intStatus = item.status === "accepted" ? "accepted" : "pending"
+                        break
+                    }
+                }
+                if (!intStatus || intStatus !== "accepted") {
+                    for (const item of (receivedInterests || [])) {
+                        const sId = typeof item.senderProfileId === "object" ? item.senderProfileId?._id : item.senderProfileId
+                        if (String(sId) === String(id)) {
+                            intStatus = item.status === "accepted" ? "accepted" : "received_pending"
+                            break
+                        }
+                    }
+                }
+                setInterestStatus(intStatus)
             } catch (err) {
                 console.error("Failed to fetch profile details:", err)
             } finally {
@@ -140,6 +166,7 @@ export default function DetailsPage_BrowsematchScreen() {
     const handleSendInterest = async () => {
         try {
             await sendInterest(id)
+            setInterestStatus("pending")
             setShowInterestModal(false)
             showToast("Interest expressed successfully!")
         } catch (err) {
@@ -322,17 +349,40 @@ export default function DetailsPage_BrowsematchScreen() {
                     <div className="lg:col-span-7 space-y-6">
                         {/* Top Action Bar */}
                         <div className="flex flex-wrap items-center gap-3">
-                            <button
-                                onClick={() => setShowInterestModal(true)}
-                                className="flex-1 min-w-[160px] py-3 px-6 rounded-full bg-[#842029] text-white text-xs sm:text-sm font-semibold hover:bg-[#6b1b27] transition-all flex items-center justify-center gap-2 shadow-xs"
-                            >
-                                <Heart size={16} fill="currentColor" /> Express Interest
-                            </button>
+                            {interestStatus === "accepted" ? (
+                                <button
+                                    onClick={() => navigate(`/chat?profileId=${id}`)}
+                                    className="flex-1 min-w-[160px] py-3 px-6 rounded-full bg-emerald-600 text-white text-xs sm:text-sm font-semibold hover:bg-emerald-700 transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+                                >
+                                    <MessageSquare size={16} /> Connected - Send Message
+                                </button>
+                            ) : interestStatus === "pending" ? (
+                                <button
+                                    disabled
+                                    className="flex-1 min-w-[160px] py-3 px-6 rounded-full bg-amber-500 text-white text-xs sm:text-sm font-semibold opacity-90 flex items-center justify-center gap-2 shadow-xs cursor-default"
+                                >
+                                    <Clock size={16} /> Interest Sent (Pending)
+                                </button>
+                            ) : interestStatus === "received_pending" ? (
+                                <button
+                                    onClick={() => navigate("/interests-received")}
+                                    className="flex-1 min-w-[160px] py-3 px-6 rounded-full bg-rose-700 text-white text-xs sm:text-sm font-semibold hover:bg-rose-800 transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+                                >
+                                    <Heart size={16} fill="currentColor" /> Respond to Interest
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={() => setShowInterestModal(true)}
+                                    className="flex-1 min-w-[160px] py-3 px-6 rounded-full bg-[#842029] text-white text-xs sm:text-sm font-semibold hover:bg-[#6b1b27] transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+                                >
+                                    <Heart size={16} fill="currentColor" /> Express Interest
+                                </button>
+                            )}
                             <button
                                 onClick={() => navigate(`/chat?profileId=${id}`)}
-                                className="flex-1 min-w-[140px] py-3 px-6 rounded-full bg-[#FFF0F2] text-[#842029] border border-[#FFE4E8] text-xs sm:text-sm font-semibold hover:bg-[#FFE4E8] transition-all flex items-center justify-center gap-2"
+                                className="flex-1 min-w-[140px] py-3 px-6 rounded-full bg-[#FFF0F2] text-[#842029] border border-[#FFE4E8] text-xs sm:text-sm font-semibold hover:bg-[#FFE4E8] transition-all flex items-center justify-center gap-2 cursor-pointer"
                             >
-                                <MessageSquare size={16} /> Send Message
+                                <MessageSquare size={16} /> Direct Message
                             </button>
                             <button
                                 onClick={handleToggleShortlist}
