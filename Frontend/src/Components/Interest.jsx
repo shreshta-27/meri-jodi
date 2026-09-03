@@ -1,32 +1,15 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
+import {
+  motherTongues,
+  religions,
+  castesByLanguage,
+  getCastesForLanguage,
+} from "../utils/casteData";
+
 /* ---------------------------- */
 /* Dropdown Data */
 /* ---------------------------- */
-
-const religions = [
-  "Hindu",
-  "Muslim",
-  "Christian",
-  "Sikh",
-  "Jain",
-  "Buddhist",
-  "Parsi",
-  "Other",
-];
-
-const motherTongues = [
-  "Hindi",
-  "Marathi",
-  "Gujarati",
-  "Tamil",
-  "Telugu",
-  "Kannada",
-  "Malayalam",
-  "Punjabi",
-  "Bengali",
-  "Urdu",
-];
 
 const educations = [
   "High School",
@@ -59,70 +42,6 @@ const incomeRanges = [
   "₹35 - ₹50 LPA",
   "Above ₹50 LPA",
 ];
-
-/* ===========================================================
-   Hobby Data
-=========================================================== */
-
-const hobbies = [
-  "Travel",
-  "Music",
-  "Movies",
-  "Reading",
-  "Cooking",
-  "Photography",
-  "Gaming",
-  "Cricket",
-  "Football",
-  "Badminton",
-  "Gym",
-  "Yoga",
-  "Cycling",
-  "Swimming",
-  "Dancing",
-  "Singing",
-  "Writing",
-  "Painting",
-  "Hiking",
-  "Trekking",
-  "Meditation",
-  "Pets",
-  "Volunteering",
-  "Technology",
-  "Fashion",
-  "Gardening",
-  "Chess",
-  "Shopping",
-  "Adventure",
-  "Blogging",
-  "Coding",
-  "Entrepreneurship",
-  "Podcasts",
-  "Fitness",
-  "Art",
-  "Nature",
-];
-
-const castes = {
-  Hindu: [
-    "Maratha",
-    "Brahmin",
-    "Rajput",
-    "Yadav",
-    "Agarwal",
-    "Kshatriya",
-    "Jat",
-    "Lingayat",
-    "Nair",
-    "Reddy",
-  ],
-  Muslim: ["Sunni", "Shia", "Pathan", "Syed", "Sheikh"],
-  Christian: ["Roman Catholic", "Protestant", "Orthodox"],
-  Sikh: ["Jat Sikh", "Khatri", "Ramgarhia"],
-  Jain: ["Digambar", "Shwetambar"],
-  Buddhist: ["Navayana", "Theravada"],
-  Other: [],
-};
 
 
 export default function Interest({
@@ -177,7 +96,7 @@ export default function Interest({
     }
     
     if (!formData.religion) err.religion = "Select religion";
-    if (!formData.caste) err.caste = "Select caste";
+
     if (!formData.motherTongue) err.motherTongue = "Select mother tongue";
     if (!formData.partnereducation) err.partnereducation = "Select education";
     if (!formData.partneroccupation) err.partneroccupation = "Select occupation";
@@ -259,15 +178,12 @@ export default function Interest({
           </div>
         </div>
 
-        {/* Religion & Caste */}
+        {/* Religion & Mother Tongue */}
         <div className="grid md:grid-cols-2 gap-6 mb-4">
           <div>
             <select
               value={formData.religion}
-              onChange={(e) => {
-                updateField("religion", e.target.value);
-                updateField("caste", ""); // Reset caste when religion changes
-              }}
+              onChange={(e) => updateField("religion", e.target.value)}
               className={`w-full h-14 rounded-xl border-2 px-4 focus:outline-none transition-all duration-300 ${
                 errors.religion
                   ? "border-red-400"
@@ -275,6 +191,7 @@ export default function Interest({
               }`}
             >
               <option value="">Select Religion</option>
+              <option value="Any">Any Religion / No Preference</option>
               {religions.map((religion) => (
                 <option key={religion} value={religion}>
                   {religion}
@@ -288,50 +205,52 @@ export default function Interest({
 
           <div>
             <select
-              value={formData.caste}
+              value={formData.motherTongue}
+              onChange={(e) => updateField("motherTongue", e.target.value)}
+              className={`w-full h-14 rounded-xl border-2 px-4 focus:outline-none transition-all duration-300 ${
+                errors.motherTongue
+                  ? "border-red-400"
+                  : "border-[#DFDFDF] hover:border-[#AE2539]"
+              }`}
+            >
+              <option value="">Select Mother Tongue / Language</option>
+              {motherTongues.map((lang) => (
+                <option key={lang} value={lang}>{lang}</option>
+              ))}
+            </select>
+            {errors.motherTongue && (
+              <p className="text-sm text-red-500 mt-2">{errors.motherTongue}</p>
+            )}
+          </div>
+        </div>
+
+        {/* Caste & Education */}
+        <div className="grid md:grid-cols-2 gap-6 mb-4">
+          <div>
+            <select
+              value={formData.caste || "No Preference"}
               onChange={(e) => updateField("caste", e.target.value)}
-              disabled={!formData.religion}
-              className={`w-full h-14 rounded-xl border-2 px-4 focus:outline-none transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed ${
+              className={`w-full h-14 rounded-xl border-2 px-4 focus:outline-none transition-all duration-300 ${
                 errors.caste
                   ? "border-red-400"
                   : "border-[#DFDFDF] hover:border-[#AE2539]"
               }`}
             >
-              <option value="">Select Caste</option>
-              {formData.religion &&
-                castes[formData.religion]?.map((caste) => (
-                  <option key={caste} value={caste}>{caste}</option>
-                ))}
+              <option value="No Preference">No Preference (Open to All Castes)</option>
+              {getCastesForLanguage(formData.motherTongue, false).map((caste) => (
+                <option key={caste} value={caste}>{caste}</option>
+              ))}
             </select>
+            <p className="text-xs text-gray-400 mt-1.5">
+              {formData.motherTongue
+                ? `Showing castes for ${formData.motherTongue} (or select No Preference)`
+                : "Select No Preference or choose mother tongue for specific community castes"}
+            </p>
             {errors.caste && (
               <p className="text-sm text-red-500 mt-2">{errors.caste}</p>
             )}
           </div>
-        </div>
 
-        {/* Mother Tongue */}
-        <div className="mb-4">
-          <select
-            value={formData.motherTongue}
-            onChange={(e) => updateField("motherTongue", e.target.value)}
-            className={`w-full h-14 rounded-xl border-2 px-4 focus:outline-none transition-all duration-300 ${
-              errors.motherTongue
-                ? "border-red-400"
-                : "border-[#DFDFDF] hover:border-[#AE2539]"
-            }`}
-          >
-            <option value="">Select Mother Tongue</option>
-            {motherTongues.map((lang) => (
-              <option key={lang} value={lang}>{lang}</option>
-            ))}
-          </select>
-          {errors.motherTongue && (
-            <p className="text-sm text-red-500 mt-2">{errors.motherTongue}</p>
-          )}
-        </div>
-
-        {/* Education & Occupation */}
-        <div className="grid md:grid-cols-2 gap-6 mb-4">
           <div>
             <select
               value={formData.partnereducation}
@@ -353,7 +272,10 @@ export default function Interest({
               <p className="text-sm text-red-500 mt-2">{errors.education}</p>
             )}
           </div>
+        </div>
 
+        {/* Occupation & Annual Income */}
+        <div className="grid md:grid-cols-2 gap-6 mb-4">
           <div>
             <select
               value={formData.partneroccupation}
@@ -375,10 +297,7 @@ export default function Interest({
               <p className="text-sm text-red-500 mt-2">{errors.occupation}</p>
             )}
           </div>
-        </div>
 
-        {/* Annual Income & City */}
-        <div className="grid md:grid-cols-2 gap-6 mb-2">
           <div>
             <select
               value={formData.partnerincome}
@@ -400,24 +319,26 @@ export default function Interest({
               <p className="text-sm text-red-500 mt-2">{errors.income}</p>
             )}
           </div>
-
-          <div>
-            <input
-              type="text"
-              value={formData.city}
-              placeholder="Location"
-              onChange={(e) => updateField("city", e.target.value)}
-              className={`w-full h-14 rounded-xl border-2 px-4 focus:outline-none transition-all duration-300 ${
-                errors.city
-                  ? "border-red-400"
-                  : "border-[#DFDFDF] hover:border-[#AE2539]"
-              }`}
-            />
-            {errors.city && ( 
-              <p className="text-sm text-red-500 mt-2">{errors.city}</p>
-            )}
-          </div>
         </div>
+
+        {/* City / Location */}
+        <div className="mb-4">
+          <input
+            type="text"
+            value={formData.city}
+            placeholder="Preferred City / State"
+            onChange={(e) => updateField("city", e.target.value)}
+            className={`w-full h-14 rounded-xl border-2 px-4 focus:outline-none transition-all duration-300 ${
+              errors.city
+                ? "border-red-400"
+                : "border-[#DFDFDF] hover:border-[#AE2539]"
+            }`}
+          />
+          {errors.city && ( 
+            <p className="text-sm text-red-500 mt-2">{errors.city}</p>
+          )}
+        </div>
+
 
         {/* Hobbies */}
         <div className="mt-5">

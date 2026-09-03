@@ -79,8 +79,12 @@ class MatchingService {
 
         // Apply preference filters
         if (preferences) {
-            if (preferences.religion) query.religion = preferences.religion
-            if (preferences.caste) query.caste = preferences.caste
+            if (preferences.religion && preferences.religion !== "Any" && preferences.religion !== "No Preference") {
+                query.religion = preferences.religion
+            }
+            if (preferences.caste && preferences.caste !== "No Preference" && preferences.caste !== "Any") {
+                query.caste = preferences.caste
+            }
             if (preferences.maritalStatus && preferences.maritalStatus.length > 0) {
                 query.maritalStatus = { $in: preferences.maritalStatus }
             }
@@ -113,11 +117,10 @@ class MatchingService {
             }
 
             // Height filter
-            if (preferences.heightMinCm) {
-                query.heightCm = { ...query.heightCm, $gte: preferences.heightMinCm }
-            }
-            if (preferences.heightMaxCm) {
-                query.heightCm = { ...query.heightCm, $lte: preferences.heightMaxCm }
+            if (preferences.heightMinCm || preferences.heightMaxCm) {
+                query.heightCm = {}
+                if (preferences.heightMinCm) query.heightCm.$gte = preferences.heightMinCm
+                if (preferences.heightMaxCm) query.heightCm.$lte = preferences.heightMaxCm
             }
         }
 
@@ -194,9 +197,11 @@ class MatchingService {
 
         // Religion match (20 points)
         maxScore += 20
-        if (preferences?.religion && matchProfile.religion) {
-            if (preferences.religion === matchProfile.religion) score += 20
-        } else if (userProfile.religion && matchProfile.religion && userProfile.religion === matchProfile.religion) {
+        if (preferences?.religion === "Any" || preferences?.religion === "No Preference") {
+            score += 20
+        } else if (preferences?.religion && matchProfile.religion) {
+            if (preferences.religion.toLowerCase() === matchProfile.religion.toLowerCase()) score += 20
+        } else if (userProfile.religion && matchProfile.religion && userProfile.religion.toLowerCase() === matchProfile.religion.toLowerCase()) {
             score += 15
         } else {
             score += 10
@@ -204,9 +209,12 @@ class MatchingService {
 
         // Caste match (15 points)
         maxScore += 15
-        if (preferences?.caste && matchProfile.caste) {
-            if (preferences.caste === matchProfile.caste) score += 15
-        } else if (userProfile.caste && matchProfile.caste && userProfile.caste === matchProfile.caste) {
+        if (preferences?.caste === "No Preference" || preferences?.caste === "Any" || !preferences?.caste) {
+            score += 15 // No preference means free matching without caste constraints or penalty
+        } else if (preferences?.caste && matchProfile.caste) {
+            if (preferences.caste.toLowerCase() === matchProfile.caste.toLowerCase()) score += 15
+            else score += 5
+        } else if (userProfile.caste && matchProfile.caste && userProfile.caste.toLowerCase() === matchProfile.caste.toLowerCase()) {
             score += 12
         } else {
             score += 7.5

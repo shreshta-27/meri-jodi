@@ -1,17 +1,10 @@
 import { useState, useEffect } from "react"
 import { X, Target, Save, Check } from "lucide-react"
-
-const RELIGIONS = [
-    "Hindu",
-    "Muslim",
-    "Sikh",
-    "Christian",
-    "Jain",
-    "Buddhist",
-    "Parsi",
-    "Jewish",
-    "Other",
-]
+import {
+    motherTongues,
+    religions,
+    getCastesForLanguage,
+} from "../utils/casteData"
 
 const MARITAL_STATUSES = [
     "never_married",
@@ -203,8 +196,26 @@ export default function PartnerPreferenceModal({ isOpen, preferences, onClose, o
                         </div>
                     </div>
 
-                    {/* Religion & Caste */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Language, Religion & Caste */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-800 mb-1">
+                                Mother Tongue / Language
+                            </label>
+                            <select
+                                name="motherTongue"
+                                value={formData.motherTongue || ""}
+                                onChange={handleChange}
+                                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:bg-white focus:border-[#842029] outline-none"
+                            >
+                                <option value="">Any Language</option>
+                                {motherTongues.map((lang) => (
+                                    <option key={lang} value={lang}>
+                                        {lang}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
                         <div>
                             <label className="block text-sm font-semibold text-gray-800 mb-1">
                                 Religion
@@ -216,7 +227,7 @@ export default function PartnerPreferenceModal({ isOpen, preferences, onClose, o
                                 className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:bg-white focus:border-[#842029] outline-none"
                             >
                                 <option value="">Any Religion</option>
-                                {RELIGIONS.map((rel) => (
+                                {religions.map((rel) => (
                                     <option key={rel} value={rel}>
                                         {rel}
                                     </option>
@@ -227,14 +238,19 @@ export default function PartnerPreferenceModal({ isOpen, preferences, onClose, o
                             <label className="block text-sm font-semibold text-gray-800 mb-1">
                                 Caste / Sub-Caste
                             </label>
-                            <input
-                                type="text"
+                            <select
                                 name="caste"
-                                placeholder="e.g. Brahmin, Rajput, Any"
-                                value={formData.caste}
+                                value={formData.caste || "No Preference"}
                                 onChange={handleChange}
                                 className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:bg-white focus:border-[#842029] outline-none"
-                            />
+                            >
+                                <option value="No Preference">No Preference (Open)</option>
+                                {getCastesForLanguage(formData.motherTongue, false).map((caste) => (
+                                    <option key={caste} value={caste}>
+                                        {caste}
+                                    </option>
+                                ))}
+                            </select>
                         </div>
                     </div>
 

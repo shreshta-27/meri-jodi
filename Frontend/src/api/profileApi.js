@@ -197,6 +197,7 @@ export const buildCareerEducationPayload = (formData) => {
 
 export const buildReligionPayload = (formData) => {
   const payload = {}
+  if (formData.motherTongue !== undefined) payload.motherTongue = formData.motherTongue
   if (formData.religion !== undefined) payload.religion = formData.religion
   if (formData.caste !== undefined) payload.caste = formData.caste
   if (formData.gotham !== undefined) payload.gotham = formData.gotham

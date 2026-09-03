@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { CheckCircle, Clock, Heart, Trash2, ArrowLeft, MapPin, Briefcase } from "lucide-react"
+import { CheckCircle, Clock, Heart, Trash2, MapPin, Briefcase, ExternalLink, MessageSquare, Check, X } from "lucide-react"
 import Navbar from "../Components/Navbar"
 import Footer from "../Components/Footer"
+import ConfirmModal from "../Components/ConfirmModal"
 import home1 from "../assets/home1.png"
 import { getSentInterests, withdrawInterest } from "../api/interestApi"
 
@@ -14,7 +15,7 @@ const calculateAge = (dateOfBirth) => {
 }
 
 const SentInterestCard = ({ interest, onWithdraw, onNavigate }) => {
-    const profile = interest.receiverProfileId
+    const profile = interest.recipientProfileId
     if (!profile) return null
 
     const pId = profile._id || profile.id
@@ -28,73 +29,87 @@ const SentInterestCard = ({ interest, onWithdraw, onNavigate }) => {
     const location = profile.location?.city || "India"
     const isPending = interest.status?.toLowerCase() === "pending"
     const isAccepted = interest.status?.toLowerCase() === "accepted"
+    const isDeclined = interest.status?.toLowerCase() === "declined"
 
     return (
         <div className="bg-white border border-gray-100 rounded-3xl p-5 shadow-xs hover:shadow-md transition-all flex flex-col justify-between">
             <div>
-                <div className="relative w-full aspect-4/3 rounded-2xl overflow-hidden mb-4 bg-gray-100">
+                <div className="relative aspect-4/3 rounded-2xl overflow-hidden bg-gray-100 mb-4">
                     <img src={photoUrl} alt={name} className="w-full h-full object-cover" />
                     <div className="absolute top-3 right-3">
-                        {isPending ? (
-                            <span className="px-3 py-1 rounded-full bg-amber-500 text-white text-[10px] font-bold shadow-xs flex items-center gap-1">
-                                <Clock size={11} /> Pending
+                        {isPending && (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 shadow-2xs">
+                                <Clock size={12} /> Pending Response
                             </span>
-                        ) : isAccepted ? (
-                            <span className="px-3 py-1 rounded-full bg-emerald-600 text-white text-[10px] font-bold shadow-xs flex items-center gap-1">
-                                <CheckCircle size={11} /> Accepted
+                        )}
+                        {isAccepted && (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs">
+                                <Check size={12} /> Connected
                             </span>
-                        ) : (
-                            <span className="px-3 py-1 rounded-full bg-gray-500 text-white text-[10px] font-bold shadow-xs">
-                                {interest.status}
+                        )}
+                        {isDeclined && (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600 border border-gray-200 shadow-2xs">
+                                <X size={12} /> Declined
                             </span>
                         )}
                     </div>
                 </div>
 
-                <h2 className="text-xl font-bold font-serif text-[#640515] mb-1">
-                    {name}{age ? `, ${age}` : ""}
-                </h2>
-                <div className="text-xs text-gray-500 space-y-1 mb-3">
-                    <p className="flex items-center gap-1">
-                        <Briefcase size={13} className="text-[#842029]" /> {occupation}
-                    </p>
-                    <p className="flex items-center gap-1">
-                        <MapPin size={13} className="text-[#842029]" /> {location}
-                    </p>
+                <div className="flex items-start justify-between gap-2 mb-2">
+                    <div>
+                        <h3 className="font-bold text-lg text-gray-900 leading-tight">
+                            {name}
+                            {age ? `, ${age}` : ""}
+                        </h3>
+                        <div className="flex items-center gap-3 text-xs text-gray-500 mt-1">
+                            <span className="flex items-center gap-1">
+                                <MapPin size={13} className="text-gray-400" />
+                                {location}
+                            </span>
+                            <span className="flex items-center gap-1">
+                                <Briefcase size={13} className="text-gray-400" />
+                                {occupation}
+                            </span>
+                        </div>
+                    </div>
                 </div>
+
+                {interest.message && (
+                    <div className="mt-3 p-3 bg-gray-50 rounded-xl text-xs text-gray-600 italic border border-gray-100">
+                        "{interest.message}"
+                    </div>
+                )}
             </div>
 
-            <div className="mt-4 pt-3 border-t border-gray-100 space-y-2">
-                <p className="text-[10px] text-gray-400">
-                    Sent on {new Date(interest.createdAt).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" })}
-                </p>
+            <div className="mt-5 pt-4 border-t border-gray-100 flex items-center justify-between gap-2">
+                <span className="text-[11px] text-gray-400">
+                    Sent {new Date(interest.createdAt).toLocaleDateString("en-IN", { month: "short", day: "numeric" })}
+                </span>
 
-                <div className="flex gap-2">
-                    {isAccepted ? (
+                <div className="flex items-center gap-2">
+                    {isAccepted && (
                         <button
-                            onClick={() => onNavigate(`/chat?profileId=${pId}`)}
-                            className="flex-1 py-2.5 rounded-full bg-[#842029] text-white text-xs font-semibold hover:bg-[#6b1b27] transition-colors"
+                            onClick={() => onNavigate(`/chat?recipientId=${profile.userId?._id || profile.userId}`)}
+                            className="px-3.5 py-1.5 rounded-full bg-[#842029] text-white text-xs font-semibold hover:bg-[#6b1b27] transition-colors flex items-center gap-1.5"
                         >
-                            Send Message
-                        </button>
-                    ) : (
-                        <button
-                            onClick={() => onNavigate(`/match-details/${pId}`)}
-                            className="flex-1 py-2.5 rounded-full border border-[#842029] text-[#842029] text-xs font-semibold hover:bg-[#842029] hover:text-white transition-colors"
-                        >
-                            View Profile
+                            <MessageSquare size={13} /> Chat
                         </button>
                     )}
-
                     {isPending && (
                         <button
                             onClick={() => onWithdraw(interest._id)}
-                            title="Withdraw Interest"
-                            className="px-3 py-2.5 rounded-full border border-gray-200 text-gray-400 hover:text-red-600 hover:border-red-200 hover:bg-red-50 transition-colors"
+                            className="px-3 py-1.5 rounded-full border border-gray-200 text-gray-600 text-xs font-medium hover:bg-gray-50 hover:text-red-600 transition-colors"
                         >
-                            <Trash2 size={14} />
+                            Withdraw
                         </button>
                     )}
+                    <button
+                        onClick={() => onNavigate(`/profile/${pId}`)}
+                        className="p-1.5 rounded-full text-gray-400 hover:text-[#842029] hover:bg-rose-50 transition-colors"
+                        title="View Profile"
+                    >
+                        <ExternalLink size={16} />
+                    </button>
                 </div>
             </div>
         </div>
@@ -106,6 +121,8 @@ export default function SentInterestsDashboard() {
     const [interests, setInterests] = useState([])
     const [loading, setLoading] = useState(true)
     const [toastMessage, setToastMessage] = useState("")
+    const [withdrawTarget, setWithdrawTarget] = useState(null)
+    const [actionLoading, setActionLoading] = useState(false)
 
     const fetchData = async () => {
         setLoading(true)
@@ -123,15 +140,24 @@ export default function SentInterestsDashboard() {
         fetchData()
     }, [])
 
-    const handleWithdraw = async (interestId) => {
-        if (!window.confirm("Are you sure you want to withdraw this interest?")) return
+    const triggerWithdraw = (interestId) => {
+        setWithdrawTarget(interestId)
+    }
+
+    const confirmWithdraw = async () => {
+        if (!withdrawTarget) return
+        setActionLoading(true)
         try {
-            await withdrawInterest(interestId)
-            setInterests((prev) => prev.filter((i) => i._id !== interestId))
+            await withdrawInterest(withdrawTarget)
+            setInterests((prev) => prev.filter((i) => i._id !== withdrawTarget))
             setToastMessage("Interest withdrawn successfully.")
+            setWithdrawTarget(null)
             setTimeout(() => setToastMessage(""), 3000)
         } catch (err) {
-            alert(err.response?.data?.message || "Failed to withdraw interest.")
+            setToastMessage(err.response?.data?.message || "Failed to withdraw interest.")
+            setTimeout(() => setToastMessage(""), 3000)
+        } finally {
+            setActionLoading(false)
         }
     }
 
@@ -195,7 +221,7 @@ export default function SentInterestsDashboard() {
                             <SentInterestCard
                                 key={interest._id}
                                 interest={interest}
-                                onWithdraw={handleWithdraw}
+                                onWithdraw={triggerWithdraw}
                                 onNavigate={navigate}
                             />
                         ))}
@@ -203,6 +229,19 @@ export default function SentInterestsDashboard() {
                 )}
             </main>
             <Footer />
+
+            {/* Custom Branded Confirmation Popup */}
+            <ConfirmModal
+                isOpen={Boolean(withdrawTarget)}
+                title="Withdraw Interest?"
+                message="Are you sure you want to withdraw this connection request? The member will no longer see your pending request."
+                confirmText="Withdraw Interest"
+                cancelText="Keep Sent"
+                type="danger"
+                loading={actionLoading}
+                onConfirm={confirmWithdraw}
+                onCancel={() => setWithdrawTarget(null)}
+            />
         </div>
     )
 }

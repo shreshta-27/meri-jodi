@@ -9,6 +9,11 @@ import {
   buildReligionPayload,
   buildLifestylePayload,
 } from "../api/profileApi"
+import {
+  motherTongues,
+  religions,
+  getCastesForLanguage,
+} from "../utils/casteData"
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
@@ -87,6 +92,7 @@ const EditProfileModal = ({ isOpen, section: initialSection = "personal", profil
         workLocation: profile.career?.workLocation || "",
 
         // Religion
+        motherTongue: profile.motherTongue || "",
         religion: profile.religion || "",
         caste: profile.caste || "",
         gotham: profile.gotham || "",
@@ -711,17 +717,35 @@ const EditProfileModal = ({ isOpen, section: initialSection = "personal", profil
           {/* 5. RELIGION & ASTROLOGY */}
           {activeSection === "religion" && (
             <div className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1.5">Mother Tongue / Language</label>
+                  <select
+                    name="motherTongue"
+                    value={formData.motherTongue || ""}
+                    onChange={handleChange}
+                    className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm focus:outline-none focus:border-[#842029] bg-white"
+                  >
+                    <option value="">Select Language</option>
+                    {motherTongues.map((lang) => (
+                      <option key={lang} value={lang}>{lang}</option>
+                    ))}
+                  </select>
+                </div>
+
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1.5">Religion</label>
-                  <input
-                    type="text"
+                  <select
                     name="religion"
-                    placeholder="e.g. Hindu, Muslim, Sikh, Jain"
                     value={formData.religion || ""}
                     onChange={handleChange}
-                    className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm focus:outline-none focus:border-[#842029]"
-                  />
+                    className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm focus:outline-none focus:border-[#842029] bg-white"
+                  >
+                    <option value="">Select Religion</option>
+                    {religions.map((rel) => (
+                      <option key={rel} value={rel}>{rel}</option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>
@@ -729,11 +753,17 @@ const EditProfileModal = ({ isOpen, section: initialSection = "personal", profil
                   <input
                     type="text"
                     name="caste"
-                    placeholder="e.g. Brahmin, Maratha, Agarwal"
+                    list="caste-options"
+                    placeholder="e.g. Brahmin, Maratha, Reddy"
                     value={formData.caste || ""}
                     onChange={handleChange}
                     className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm focus:outline-none focus:border-[#842029]"
                   />
+                  <datalist id="caste-options">
+                    {getCastesForLanguage(formData.motherTongue, false).map((caste) => (
+                      <option key={caste} value={caste} />
+                    ))}
+                  </datalist>
                 </div>
               </div>
 

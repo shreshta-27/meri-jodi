@@ -14,6 +14,16 @@ class ErrorBoundary extends Component {
     console.error("ErrorBoundary caught:", error, info)
   }
 
+  handleClearDraft = () => {
+    try {
+      localStorage.removeItem("merijodi_draft_profile")
+      localStorage.removeItem("merijodi_draft_step")
+    } catch {
+      // Ignore
+    }
+    window.location.reload()
+  }
+
   render() {
     if (this.state.hasError) {
       return (
@@ -28,14 +38,22 @@ class ErrorBoundary extends Component {
               Something went wrong
             </h1>
             <p className="text-sm text-[#6B6F72] mb-6 leading-relaxed">
-              An unexpected error occurred. Please try refreshing the page. If the problem persists, contact our support team.
+              An unexpected error occurred. Please try refreshing the page.
             </p>
-            <button
-              onClick={() => window.location.reload()}
-              className="px-6 py-2.5 bg-[#640515] text-white text-sm font-semibold rounded-full hover:bg-[#4a0410] transition-colors shadow-sm"
-            >
-              Refresh Page
-            </button>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
+              <button
+                onClick={() => window.location.reload()}
+                className="w-full sm:w-auto px-6 py-2.5 bg-[#640515] text-white text-sm font-semibold rounded-full hover:bg-[#4a0410] transition-colors shadow-sm cursor-pointer"
+              >
+                Refresh Page
+              </button>
+              <button
+                onClick={this.handleClearDraft}
+                className="w-full sm:w-auto px-6 py-2.5 bg-white border border-gray-300 text-gray-700 text-sm font-semibold rounded-full hover:bg-gray-50 transition-colors shadow-xs cursor-pointer"
+              >
+                Start Over
+              </button>
+            </div>
           </div>
         </div>
       )

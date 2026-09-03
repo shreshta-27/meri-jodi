@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
 import { ArrowLeft, Check } from "lucide-react"
@@ -9,6 +9,9 @@ import Logo from "../assets/logo_1.svg"
 import BasicInfo from "../Components/BasicInfo"
 import PersonalDetails from "../Components/PersonalDetails"
 import Interest from "../Components/Interest"
+
+const STORAGE_KEY_FORM = "merijodi_draft_profile"
+const STORAGE_KEY_STEP = "merijodi_draft_step"
 
 const MAROON = "#640515"
 const ACCENT = "#AE2539"
@@ -51,38 +54,149 @@ const steps = [
   { number: 3, label: "Interest" },
 ]
 
+const parseSafeDob = (dobStr) => {
+  if (!dobStr) return { day: "", month: "", year: "" }
+  try {
+    const d = new Date(dobStr)
+    if (isNaN(d.getTime())) return { day: "", month: "", year: "" }
+    return {
+      year: d.getFullYear().toString(),
+      month: d.toLocaleString("default", { month: "long" }),
+      day: d.getDate().toString(),
+    }
+  } catch {
+    return { day: "", month: "", year: "" }
+  }
+}
+
 const AddDetailsManually = () => {
   const location = useLocation()
   const navigate = useNavigate()
   const extractedData = location.state?.initialData || {}
-  const [step, setStep] = useState(1)
-  const [loading, setLoading] = useState(false)
-  const [formData, setFormData] = useState({
-    ...initialFormData,
-    ...extractedData,
-    birthPlace: extractedData.personal_details?.place_of_birth || extractedData.birthPlace || "",
-    motherTongue: extractedData.personal_details?.mother_tongue || extractedData.motherTongue || "",
-    gender: extractedData.personal_details?.gender
-      ? extractedData.personal_details.gender.toLowerCase()
-      : extractedData.gender || "",
-    year: extractedData.personal_details?.date_of_birth
-      ? new Date(extractedData.personal_details.date_of_birth).getFullYear().toString()
-      : extractedData.year || "",
-    month: extractedData.personal_details?.date_of_birth
-      ? new Date(extractedData.personal_details.date_of_birth).toLocaleString("default", { month: "long" })
-      : extractedData.month || "",
-    day: extractedData.personal_details?.date_of_birth
-      ? new Date(extractedData.personal_details.date_of_birth).getDate().toString()
-      : extractedData.day || "",
-    about: extractedData.personal_details?.about_me || extractedData.about || "",
-    height: extractedData.personal_details?.height || extractedData.height || "",
-    location: extractedData.contact_details?.city || extractedData.location || "",
-    education: extractedData.personal_details?.highest_education || extractedData.education || "",
-    occupation: extractedData.personal_details?.organization_name || extractedData.occupation || "",
-    income: extractedData.personal_details?.annual_income || extractedData.income || "",
-    city: extractedData.contact_details?.city || extractedData.city || "",
+
+  const [step, setStep] = useState(() => {
+    try {
+      const savedStep = localStorage.getItem(STORAGE_KEY_STEP)
+      const num = Number(savedStep)
+      return num >= 1 && num <= 3 ? num : 1
+    } catch {
+      return 1
+    }
   })
+
+  const [loading, setLoading] = useState(false)
+
+  const [formData, setFormData] = useState(() => {
+    let savedData = {}
+    try {
+      const item = localStorage.getItem(STORAGE_KEY_FORM)
+      if (item) savedData = JSON.parse(item)
+    } catch (e) {
+      console.warn("Could not read draft from localStorage", e)
+    }
+
+    const dobParts = parseSafeDob(extractedData.personal_details?.date_of_birth)
+
+    return {
+      ...initialFormData,
+      ...savedData,
+      ...extractedData,
+      birthPlace:
+        extractedData.personal_details?.place_of_birth ||
+        savedData.birthPlace ||
+        extractedData.birthPlace ||
+        "",
+      motherTongue:
+        extractedData.personal_details?.mother_tongue ||
+        savedData.motherTongue ||
+        extractedData.motherTongue ||
+        "",
+      gender: extractedData.personal_details?.gender
+        ? extractedData.personal_details.gender.toLowerCase()
+        : savedData.gender || extractedData.gender || "",
+      year:
+        dobParts.year ||
+        savedData.year ||
+        extractedData.year ||
+        "",
+      month:
+        dobParts.month ||
+        savedData.month ||
+        extractedData.month ||
+        "",
+      day:
+        dobParts.day ||
+        savedData.day ||
+        extractedData.day ||
+        "",
+      about:
+        extractedData.personal_details?.about_me ||
+        savedData.about ||
+        extractedData.about ||
+        "",
+      height:
+        extractedData.personal_details?.height ||
+        savedData.height ||
+        extractedData.height ||
+        "",
+      location:
+        extractedData.contact_details?.city ||
+        savedData.location ||
+        extractedData.location ||
+        "",
+      education:
+        extractedData.personal_details?.highest_education ||
+        savedData.education ||
+        extractedData.education ||
+        "",
+      occupation:
+        extractedData.personal_details?.organization_name ||
+        savedData.occupation ||
+        extractedData.occupation ||
+        "",
+      company:
+        savedData.company ||
+        extractedData.company ||
+        "",
+      income:
+        extractedData.personal_details?.annual_income ||
+        savedData.income ||
+        extractedData.income ||
+        "",
+      city:
+        extractedData.contact_details?.city ||
+        savedData.city ||
+        extractedData.city ||
+        "",
+      hobbies:
+        Array.isArray(savedData.hobbies)
+          ? savedData.hobbies
+          : Array.isArray(extractedData.hobbies)
+          ? extractedData.hobbies
+          : [],
+      acceptTerms: Boolean(savedData.acceptTerms || extractedData.acceptTerms),
+    }
+  })
+
   const [errors, setErrors] = useState({})
+
+  // Auto-save form data to localStorage whenever user types
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY_FORM, JSON.stringify(formData))
+    } catch (e) {
+      console.warn("Failed to persist draft to localStorage", e)
+    }
+  }, [formData])
+
+  // Auto-save current step to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY_STEP, String(step))
+    } catch (e) {
+      console.warn("Failed to persist step to localStorage", e)
+    }
+  }, [step])
 
   const nextStep = () => {
     setStep((prev) => Math.min(prev + 1, 3))
@@ -117,11 +231,22 @@ const AddDetailsManually = () => {
             occupation: formData.partneroccupation || undefined,
             annualIncome: formData.partnerincome || undefined,
             location: formData.city || undefined,
-            hobbiesAndInterests: Array.isArray(formData.hobbies) && formData.hobbies.length > 0 ? formData.hobbies : undefined,
+            hobbiesAndInterests:
+              Array.isArray(formData.hobbies) && formData.hobbies.length > 0
+                ? formData.hobbies
+                : undefined,
           })
         } catch (prefErr) {
           console.warn("Could not save initial preferences:", prefErr.message)
         }
+      }
+
+      // Clear draft storage on successful creation
+      try {
+        localStorage.removeItem(STORAGE_KEY_FORM)
+        localStorage.removeItem(STORAGE_KEY_STEP)
+      } catch (e) {
+        console.warn("Failed to clear localStorage draft", e)
       }
 
       navigate("/home")

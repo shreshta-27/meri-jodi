@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom"
 import { Check, X, Heart, MessageSquare, MapPin, Briefcase, Sparkles } from "lucide-react"
 import Navbar from "../Components/Navbar"
 import Footer from "../Components/Footer"
+import ConfirmModal from "../Components/ConfirmModal"
 import home1 from "../assets/home1.png"
 import { getReceivedInterests, acceptInterest, declineInterest } from "../api/interestApi"
 
@@ -111,6 +112,8 @@ export default function InterestsReceivedDashboard() {
     const [interests, setInterests] = useState([])
     const [loading, setLoading] = useState(true)
     const [toastMessage, setToastMessage] = useState("")
+    const [declineTarget, setDeclineTarget] = useState(null)
+    const [actionLoading, setActionLoading] = useState(false)
 
     const fetchData = async () => {
         setLoading(true)
@@ -129,25 +132,38 @@ export default function InterestsReceivedDashboard() {
     }, [])
 
     const handleAccept = async (interestId) => {
+        setActionLoading(true)
         try {
             await acceptInterest(interestId)
             setToastMessage("Interest accepted! You can now send messages.")
             await fetchData()
             setTimeout(() => setToastMessage(""), 3500)
         } catch (err) {
-            alert(err.response?.data?.message || "Failed to accept interest.")
+            setToastMessage(err.response?.data?.message || "Failed to accept interest.")
+            setTimeout(() => setToastMessage(""), 3500)
+        } finally {
+            setActionLoading(false)
         }
     }
 
-    const handleDecline = async (interestId) => {
-        if (!window.confirm("Are you sure you want to decline this interest?")) return
+    const triggerDecline = (interestId) => {
+        setDeclineTarget(interestId)
+    }
+
+    const confirmDecline = async () => {
+        if (!declineTarget) return
+        setActionLoading(true)
         try {
-            await declineInterest(interestId)
+            await declineInterest(declineTarget)
             setToastMessage("Interest declined.")
+            setDeclineTarget(null)
             await fetchData()
             setTimeout(() => setToastMessage(""), 3500)
         } catch (err) {
-            alert(err.response?.data?.message || "Failed to decline interest.")
+            setToastMessage(err.response?.data?.message || "Failed to decline interest.")
+            setTimeout(() => setToastMessage(""), 3500)
+        } finally {
+            setActionLoading(false)
         }
     }
 
@@ -212,7 +228,7 @@ export default function InterestsReceivedDashboard() {
                                 key={interest._id}
                                 interest={interest}
                                 onAccept={handleAccept}
-                                onDecline={handleDecline}
+                                onDecline={triggerDecline}
                                 onNavigate={navigate}
                             />
                         ))}
@@ -220,6 +236,19 @@ export default function InterestsReceivedDashboard() {
                 )}
             </main>
             <Footer />
+
+            {/* Custom Branded Confirmation Popup */}
+            <ConfirmModal
+                isOpen={Boolean(declineTarget)}
+                title="Decline Interest?"
+                message="Are you sure you want to decline this connection request? This member will no longer be listed in your active requests."
+                confirmText="Decline Interest"
+                cancelText="Keep Pending"
+                type="danger"
+                loading={actionLoading}
+                onConfirm={confirmDecline}
+                onCancel={() => setDeclineTarget(null)}
+            />
         </div>
     )
 }
