@@ -8,6 +8,30 @@ const familyValuesValues = Object.values(FAMILY_VALUES)
 const familyAffluenceValues = Object.values(FAMILY_AFFLUENCE)
 const createdByValues = Object.values(PROFILE_CREATED_BY)
 
+const sanitizeGender = (val) => (typeof val === "string" ? val.trim().toLowerCase() : val)
+const sanitizeMaritalStatus = (val) => {
+    if (typeof val !== "string") return val
+    const s = val.trim().toLowerCase().replace(/[\s-]+/g, "_")
+    if (s === "never" || s === "never_married") return "never_married"
+    return s
+}
+const sanitizeFamilyType = (val) => {
+    if (typeof val !== "string") return val
+    const s = val.trim().toLowerCase()
+    if (s === "other" || s.includes("extended")) return "extended"
+    return s
+}
+const sanitizeFamilyValues = (val) => (typeof val === "string" ? val.trim().toLowerCase() : val)
+const sanitizeFamilyAffluence = (val) => {
+    if (typeof val !== "string") return val
+    const s = val.trim().toLowerCase().replace(/[\s-]+/g, "_")
+    if (s.includes("upper_middle")) return "upper_middle"
+    if (s.includes("lower_middle")) return "lower_middle"
+    if (s.includes("middle")) return "middle"
+    if (s.includes("affluent") || s.includes("rich")) return "affluent"
+    return s
+}
+
 export const createProfile = [
     body("dateOfBirth")
         .notEmpty()
@@ -17,6 +41,7 @@ export const createProfile = [
     body("gender")
         .notEmpty()
         .withMessage("Gender is required")
+        .customSanitizer(sanitizeGender)
         .isIn(genderValues)
         .withMessage(`Gender must be one of: ${genderValues.join(", ")}`),
     body("heightCm")
@@ -33,6 +58,7 @@ export const createProfile = [
         .isLength({ min: 1, max: 50 }),
     body("maritalStatus")
         .optional({ values: "falsy" })
+        .customSanitizer(sanitizeMaritalStatus)
         .isIn(maritalStatusValues),
     body("aboutMe")
         .optional({ values: "falsy" })
@@ -61,6 +87,7 @@ export const createProfile = [
         .isLength({ min: 3, max: 10 }),
     body("location.willingToRelocate")
         .optional({ values: "falsy" })
+        .customSanitizer((v) => v === true || v === "true")
         .isBoolean(),
     body("education.highestDegree")
         .optional({ values: "falsy" })
@@ -113,12 +140,15 @@ export const createProfile = [
         .isInt({ min: 0, max: 20 }),
     body("family.familyType")
         .optional({ values: "falsy" })
+        .customSanitizer(sanitizeFamilyType)
         .isIn(familyTypeValues),
     body("family.familyValues")
         .optional({ values: "falsy" })
+        .customSanitizer(sanitizeFamilyValues)
         .isIn(familyValuesValues),
     body("family.familyAffluence")
         .optional({ values: "falsy" })
+        .customSanitizer(sanitizeFamilyAffluence)
         .isIn(familyAffluenceValues),
     body("lifestyle.diet")
         .optional({ values: "falsy" })
@@ -126,9 +156,11 @@ export const createProfile = [
         .isLength({ min: 1, max: 100 }),
     body("lifestyle.smoking")
         .optional({ values: "falsy" })
+        .customSanitizer((v) => v === true || v === "true")
         .isBoolean(),
     body("lifestyle.drinking")
         .optional({ values: "falsy" })
+        .customSanitizer((v) => v === true || v === "true")
         .isBoolean(),
     body("hobbiesAndInterests")
         .optional({ values: "falsy" })
@@ -173,6 +205,7 @@ export const updateProfile = [
         .isLength({ min: 1, max: 100 }),
     body("gender")
         .optional({ values: "falsy" })
+        .customSanitizer(sanitizeGender)
         .isIn(genderValues),
     body("heightCm")
         .optional({ values: "falsy" })
@@ -187,6 +220,7 @@ export const updateProfile = [
         .isLength({ min: 1, max: 50 }),
     body("maritalStatus")
         .optional({ values: "falsy" })
+        .customSanitizer(sanitizeMaritalStatus)
         .isIn(maritalStatusValues),
     body("aboutMe")
         .optional({ values: "falsy" })
@@ -214,6 +248,7 @@ export const updateProfile = [
         .isLength({ min: 3, max: 10 }),
     body("location.willingToRelocate")
         .optional({ values: "falsy" })
+        .customSanitizer((v) => v === true || v === "true")
         .isBoolean(),
     body("education.highestDegree")
         .optional({ values: "falsy" })
@@ -266,12 +301,15 @@ export const updateProfile = [
         .isInt({ min: 0, max: 20 }),
     body("family.familyType")
         .optional({ values: "falsy" })
+        .customSanitizer(sanitizeFamilyType)
         .isIn(familyTypeValues),
     body("family.familyValues")
         .optional({ values: "falsy" })
+        .customSanitizer(sanitizeFamilyValues)
         .isIn(familyValuesValues),
     body("family.familyAffluence")
         .optional({ values: "falsy" })
+        .customSanitizer(sanitizeFamilyAffluence)
         .isIn(familyAffluenceValues),
     body("gotham")
         .optional({ values: "falsy" })
@@ -291,9 +329,11 @@ export const updateProfile = [
         .isLength({ min: 1, max: 100 }),
     body("lifestyle.smoking")
         .optional({ values: "falsy" })
+        .customSanitizer((v) => v === true || v === "true")
         .isBoolean(),
     body("lifestyle.drinking")
         .optional({ values: "falsy" })
+        .customSanitizer((v) => v === true || v === "true")
         .isBoolean(),
     body("hobbiesAndInterests")
         .optional({ values: "falsy" })
