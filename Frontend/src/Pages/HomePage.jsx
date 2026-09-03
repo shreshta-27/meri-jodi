@@ -110,6 +110,7 @@ const HomePage = () => {
         ])
         if (cancelled) return
         if (!profileData) { setStatus("empty"); return }
+        setProfile(profileData)
         setMatches(
           (matchData || [])
             .filter((m) => m && (m._id || m.id))
