@@ -21,6 +21,7 @@ import HomePage from "./Pages/HomePage.jsx";
 import ShortlistPage from "./Pages/ShortlistPage.jsx";
 import NotificationsPage from "./Pages/NotificationsPage.jsx";
 import SettingsPage from "./Pages/SettingsPage.jsx";
+import AdminDashboard from "./Pages/AdminDashboard.jsx";
 import NotFoundPage from "./Pages/NotFoundPage.jsx";
 import ErrorBoundary from "./Components/ErrorBoundary.jsx";
 import { ToastProvider } from "./context/ToastContext.jsx";
@@ -37,6 +38,7 @@ function App() {
           <Route path="/signup" element={<SignUpPage />} />
           <Route path="/verify-otp" element={<RegisterPage />} />
           <Route path="/verify-email/:token" element={<VerifyEmailPage />} />
+          <Route path="/verify-email" element={<VerifyEmailPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
 
@@ -146,6 +148,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <SettingsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute>
+                <AdminDashboard />
               </ProtectedRoute>
             }
           />

@@ -1,7 +1,11 @@
 import { GoogleGenAI, Type } from "@google/genai"
-import "dotenv/config"
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
+let aiClient = null
+const getAI = () => {
+    if (!aiClient && process.env.GEMINI_API_KEY) {
+        aiClient = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
+    }
+    return aiClient
+}
 
 const biodataSchema = {
     type: Type.OBJECT,
@@ -64,6 +68,7 @@ class ExtractionService {
 
         const prompt = "Extract all profile details accurately from this document into the required JSON schema. Only return valid JSON matching the schema."
 
+        const ai = getAI()
         const response = await ai.models.generateContent({
             model: "gemini-2.5-flash",
             contents: [filePart, prompt],
@@ -84,6 +89,98 @@ class ExtractionService {
             console.error("Failed to parse AI response as JSON:", parseError, text)
             throw new Error("Failed to parse extracted data.")
         }
+    }
+
+    /**
+     * Generate an engaging, culturally appropriate matrimonial bio for a profile.
+     * @param {object} details - { name, gender, age, occupation, education, companyName, city, hobbies, religion, diet }
+     * @returns {Promise<string>} Generated bio string
+     */
+    async generateBio(details = {}) {
+        const {
+            name = "A prospective member",
+            gender = "",
+            age = "",
+            occupation = "",
+            education = "",
+            companyName = "",
+            city = "",
+            hobbies = [],
+            religion = "",
+            diet = "",
+            familyValues = "",
+        } = details
+
+        const prompt = `You are an expert matrimonial matchmaker and profile writer for MeriJodi matrimonial platform.
+Write a warm, authentic, modern, and culturally grounded "About Me" introduction (2 short paragraphs, around 80-140 words total) for the following matrimonial profile:
+- Name: ${name}
+- Gender: ${gender || "Not specified"}
+- Age: ${age || "Not specified"}
+- Education: ${education || "Not specified"}
+- Occupation/Career: ${occupation || "Professional"} ${companyName ? `at ${companyName}` : ""}
+- Location: ${city || "India"}
+- Hobbies & Interests: ${Array.isArray(hobbies) && hobbies.length > 0 ? hobbies.join(", ") : "Reading, traveling, music"}
+- Religion/Tradition: ${religion || "Not specified"}
+- Diet/Lifestyle: ${diet || "Not specified"}
+- Family Background/Values: ${familyValues || "Traditional yet progressive values"}
+
+Guidelines:
+1. Write in the first person ("I am...").
+2. First paragraph: Introduce personality, career aspirations, education, and passions.
+3. Second paragraph: Describe family background, values, lifestyle, and what qualities are sought in a life partner.
+4. Keep the tone respectful, genuine, modern, and appealing for marriage.
+5. Do NOT include headings, quotes, bullet points, or placeholders. Output ONLY the raw paragraph text.`
+
+        // Try Gemini 2.5 Flash first
+        if (process.env.GEMINI_API_KEY) {
+            try {
+                const ai = getAI()
+                const response = await ai.models.generateContent({
+                    model: "gemini-2.5-flash",
+                    contents: prompt,
+                })
+                const text = response?.text?.trim()
+                if (text) return text
+            } catch (err) {
+                console.warn("Gemini bio generation failed, trying Groq fallback:", err.message)
+            }
+        }
+
+        // Try Groq fallback
+        if (process.env.GROQ_API_KEY) {
+            try {
+                const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+                    },
+                    body: JSON.stringify({
+                        model: "llama-3.3-70b-versatile",
+                        messages: [
+                            { role: "system", content: "You are a professional matrimonial profile writer." },
+                            { role: "user", content: prompt },
+                        ],
+                        temperature: 0.7,
+                        max_tokens: 350,
+                    }),
+                })
+                const groqData = await groqRes.json()
+                const text = groqData.choices?.[0]?.message?.content?.trim()
+                if (text) return text
+            } catch (groqErr) {
+                console.warn("Groq bio generation fallback failed:", groqErr.message)
+            }
+        }
+
+        // Resilient template fallback
+        const hobbiesStr = Array.isArray(hobbies) && hobbies.length > 0
+            ? hobbies.join(", ")
+            : "traveling, listening to music, and spending time with family"
+
+        return `Hello! I am ${name}, a ${occupation || "professional"} based in ${city || "India"}${education ? ` with a degree in ${education}` : ""}. I am an easy-going, optimistic, and ambitious individual who enjoys balancing career goals with personal passions. In my free time, I love ${hobbiesStr}.
+
+I come from a loving and supportive family that values mutual respect and integrity. I am looking for an understanding, kind-hearted, and like-minded partner who shares similar life values, enjoys meaningful conversations, and is ready to embark on a beautiful journey of companionship together.`
     }
 }
 

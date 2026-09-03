@@ -24,19 +24,19 @@ const Banner = () => {
         style={{ backgroundImage: `url(${bannerimg1})` }}
       >
         <div className="absolute inset-0 bg-black/30"></div>
-        <div className="relative max-w-[1440px] mx-auto px-20 py-20 flex items-center justify-between gap-12">
-          <div className="max-w-[550px] text-white">
-            <span className="inline-flex items-center px-4 py-2 rounded-full bg-[#842029] outline-[#D8465C] outline-2 text-sm p-6">
-              <img src={star} alt="Star" className="w-5 h-5 mr-2" />
+        <div className="relative max-w-[1440px] mx-auto px-4 sm:px-8 md:px-12 lg:px-20 py-10 sm:py-16 lg:py-20 flex flex-col lg:flex-row items-center justify-between gap-8 lg:gap-12">
+          <div className="w-full lg:max-w-[550px] text-white text-center lg:text-left">
+            <span className="inline-flex items-center px-4 py-1.5 sm:py-2 rounded-full bg-[#842029] outline-[#D8465C] outline-2 text-xs sm:text-sm">
+              <img src={star} alt="Star" className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
               AI-Powered Matchmaking
             </span>
-            <h1 className="mt-6 text-6xl font-serif leading-tight">
-              Find Your <br /> Perfect Match
+            <h1 className="mt-4 sm:mt-6 text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-serif leading-tight">
+              Find Your <br className="hidden sm:inline" /> Perfect Match
             </h1>
-            <p className="mt-4 text-lg text-gray-100">
+            <p className="mt-3 sm:mt-4 text-sm sm:text-base lg:text-lg text-gray-100">
               Discover Genuine Matches With AI-Powered Compatibility.
             </p>
-            <div className="flex gap-2 mt-10">
+            <div className="hidden lg:flex gap-2 mt-10">
               <span className="w-2 h-2 rounded-full bg-white"></span>
               <span className="w-2 h-2 rounded-full bg-white/50"></span>
               <span className="w-2 h-2 rounded-full bg-white/50"></span>

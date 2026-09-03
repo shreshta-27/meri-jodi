@@ -9,8 +9,9 @@ const router = express.Router()
 
 router.use(attachUser)
 
-router.post("/", submitDocument, validate, verificationController.submitDocument.bind(verificationController))
+router.get("/me", verificationController.getMyVerification.bind(verificationController))
+router.post("/", ...submitDocument, validate, verificationController.submitDocument.bind(verificationController))
 router.get("/", requireAdmin, verificationController.getVerifications.bind(verificationController))
-router.put("/:id/review", requireAdmin, validateObjectId("id"), reviewVerification, validate, verificationController.reviewVerification.bind(verificationController))
+router.put("/:id/review", requireAdmin, validateObjectId("id"), ...reviewVerification, validate, verificationController.reviewVerification.bind(verificationController))
 
 export default router

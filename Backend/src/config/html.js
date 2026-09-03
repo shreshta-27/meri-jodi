@@ -48,7 +48,7 @@ export const getOtpHtml = ({ email, otp, appName = "MeriJodi" }) => {
 </html>`
 }
 
-export const getVerifyEmailHtml = ({ email, token, appName = "MeriJodi" }) => {
+export const getVerifyEmailHtml = ({ email, token, otp, appName = "MeriJodi" }) => {
     const baseUrl = config.frontendUrl || config.frontendDomain || "http://localhost:5173"
     const verifyUrl = `${baseUrl.replace(/\/+$/, "")}/verify-email/${encodeURIComponent(token)}`
 
@@ -67,8 +67,10 @@ export const getVerifyEmailHtml = ({ email, token, appName = "MeriJodi" }) => {
   .tagline { font-size: 13px; color: #FFE4E6; margin-top: 4px; }
   .content { padding: 36px 32px; text-align: center; }
   .title { font-size: 22px; font-weight: 700; color: #111827; margin: 0 0 12px 0; }
-  .subtitle { font-size: 15px; line-height: 1.6; color: #4B5563; margin: 0 0 28px 0; }
-  .btn { display: inline-block; background: #ED5463; color: #FFFFFF !important; text-decoration: none; padding: 14px 32px; border-radius: 50px; font-weight: 700; font-size: 16px; box-shadow: 0 4px 12px rgba(237, 84, 99, 0.3); }
+  .subtitle { font-size: 15px; line-height: 1.6; color: #4B5563; margin: 0 0 24px 0; }
+  .otp-box { background: #FFF1F2; border: 2px dashed #FDA4AF; border-radius: 12px; padding: 16px 24px; display: inline-block; margin: 0 auto 24px auto; }
+  .otp { font-size: 36px; font-weight: 800; letter-spacing: 8px; color: #E11D48; font-family: 'Courier New', monospace; }
+  .btn { display: inline-block; background: #ED5463; color: #FFFFFF !important; text-decoration: none; padding: 14px 32px; border-radius: 50px; font-weight: 700; font-size: 16px; box-shadow: 0 4px 12px rgba(237, 84, 99, 0.3); margin-top: 8px; }
   .note { font-size: 13px; color: #9CA3AF; line-height: 1.6; margin-top: 24px; }
   .link-box { word-break: break-all; color: #ED5463; font-size: 12px; margin-top: 12px; }
   .footer { background: #FAFAFA; padding: 20px; text-align: center; border-top: 1px solid #F3F4F6; font-size: 12px; color: #9CA3AF; }
@@ -83,11 +85,19 @@ export const getVerifyEmailHtml = ({ email, token, appName = "MeriJodi" }) => {
     </div>
     <div class="content">
       <h2 class="title">Verify Your Email Address</h2>
-      <p class="subtitle">Welcome to <strong>${appName}</strong>! Please click the button below to confirm your email (<strong>${email}</strong>) and activate your matchmaking profile.</p>
+      <p class="subtitle">Welcome to <strong>${appName}</strong>! Use your 6-digit verification code below, or click the button to verify your email (<strong>${email}</strong>) and activate your account.</p>
+      ${
+        otp
+          ? `<div class="otp-box">
+        <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #9B1C1C; margin-bottom: 6px; font-weight: 700;">Your 6-Digit Code</div>
+        <div class="otp">${otp}</div>
+      </div>`
+          : ""
+      }
       <div>
         <a class="btn" href="${verifyUrl}" target="_blank" rel="noopener">Verify My Account</a>
       </div>
-      <p class="note">This verification link is valid for <strong>5 minutes</strong>.</p>
+      <p class="note">This verification link and code are valid for <strong>10 minutes</strong>.</p>
       <p class="note">If the button does not work, copy and paste this URL into your browser:</p>
       <div class="link-box"><a href="${verifyUrl}" style="color: #ED5463;">${verifyUrl}</a></div>
     </div>

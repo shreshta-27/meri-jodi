@@ -9,8 +9,8 @@ const router = express.Router()
 
 router.use(attachUser)
 
-router.post("/", createReport, validate, reportController.createReport.bind(reportController))
+router.post("/", ...createReport, validate, reportController.createReport.bind(reportController))
 router.get("/", requireAdmin, reportController.getReports.bind(reportController))
-router.put("/:id/status", requireAdmin, validateObjectId("id"), updateReportStatus, validate, reportController.updateReportStatus.bind(reportController))
+router.put("/:id/status", requireAdmin, validateObjectId("id"), ...updateReportStatus, validate, reportController.updateReportStatus.bind(reportController))
 
 export default router

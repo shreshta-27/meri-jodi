@@ -1,4 +1,8 @@
 
+import { useState } from "react"
+import { Sparkles, Loader } from "lucide-react"
+import { generateAIBio } from "../api/profileApi"
+
 const heights = [
   "4'6\"",
   "4'7\"",
@@ -23,7 +27,7 @@ const heights = [
   "6'2\"",
   "6'3\"",
   "6'4\"",
-];
+]
 
 export default function PersonalDetails({
   formData,
@@ -31,8 +35,30 @@ export default function PersonalDetails({
   errors,
   setErrors,
   nextStep,
-  
 }) {
+  const [isGeneratingBio, setIsGeneratingBio] = useState(false)
+
+  const handleAiBio = async () => {
+    setIsGeneratingBio(true)
+    try {
+      const bio = await generateAIBio({
+        name: formData.name,
+        gender: formData.gender,
+        occupation: formData.occupation,
+        education: formData.education,
+        city: formData.location,
+        religion: formData.religion,
+        diet: formData.diet,
+      })
+      if (bio) {
+        updateField("about", bio)
+      }
+    } catch {
+      // Ignore
+    } finally {
+      setIsGeneratingBio(false)
+    }
+  }
   const updateField = (field, value) => {
     setFormData((prev) => ({
       ...prev,
@@ -50,10 +76,9 @@ export default function PersonalDetails({
   const validate = () => {
     let newErrors = {};
 
-    if (!formData.about?.trim())
-      newErrors.about = "Please tell us about yourself.";
-    else if (formData.about.length < 50)
-      newErrors.about = "Minimum 50 characters required.";
+    if (!formData.about?.trim()) {
+      newErrors.about = "Please tell us a little about yourself.";
+    }
 
     if (!formData.height) newErrors.height = "Select your height.";
 
@@ -99,6 +124,18 @@ export default function PersonalDetails({
         
         {/* About Yourself */}
         <div className="mb-8">
+          <div className="flex items-center justify-between mb-2">
+            <label className="block text-sm font-semibold text-gray-700">About Yourself</label>
+            <button
+              type="button"
+              onClick={handleAiBio}
+              disabled={isGeneratingBio}
+              className="px-3 py-1 rounded-full bg-gradient-to-r from-rose-500 to-[#842029] text-white text-xs font-semibold hover:opacity-95 transition-opacity flex items-center gap-1.5 shadow-2xs cursor-pointer disabled:opacity-50"
+            >
+              {isGeneratingBio ? <Loader size={12} className="animate-spin" /> : <Sparkles size={12} />}
+              {isGeneratingBio ? "Generating..." : "✨ Generate with AI"}
+            </button>
+          </div>
           <textarea
             rows={3}
             value={formData.about || ""}

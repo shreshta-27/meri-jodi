@@ -57,7 +57,8 @@ class ProfileController extends BaseController {
         try {
             const existing = await profileService.getByUserId(req.user._id)
             if (existing) {
-                return this.sendError(res, "Profile already exists", 409)
+                const profile = await profileService.update(req.user._id, req.body)
+                return this.sendSuccess(res, profile, "Profile updated", 200)
             }
             const profile = await profileService.create(req.user._id, req.body)
             return this.sendSuccess(res, profile, "Profile created", 201)

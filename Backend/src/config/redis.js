@@ -67,14 +67,17 @@ if (config.redisUrl && !process.env.DISABLE_REDIS) {
         nativeClient = createClient({
             url: config.redisUrl,
             socket: {
-                reconnectStrategy: false,
-                connectTimeout: 500,
+                reconnectStrategy: (retries) => {
+                    if (retries > 3) return false
+                    return Math.min(retries * 500, 2000)
+                },
+                connectTimeout: 5000,
             },
         })
 
         nativeClient.on("connect", () => {
             isConnected = true
-            console.log("Connected to Redis server at", config.redisUrl)
+            console.log("Connected to Redis server successfully")
         })
 
         nativeClient.on("ready", () => {
@@ -85,7 +88,7 @@ if (config.redisUrl && !process.env.DISABLE_REDIS) {
             isConnected = false
         })
 
-        nativeClient.connect().catch(() => {
+        nativeClient.connect().catch((err) => {
             isConnected = false
             console.log("Redis server not reachable, using in-memory store for OTP, rate limiting, and caching.")
         })

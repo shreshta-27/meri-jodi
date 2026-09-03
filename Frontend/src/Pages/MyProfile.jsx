@@ -65,19 +65,60 @@ const formatLocation = (location) => {
     return [location.city, location.state, location.country].filter(Boolean).join(", ") || null
 }
 
+const formatAffluence = (val) => {
+    if (!val) return null
+    const map = {
+        affluent: "Rich / Affluent",
+        upper_middle: "Upper Middle Class",
+        middle: "Middle Class",
+        lower_middle: "Lower Middle Class",
+    }
+    return map[val] || val.replace(/_/g, " ")
+}
+
+const formatFamilyValues = (val) => {
+    if (!val) return null
+    const map = {
+        traditional: "Traditional",
+        moderate: "Moderate",
+        liberal: "Liberal",
+    }
+    return map[val] || val.charAt(0).toUpperCase() + val.slice(1)
+}
+
+const formatFamilyType = (val) => {
+    if (!val) return null
+    const map = {
+        nuclear: "Nuclear",
+        joint: "Joint",
+        extended: "Extended / Other",
+    }
+    return map[val] || val.charAt(0).toUpperCase() + val.slice(1)
+}
+
 const DetailRow = ({ label, value, onAdd }) => (
-    <div className="flex justify-between items-center py-1.5 text-xs sm:text-sm border-b border-gray-50 last:border-0">
-        <span className="text-gray-500">{label}</span>
+    <div
+        onClick={!value && onAdd ? onAdd : undefined}
+        className={`flex flex-col sm:flex-row sm:items-center justify-between py-2 sm:py-2.5 text-xs sm:text-sm border-b border-gray-100/70 last:border-0 gap-1 sm:gap-4 transition-colors ${
+            !value && onAdd ? "cursor-pointer group hover:bg-rose-50/40 rounded-xl px-2 -mx-2" : ""
+        }`}
+    >
+        <span className="text-gray-500 shrink-0 font-medium">{label}</span>
         {value ? (
-            <span className="font-semibold text-gray-800 text-right">{value}</span>
-        ) : (
+            <span className="font-semibold text-gray-900 text-left sm:text-right break-words">{value}</span>
+        ) : onAdd ? (
             <button
                 type="button"
-                onClick={onAdd}
-                className="text-[#842029] text-xs font-medium hover:underline cursor-pointer"
+                onClick={(e) => {
+                    e.stopPropagation()
+                    onAdd()
+                }}
+                className="text-[#842029] text-xs font-semibold hover:underline cursor-pointer text-left sm:text-right group-hover:text-rose-700"
             >
                 + Add {label}
             </button>
+        ) : (
+            <span className="text-gray-400 italic text-xs">Not specified</span>
         )}
     </div>
 )
@@ -292,19 +333,35 @@ export default function MyProfile() {
                         </div>
 
                         {/* About Me Section */}
-                        <div className="bg-[#FFF4F6] border border-[#F1AEB4]/40 rounded-2xl p-5 sm:p-6 space-y-4">
-                            <h2 className="flex items-center gap-2 text-base font-bold text-[#842029] font-serif">
-                                <Sparkles size={18} /> About {fullName.split(" ")[0]}
-                            </h2>
+                        <div className="bg-[#FFF4F6] border border-[#F1AEB4]/40 rounded-3xl p-5 sm:p-6 space-y-4">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                                <h2 className="flex items-center gap-2 text-base font-bold text-[#842029] font-serif">
+                                    <Sparkles size={18} /> About {fullName.split(" ")[0]}
+                                </h2>
+                                <button
+                                    onClick={() => setEditingSection("about")}
+                                    className="text-xs font-semibold text-[#842029] hover:underline cursor-pointer flex items-center gap-1"
+                                >
+                                    ✎ Edit Bio / AI
+                                </button>
+                            </div>
                             <p className="text-xs sm:text-sm text-gray-700 leading-relaxed">
                                 {profile.aboutMe || "You haven't added an about summary yet. Share your passions, family values, and what you're looking for in a partner."}
                             </p>
 
-                            {/* Lifestyle Badges */}
+                            {/* Lifestyle & Habits */}
                             <div>
-                                <h3 className="text-xs font-bold uppercase tracking-wider text-[#842029] mb-2">
-                                    Lifestyle Habits
-                                </h3>
+                                <div className="flex items-center justify-between mb-2">
+                                    <h3 className="text-xs font-bold uppercase tracking-wider text-[#842029]">
+                                        Lifestyle &amp; Habits
+                                    </h3>
+                                    <button
+                                        onClick={() => setEditingSection("lifestyle")}
+                                        className="text-xs text-[#842029] font-semibold hover:underline"
+                                    >
+                                        ✎ Edit
+                                    </button>
+                                </div>
                                 <div className="flex flex-wrap gap-2">
                                     {profile.lifestyle?.diet && (
                                         <div className="bg-white rounded-full px-3.5 py-1.5 border border-rose-100 flex items-center gap-2 text-xs font-semibold text-gray-800 shadow-2xs">
@@ -333,6 +390,25 @@ export default function MyProfile() {
                                         </button>
                                     )}
                                 </div>
+
+                                {/* Hobbies & Interests Pills */}
+                                {Array.isArray(profile.hobbiesAndInterests) && profile.hobbiesAndInterests.length > 0 && (
+                                    <div className="mt-3 pt-3 border-t border-rose-100/60">
+                                        <p className="text-[11px] font-bold uppercase tracking-wider text-[#842029] mb-1.5">
+                                            Hobbies &amp; Interests
+                                        </p>
+                                        <div className="flex flex-wrap gap-1.5">
+                                            {profile.hobbiesAndInterests.map((h) => (
+                                                <span
+                                                    key={h}
+                                                    className="bg-white text-gray-800 px-3 py-1 rounded-full text-xs font-medium border border-rose-100 shadow-2xs"
+                                                >
+                                                    {h}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -353,7 +429,7 @@ export default function MyProfile() {
                             </div>
                             <button
                                 onClick={() => setEditingSection("personal")}
-                                className="text-xs font-semibold text-[#842029] hover:underline"
+                                className="text-xs font-semibold text-[#842029] hover:underline cursor-pointer"
                             >
                                 ✎ Edit
                             </button>
@@ -363,8 +439,11 @@ export default function MyProfile() {
                             <DetailRow label="Height" value={formatHeight(profile.heightCm)} onAdd={() => setEditingSection("personal")} />
                             <DetailRow label="Date of Birth" value={formatDate(profile.dateOfBirth)} onAdd={() => setEditingSection("personal")} />
                             <DetailRow label="Place of Birth" value={profile.placeOfBirth} onAdd={() => setEditingSection("personal")} />
-                            <DetailRow label="Gender" value={profile.gender} onAdd={() => setEditingSection("personal")} />
+                            <DetailRow label="Gender" value={profile.gender ? profile.gender.charAt(0).toUpperCase() + profile.gender.slice(1) : null} onAdd={() => setEditingSection("personal")} />
                             <DetailRow label="Marital Status" value={profile.maritalStatus?.replace("_", " ")} onAdd={() => setEditingSection("personal")} />
+                            <DetailRow label="Manglik Status" value={profile.manglik} onAdd={() => setEditingSection("personal")} />
+                            <DetailRow label="Complexion" value={profile.complexion} onAdd={() => setEditingSection("personal")} />
+                            <DetailRow label="Willing to Relocate" value={profile.location?.willingToRelocate ? "Yes" : "No"} onAdd={() => setEditingSection("personal")} />
                             <DetailRow label="Email" value={email} />
                         </div>
                     </div>
@@ -382,17 +461,18 @@ export default function MyProfile() {
                             </div>
                             <button
                                 onClick={() => setEditingSection("family")}
-                                className="text-xs font-semibold text-[#842029] hover:underline"
+                                className="text-xs font-semibold text-[#842029] hover:underline cursor-pointer"
                             >
                                 ✎ Edit
                             </button>
                         </div>
                         <div className="space-y-1">
                             <DetailRow label="Mother Tongue" value={profile.motherTongue} onAdd={() => setEditingSection("family")} />
-                            <DetailRow label="Family Type" value={profile.family?.familyType} onAdd={() => setEditingSection("family")} />
+                            <DetailRow label="Family Type" value={formatFamilyType(profile.family?.familyType)} onAdd={() => setEditingSection("family")} />
                             <DetailRow label="Father's Occupation" value={profile.family?.fatherOccupation} onAdd={() => setEditingSection("family")} />
                             <DetailRow label="Mother's Occupation" value={profile.family?.motherOccupation} onAdd={() => setEditingSection("family")} />
-                            <DetailRow label="Family Values" value={profile.family?.familyValues} onAdd={() => setEditingSection("family")} />
+                            <DetailRow label="Family Values" value={formatFamilyValues(profile.family?.familyValues)} onAdd={() => setEditingSection("family")} />
+                            <DetailRow label="Family Affluence" value={formatAffluence(profile.family?.familyAffluence)} onAdd={() => setEditingSection("family")} />
                             <DetailRow label="Siblings" value={formatSiblings(profile.family?.numBrothers, profile.family?.numSisters)} onAdd={() => setEditingSection("family")} />
                         </div>
                     </div>
@@ -410,17 +490,20 @@ export default function MyProfile() {
                             </div>
                             <button
                                 onClick={() => setEditingSection("career")}
-                                className="text-xs font-semibold text-[#842029] hover:underline"
+                                className="text-xs font-semibold text-[#842029] hover:underline cursor-pointer"
                             >
                                 ✎ Edit
                             </button>
                         </div>
                         <div className="space-y-1">
                             <DetailRow label="Highest Degree" value={profile.education?.highestDegree} onAdd={() => setEditingSection("career")} />
+                            <DetailRow label="Field of Study" value={profile.education?.fieldOfStudy} onAdd={() => setEditingSection("career")} />
                             <DetailRow label="College / University" value={profile.education?.institution} onAdd={() => setEditingSection("career")} />
                             <DetailRow label="Occupation" value={profile.career?.occupation} onAdd={() => setEditingSection("career")} />
                             <DetailRow label="Company Name" value={profile.career?.companyName} onAdd={() => setEditingSection("career")} />
+                            <DetailRow label="Industry" value={profile.career?.industry} onAdd={() => setEditingSection("career")} />
                             <DetailRow label="Annual Income" value={profile.career?.annualIncome} onAdd={() => setEditingSection("career")} />
+                            <DetailRow label="Work Location" value={profile.career?.workLocation} onAdd={() => setEditingSection("career")} />
                         </div>
                     </div>
 
@@ -437,7 +520,7 @@ export default function MyProfile() {
                             </div>
                             <button
                                 onClick={() => setEditingSection("religion")}
-                                className="text-xs font-semibold text-[#842029] hover:underline"
+                                className="text-xs font-semibold text-[#842029] hover:underline cursor-pointer"
                             >
                                 ✎ Edit
                             </button>

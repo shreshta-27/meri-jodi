@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
 import { ArrowLeft, Check } from "lucide-react"
 import { createProfile, buildProfilePayload } from "../api/profileApi"
+import { updatePartnerPreferences } from "../api/partnerPreferenceApi"
 import weddingImage from "../assets/login-image.png"
 import Logo from "../assets/logo_1.svg"
 import BasicInfo from "../Components/BasicInfo"
@@ -97,6 +98,32 @@ const AddDetailsManually = () => {
       setLoading(true)
       const payload = buildProfilePayload(formData)
       await createProfile(payload)
+
+      if (
+        formData.minAge ||
+        formData.maxAge ||
+        formData.religion ||
+        formData.caste ||
+        formData.partnereducation ||
+        formData.city
+      ) {
+        try {
+          await updatePartnerPreferences({
+            ageMin: formData.minAge ? Number(formData.minAge) : undefined,
+            ageMax: formData.maxAge ? Number(formData.maxAge) : undefined,
+            religion: formData.religion || undefined,
+            caste: formData.caste || undefined,
+            education: formData.partnereducation || undefined,
+            occupation: formData.partneroccupation || undefined,
+            annualIncome: formData.partnerincome || undefined,
+            location: formData.city || undefined,
+            hobbiesAndInterests: Array.isArray(formData.hobbies) && formData.hobbies.length > 0 ? formData.hobbies : undefined,
+          })
+        } catch (prefErr) {
+          console.warn("Could not save initial preferences:", prefErr.message)
+        }
+      }
+
       navigate("/home")
     } catch (err) {
       const message = err.response?.data?.message || "Something went wrong."

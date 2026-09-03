@@ -33,6 +33,19 @@ class VerificationController extends BaseController {
         }
     }
 
+    async getMyVerification(req, res, next) {
+        try {
+            const profile = await profileService.getByUserId(req.user._id)
+            if (!profile) {
+                return this.sendError(res, "Profile not found", 404)
+            }
+            const verification = await verificationService.getByProfileId(profile._id.toString())
+            return this.sendSuccess(res, verification, "Verification status retrieved")
+        } catch (error) {
+            next(error)
+        }
+    }
+
     async getVerifications(req, res, next) {
         try {
             const result = await verificationService.getAll({

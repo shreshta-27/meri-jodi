@@ -2,6 +2,7 @@ import mongoose from "mongoose"
 import { Profile } from "../models/Profile.js"
 import { User } from "../models/User.js"
 import { ProfileView } from "../models/ProfileView.js"
+import notificationService from "./notification.service.js"
 import { PAGINATION_DEFAULTS } from "../constants/index.js"
 
 const PROFILE_CREATE_FIELDS = [
@@ -111,7 +112,6 @@ class ProfileService {
      * @returns {Promise<object>} Updated profile
      */
     async update(userId, data) {
-        // Whitelist: only allow safe fields
         const sanitized = {}
         for (const field of PROFILE_UPDATE_FIELDS) {
             if (data[field] !== undefined) {
@@ -120,12 +120,72 @@ class ProfileService {
         }
 
         if (sanitized.name) {
-            await User.findByIdAndUpdate(userId, { name: sanitized.name })
+            await User.findByIdAndUpdate(userId, { name: sanitized.name.trim() })
+        }
+
+        // Build atomic $set object with dot-notation for nested fields to prevent field obliteration
+        const updateSet = {}
+        for (const [key, val] of Object.entries(sanitized)) {
+            if (val === undefined) continue
+
+            if (["location", "education", "career", "family", "lifestyle"].includes(key) && val && typeof val === "object" && !Array.isArray(val)) {
+                for (let [subKey, subVal] of Object.entries(val)) {
+                    if (subVal === undefined) continue
+                    if (typeof subVal === "string") subVal = subVal.trim()
+
+                    // Normalize nested enum & numeric fields
+                    if (key === "family") {
+                        if (subKey === "familyAffluence") {
+                            if (!subVal) continue
+                            if (subVal === "middle_class") subVal = "middle"
+                            else if (subVal === "upper_middle_class") subVal = "upper_middle"
+                            else if (subVal === "rich_affluent") subVal = "affluent"
+                            else if (subVal === "lower_middle_class") subVal = "lower_middle"
+                        }
+                        if (subKey === "familyType") {
+                            if (!subVal) continue
+                            if (subVal === "other") subVal = "extended"
+                        }
+                        if (subKey === "familyValues" && !subVal) continue
+                        if (subKey === "numBrothers" || subKey === "numSisters") {
+                            subVal = (subVal === "" || subVal === null) ? 0 : Number(subVal) || 0
+                        }
+                    } else if (key === "education") {
+                        if (subKey === "graduationYear") {
+                            if (!subVal) continue
+                            subVal = Number(subVal)
+                            if (isNaN(subVal)) continue
+                        }
+                    } else if (key === "location" && subKey === "willingToRelocate") {
+                        subVal = subVal === true || subVal === "true"
+                    } else if (key === "lifestyle") {
+                        if (subKey === "smoking" || subKey === "drinking") {
+                            subVal = subVal === true || subVal === "true"
+                        }
+                    }
+
+                    updateSet[`${key}.${subKey}`] = subVal
+                }
+            } else {
+                let topVal = val
+                if (typeof topVal === "string") {
+                    topVal = topVal.trim()
+                    if (topVal === "" && ["maritalStatus", "gender", "createdBy"].includes(key)) {
+                        continue
+                    }
+                    if (key === "maritalStatus") {
+                        if (topVal === "never" || topVal.toLowerCase() === "never married") {
+                            topVal = "never_married"
+                        }
+                    }
+                }
+                updateSet[key] = topVal
+            }
         }
 
         const profile = await Profile.findOneAndUpdate(
             { userId },
-            { $set: sanitized },
+            { $set: updateSet },
             { returnDocument: "after", runValidators: true }
         ).populate("userId", "name email phone avatar")
 
@@ -311,7 +371,15 @@ class ProfileService {
                 return null
             }
 
-            return await ProfileView.findOneAndUpdate(
+            const targetProfile = await Profile.findById(targetProfileId)
+            if (!targetProfile) return null
+
+            const existing = await ProfileView.findOne({
+                viewerProfileId: viewerProfile._id,
+                viewedProfileId: targetProfileId,
+            })
+
+            const updatedView = await ProfileView.findOneAndUpdate(
                 {
                     viewerProfileId: viewerProfile._id,
                     viewedProfileId: targetProfileId,
@@ -319,6 +387,21 @@ class ProfileService {
                 { lastViewedAt: new Date() },
                 { upsert: true, new: true, setDefaultsOnInsert: true }
             )
+
+            // Notify target profile if not notified within the last 6 hours
+            if (targetProfile.userId) {
+                const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000)
+                if (!existing || !existing.lastViewedAt || existing.lastViewedAt < sixHoursAgo) {
+                    await notificationService.create(
+                        targetProfile.userId,
+                        "profile_viewed",
+                        `${viewerProfile.name || "A verified member"} viewed your profile.`,
+                        viewerProfile._id
+                    ).catch(() => {})
+                }
+            }
+
+            return updatedView
         } catch (err) {
             console.error("Failed to record profile view:", err.message)
             return null

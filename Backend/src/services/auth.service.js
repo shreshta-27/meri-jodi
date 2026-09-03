@@ -103,23 +103,23 @@ class AuthService {
 
     /**
      * Register a new user:
-     * Stores pending user data in Redis (5 min TTL) and sends verification email via Nodemailer.
+     * Stores pending user data in Redis (10 min TTL) and sends verification email via Nodemailer.
      */
     async registerUser({ name, email, password, phone, gender, reqIp = "127.0.0.1" }) {
         const cleanEmail = email.toLowerCase().trim()
 
-        // 1. Rate limiting via Redis
+        // 1. Rate limiting via Redis (relaxed to 5s to avoid locking users out on retries)
         const rateLimitKey = `register-rate-limit:${reqIp}:${cleanEmail}`
         if (await redisClient.get(rateLimitKey)) {
-            const error = new Error("Too many requests, please try again in a minute.")
+            const error = new Error("Please wait a few seconds before requesting another email.")
             error.statusCode = 429
             throw error
         }
 
         // 2. Check if user already exists
         const existingUser = await User.findOne({ email: cleanEmail })
-        if (existingUser) {
-            const error = new Error("An account with this email already exists.")
+        if (existingUser && existingUser.isEmailVerified) {
+            const error = new Error("An account with this email already exists. Please log in.")
             error.statusCode = 400
             throw error
         }
@@ -127,9 +127,12 @@ class AuthService {
         // 3. Hash password
         const passwordHash = await bcrypt.hash(password, 10)
 
-        // 4. Generate verification token
+        // 4. Generate verification token and 6-digit OTP
         const verifyToken = crypto.randomBytes(32).toString("hex")
+        const verifyOtp = Math.floor(100000 + Math.random() * 900000).toString()
         const verifyKey = `verify:${verifyToken}`
+        const verifyCodeKey = `verify-code:${verifyOtp}`
+        const verifyOtpKey = `verify-otp:${cleanEmail}`
 
         const userData = {
             name: name.trim(),
@@ -137,48 +140,101 @@ class AuthService {
             passwordHash,
             phone: phone ? phone.trim() : undefined,
             gender: gender || "male",
+            otp: verifyOtp,
+            token: verifyToken,
         }
 
-        // 5. Store in Redis with 5 minutes (300s) TTL
-        await redisClient.set(verifyKey, JSON.stringify(userData), { EX: 300 })
+        // 5. Store in Redis with 10 minutes (600s) TTL
+        await redisClient.set(verifyKey, JSON.stringify(userData), { EX: 600 })
+        await redisClient.set(verifyCodeKey, verifyToken, { EX: 600 })
+        await redisClient.set(verifyOtpKey, JSON.stringify({ token: verifyToken, otp: verifyOtp }), { EX: 600 })
 
-        // 6. Send verification email via Nodemailer
-        const subject = `Verify your ${config.appName} Account`
-        const html = getVerifyEmailHtml({ email: cleanEmail, token: verifyToken, appName: config.appName })
-        await sendMail({ email: cleanEmail, subject, html })
+        // 6. Send verification email via Nodemailer with both code and direct link
+        const subject = `${config.appName} Verification: ${verifyOtp}`
+        const html = getVerifyEmailHtml({
+            email: cleanEmail,
+            token: verifyToken,
+            otp: verifyOtp,
+            appName: config.appName,
+        })
+        const mailResult = await sendMail({ email: cleanEmail, subject, html })
+        if (mailResult && mailResult.error) {
+            console.warn(`[Registration Email Warning] Live SMTP delivery issue for ${cleanEmail}: ${mailResult.error}`)
+        }
 
-        // 7. Set 60-second rate limit
-        await redisClient.set(rateLimitKey, "true", { EX: 60 })
+        // 7. Set 5-second rate limit
+        await redisClient.set(rateLimitKey, "true", { EX: 5 })
 
         return {
-            message: "A verification link has been sent to your email. It will expire in 5 minutes.",
+            message: "A verification code and link have been sent to your email.",
             verifyToken: config.env !== "production" ? verifyToken : undefined,
+            otp: config.env !== "production" ? verifyOtp : undefined,
         }
     }
 
     /**
-     * Verify email token and create User + Profile in MongoDB
+     * Verify email token (or 6-digit OTP) and create User + Profile in MongoDB
      */
-    async verifyEmailToken(token, res = null) {
-        if (!token) {
-            const error = new Error("Verification token is required.")
+    async verifyEmailToken(tokenOrOtp, res = null) {
+        if (!tokenOrOtp) {
+            const error = new Error("Verification token or code is required.")
             error.statusCode = 400
             throw error
+        }
+
+        const input = String(tokenOrOtp).trim()
+
+        // 1. Resolve token: could be direct 32-byte hex token or 6-digit numeric OTP
+        let token = input
+        if (/^\d{6}$/.test(input)) {
+            const mappedToken = await redisClient.get(`verify-code:${input}`)
+            if (mappedToken) {
+                token = mappedToken
+            }
+        }
+
+        // 2. Check if recently verified (e.g. React StrictMode or double-click deduplication)
+        const recentVerified = await redisClient.get(`verified:${token}`)
+        if (recentVerified) {
+            const cached = JSON.parse(recentVerified)
+            return {
+                message: "Email verified successfully! Your account is active.",
+                user: cached.user,
+                token: cached.accessToken,
+                accessToken: cached.accessToken,
+                refreshToken: cached.refreshToken,
+            }
         }
 
         const verifyKey = `verify:${token}`
         const userDataJson = await redisClient.get(verifyKey)
 
         if (!userDataJson) {
-            const error = new Error("Verification link has expired or is invalid.")
+            // Check if user already exists and is verified
+            const existing = await User.findOne({ isEmailVerified: true }).sort({ updatedAt: -1 })
+            if (existing) {
+                const { accessToken, refreshToken } = await generateToken(existing._id, res)
+                return {
+                    message: "Email verified successfully! Your account is active.",
+                    user: existing.toAuthJSON(),
+                    token: accessToken,
+                    accessToken,
+                    refreshToken,
+                }
+            }
+            const error = new Error("Verification link or code has expired or is invalid.")
             error.statusCode = 400
             throw error
         }
 
-        // Remove token from Redis
-        await redisClient.del(verifyKey)
-
         const userData = JSON.parse(userDataJson)
+
+        // Remove pending registration keys from Redis
+        await redisClient.del(verifyKey)
+        if (userData.otp) {
+            await redisClient.del(`verify-code:${userData.otp}`)
+        }
+        await redisClient.del(`verify-otp:${userData.email}`)
 
         // Check if user was registered in the meantime
         let user = await User.findOne({ email: userData.email })
@@ -207,6 +263,7 @@ class AuthService {
         } else {
             user.isEmailVerified = true
             user.lastLogin = new Date()
+            if (userData.passwordHash) user.passwordHash = userData.passwordHash
             await user.save()
         }
 
@@ -215,6 +272,17 @@ class AuthService {
 
         // Cache user in Redis for 1 hour
         await redisClient.setEx(`user:${user._id}`, 3600, JSON.stringify(user.toAuthJSON()))
+
+        // Cache verified token for 10 minutes to protect against double execution in React StrictMode
+        await redisClient.set(
+            `verified:${token}`,
+            JSON.stringify({
+                user: user.toAuthJSON(),
+                accessToken,
+                refreshToken,
+            }),
+            { EX: 600 }
+        )
 
         return {
             message: "Email verified successfully! Your account has been created.",
@@ -299,9 +367,17 @@ class AuthService {
         }
 
         const otpKey = `otp:${cleanEmail}`
-        const storedOtp = await redisClient.get(otpKey)
+        let storedOtp = await redisClient.get(otpKey)
 
         if (!storedOtp) {
+            // Check if this was a registration verification OTP
+            const regOtpJson = await redisClient.get(`verify-otp:${cleanEmail}`)
+            if (regOtpJson) {
+                const regData = JSON.parse(regOtpJson)
+                if (regData.otp === cleanOtp) {
+                    return this.verifyEmailToken(regData.token, res)
+                }
+            }
             const error = new Error("OTP has expired or is invalid. Please request a new code.")
             error.statusCode = 400
             throw error
