@@ -8,7 +8,11 @@ import { useGoogleLogin } from "@react-oauth/google"
 
 const LoginPage = () => {
     const navigate = useNavigate()
-    const { signIn } = useAuth()
+    const { signIn, isAuth } = useAuth()
+
+    useEffect(() => {
+        if (isAuth) navigate("/home", { replace: true })
+    }, [isAuth, navigate])
 
     const [step, setStep] = useState("credentials") // 'credentials' | 'otp'
     const [email, setEmail] = useState("")
@@ -26,8 +30,7 @@ const LoginPage = () => {
             setError("")
             try {
                 const data = await googleAuth({
-                    idToken: tokenResponse.access_token,
-                    credential: tokenResponse.access_token,
+                    accessToken: tokenResponse.access_token,
                 })
                 signIn(data.token || data.accessToken, data.user)
                 navigate("/home")

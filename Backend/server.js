@@ -2,9 +2,11 @@ import app from "./src/app.js"
 import connectDB from "./src/config/db.js"
 import { config } from "./src/config/config.js"
 import setupSocket from "./src/socket.js"
+import { seedAdmin } from "./src/config/seedAdmin.js"
 
 const startServer = async () => {
     await connectDB()
+    await seedAdmin()
 
     const PORT = config.port || 5000
     const server = app.listen(PORT, () => console.log(`Server running on port ${PORT}`))

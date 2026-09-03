@@ -2,6 +2,7 @@ import { useState, useEffect } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
 import { ArrowLeft, Check } from "lucide-react"
+import { useAuth } from "../context/AuthContext"
 import { createProfile, buildProfilePayload } from "../api/profileApi"
 import { updatePartnerPreferences } from "../api/partnerPreferenceApi"
 import weddingImage from "../assets/login-image.png"
@@ -20,14 +21,13 @@ const STEP_INACTIVE = "#AFAFAF"
 const PAGE_BG = "#FBF9F9"
 
 const initialFormData = {
+  name: "",
   day: "",
   month: "",
   year: "",
   birthPlace: "",
   motherTongue: "",
   gender: "",
-  email: "",
-  password: "",
   about: "",
   height: "",
   location: "",
@@ -70,6 +70,7 @@ const parseSafeDob = (dobStr) => {
 }
 
 const AddDetailsManually = () => {
+  const { user } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
   const extractedData = location.state?.initialData || {}
@@ -100,6 +101,12 @@ const AddDetailsManually = () => {
       ...initialFormData,
       ...savedData,
       ...extractedData,
+      name:
+        extractedData.personal_details?.name ||
+        extractedData.name ||
+        savedData.name ||
+        user?.name ||
+        "",
       birthPlace:
         extractedData.personal_details?.place_of_birth ||
         savedData.birthPlace ||

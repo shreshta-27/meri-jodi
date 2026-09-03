@@ -4,7 +4,7 @@ import { OAuth2Client } from "google-auth-library"
 import { config } from "../config/config.js"
 import { User } from "../models/User.js"
 import { Profile } from "../models/Profile.js"
-import { USER_STATUS } from "../constants/index.js"
+import { ROLES, USER_STATUS } from "../constants/index.js"
 import { redisClient } from "../config/redis.js"
 import sendMail from "../config/sendMail.js"
 import { getOtpHtml, getVerifyEmailHtml, getResetPasswordHtml } from "../config/html.js"
@@ -458,9 +458,10 @@ class AuthService {
 
     /**
      * Google OAuth Login / Registration:
-     * Verifies Google token cryptographically or extracts payload, finds or creates user, and logs in.
+     * Supports both JWT ID tokens (from authorization code flow) and
+     * access_tokens (from useGoogleLogin implicit flow).
      */
-    async googleAuth({ idToken, credential, email, name, googleId, avatar, res = null }) {
+    async googleAuth({ idToken, credential, accessToken: incomingAccessToken, email, name, googleId, avatar, res = null }) {
         let verifiedGoogleId = googleId
         let verifiedEmail = email
         let verifiedName = name
@@ -468,7 +469,7 @@ class AuthService {
 
         const tokenToVerify = idToken || credential
 
-        // Cryptographic verification if Google token is provided
+        // Path 1: Try cryptographic JWT ID token verification
         if (tokenToVerify) {
             try {
                 const ticket = await googleOAuthClient.verifyIdToken({
@@ -483,8 +484,50 @@ class AuthService {
                     verifiedAvatar = payload.picture || verifiedAvatar
                 }
             } catch (err) {
-                console.warn("Google token verifyIdToken error:", err.message)
-                // If audience didn't match or direct client token, fallback to provided payload
+                console.warn("Google verifyIdToken failed, trying as access_token:", err.message)
+
+                // Path 2: Token might be an access_token from implicit flow.
+                // Call Google userinfo API to get verified user data.
+                try {
+                    const userinfoRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+                        headers: { Authorization: `Bearer ${tokenToVerify}` },
+                    })
+
+                    if (userinfoRes.ok) {
+                        const userinfo = await userinfoRes.json()
+                        if (userinfo.sub) {
+                            verifiedGoogleId = userinfo.sub
+                            verifiedEmail = userinfo.email || verifiedEmail
+                            verifiedName = userinfo.name || verifiedName
+                            verifiedAvatar = userinfo.picture || verifiedAvatar
+                        }
+                    } else {
+                        console.warn("Google userinfo API returned:", userinfoRes.status)
+                    }
+                } catch (userinfoErr) {
+                    console.warn("Google userinfo fetch failed:", userinfoErr.message)
+                }
+            }
+        }
+
+        // Path 3: If a separate accessToken field was provided (frontend sends it explicitly)
+        if (!verifiedGoogleId && !verifiedEmail && incomingAccessToken) {
+            try {
+                const userinfoRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+                    headers: { Authorization: `Bearer ${incomingAccessToken}` },
+                })
+
+                if (userinfoRes.ok) {
+                    const userinfo = await userinfoRes.json()
+                    if (userinfo.sub) {
+                        verifiedGoogleId = userinfo.sub
+                        verifiedEmail = userinfo.email || verifiedEmail
+                        verifiedName = userinfo.name || verifiedName
+                        verifiedAvatar = userinfo.picture || verifiedAvatar
+                    }
+                }
+            } catch (userinfoErr) {
+                console.warn("Google userinfo (accessToken field) fetch failed:", userinfoErr.message)
             }
         }
 
@@ -742,6 +785,61 @@ class AuthService {
             message: "Your password has been changed successfully.",
         }
     }
+
+    /**
+     * Dedicated Admin Login:
+     * Directly authenticates administrator accounts with email and password without OTP.
+     */
+    async adminLogin({ email, password, res = null }) {
+        const cleanEmail = (email || "").toLowerCase().trim()
+        if (!cleanEmail || !password) {
+            const error = new Error("Admin email and password are required.")
+            error.statusCode = 400
+            throw error
+        }
+
+        const user = await User.findOne({ email: cleanEmail })
+        if (!user) {
+            const error = new Error("Invalid admin credentials.")
+            error.statusCode = 401
+            throw error
+        }
+
+        const isPasswordValid = await user.validatePassword(password)
+        if (!isPasswordValid) {
+            const error = new Error("Invalid admin credentials.")
+            error.statusCode = 401
+            throw error
+        }
+
+        if (user.role !== ROLES.ADMIN) {
+            const error = new Error("Access denied: Administrative privileges required.")
+            error.statusCode = 403
+            throw error
+        }
+
+        if (user.status !== USER_STATUS.ACTIVE) {
+            const error = new Error("This administrator account has been disabled.")
+            error.statusCode = 403
+            throw error
+        }
+
+        user.lastLogin = new Date()
+        await user.save()
+
+        const { accessToken, refreshToken } = await generateToken(user._id, res)
+        await redisClient.setEx(`user:${user._id}`, 3600, JSON.stringify(user.toAuthJSON()))
+
+        return {
+            message: "Welcome to MeriJodi Administration Portal",
+            user: user.toAuthJSON(),
+            token: accessToken,
+            accessToken,
+            refreshToken,
+        }
+    }
 }
 
-export default new AuthService()
+const authService = new AuthService()
+export { authService }
+export default authService

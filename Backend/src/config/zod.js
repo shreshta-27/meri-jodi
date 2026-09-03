@@ -25,6 +25,7 @@ export const resendOtpSchema = z.object({
 export const googleAuthSchema = z.object({
     idToken: z.string().optional(),
     credential: z.string().optional(),
+    accessToken: z.string().optional(),
     email: z.string().email().optional(),
     name: z.string().optional(),
     googleId: z.string().optional(),

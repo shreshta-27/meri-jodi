@@ -88,6 +88,7 @@ export const buildProfilePayload = (formData) => {
     : undefined
 
   const payload = {
+    name: formData.name?.trim() || undefined,
     dateOfBirth,
     placeOfBirth: formData.birthPlace || formData.placeOfBirth || undefined,
     gender: formData.gender ? String(formData.gender).toLowerCase() : undefined,

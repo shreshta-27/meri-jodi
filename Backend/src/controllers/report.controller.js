@@ -41,9 +41,12 @@ class ReportController extends BaseController {
 
     async updateReportStatus(req, res, next) {
         try {
+            const actionTaken = req.body.actionTaken || req.body.resolutionNotes || ""
             const report = await reportService.updateStatus(
                 req.params.id,
-                req.body.status
+                req.body.status,
+                actionTaken,
+                req.user?._id
             )
             if (!report) {
                 return this.sendError(res, "Report not found", 404)

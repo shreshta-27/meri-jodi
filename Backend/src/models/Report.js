@@ -26,6 +26,11 @@ const reportSchema = new Schema(
             default: REPORT_STATUS.PENDING,
         },
         reviewedAt: Date,
+        actionTaken: String,
+        resolvedBy: {
+            type: Schema.Types.ObjectId,
+            ref: "User",
+        },
     },
     { timestamps: true }
 )

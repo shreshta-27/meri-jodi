@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useNavigate, useLocation, Link } from "react-router-dom"
 import { registerUser, verifyEmailToken, googleAuth } from "../api/authApi"
 import { useAuth } from "../context/AuthContext"
@@ -9,7 +9,11 @@ import { useGoogleLogin } from "@react-oauth/google"
 const SignUpPage = () => {
     const navigate = useNavigate()
     const location = useLocation()
-    const { signIn } = useAuth()
+    const { signIn, isAuth } = useAuth()
+
+    useEffect(() => {
+        if (isAuth) navigate("/home", { replace: true })
+    }, [isAuth, navigate])
 
     const [name, setName] = useState(location.state?.name || "")
     const [email, setEmail] = useState(location.state?.email || "")
@@ -88,8 +92,7 @@ const SignUpPage = () => {
             setError("")
             try {
                 const data = await googleAuth({
-                    idToken: tokenResponse.access_token,
-                    credential: tokenResponse.access_token,
+                    accessToken: tokenResponse.access_token,
                 })
                 signIn(data.token || data.accessToken, data.user)
                 navigate("/complete-profile")

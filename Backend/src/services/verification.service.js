@@ -47,7 +47,13 @@ class VerificationService {
         const skip = (page - 1) * limit
 
         const query = {}
-        if (options.status) query.status = options.status
+        if (options.status) {
+            if (options.status === "pending") {
+                query.status = { $in: ["submitted", "under_review"] }
+            } else {
+                query.status = options.status
+            }
+        }
 
         const [verifications, total] = await Promise.all([
             Verification.find(query)

@@ -83,6 +83,25 @@ router.get("/verify/:token", sanitizeBody, handleEmailVerification)
 router.post("/verify/:token", sanitizeBody, handleEmailVerification)
 
 /**
+ * POST /api/auth/admin-login
+ * Direct administrator login with email and password (no OTP required for admin access).
+ */
+router.post("/admin-login", sanitizeBody, async (req, res) => {
+    const apiResponse = new ApiResponse(res)
+    try {
+        const { email, password } = req.body
+        if (!email || !password) {
+            return apiResponse.error("Admin email and password are required", 400)
+        }
+
+        const result = await authService.adminLogin({ email, password, res })
+        return apiResponse.success(result, result.message, 200)
+    } catch (error) {
+        return apiResponse.error(error.message, error.statusCode || 401)
+    }
+})
+
+/**
  * POST /api/auth/login
  * Step 1 of Login:
  * Validates email & password, generates 6-digit OTP, stores in Redis (5 min), and sends email via Nodemailer.
@@ -170,10 +189,11 @@ router.post("/google", sanitizeBody, async (req, res) => {
             return apiResponse.error(errorDetails.message, 400)
         }
 
-        const { idToken, credential, email, name, googleId, avatar } = validation.data
+        const { idToken, credential, accessToken, email, name, googleId, avatar } = validation.data
         const result = await authService.googleAuth({
             idToken,
             credential,
+            accessToken,
             email,
             name,
             googleId,

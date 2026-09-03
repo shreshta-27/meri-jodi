@@ -72,12 +72,18 @@ class ReportService {
      * Update report status (admin)
      * @param {string} reportId
      * @param {string} status
+     * @param {string} actionTaken
+     * @param {string} resolvedByUserId
      * @returns {Promise<object|null>}
      */
-    async updateStatus(reportId, status) {
+    async updateStatus(reportId, status, actionTaken = "", resolvedByUserId = null) {
+        const update = { status, reviewedAt: new Date() }
+        if (actionTaken) update.actionTaken = actionTaken
+        if (resolvedByUserId) update.resolvedBy = resolvedByUserId
+
         return Report.findByIdAndUpdate(
             reportId,
-            { status, reviewedAt: new Date() },
+            update,
             { returnDocument: "after" }
         )
     }

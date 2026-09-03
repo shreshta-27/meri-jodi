@@ -1,5 +1,4 @@
-import { useMemo, useState } from "react";
-import { Eye, EyeOff } from "lucide-react";
+import { useMemo } from "react";
 
 const motherTongues = [
   "Hindi",
@@ -38,8 +37,6 @@ export default function BasicInfo({
   setErrors,
   nextStep,
 }) {
-  const [showPassword, setShowPassword] = useState(false);
-
   const years = useMemo(() => {
     const arr = [];
     const current = new Date().getFullYear();
@@ -65,58 +62,23 @@ export default function BasicInfo({
     }
   };
 
-  const passwordStrength = () => {
-    const pass = formData.password;
-    let score = 0;
-
-    if (!pass) return 0;
-    if (pass.length >= 8) score++;
-    if (/[A-Z]/.test(pass)) score++;
-    if (/[a-z]/.test(pass)) score++;
-    if (/[0-9]/.test(pass)) score++;
-    if (/[^A-Za-z0-9]/.test(pass)) score++;
-
-    return score;
-  };
-
-  const strengthColor = () => {
-    switch (passwordStrength()) {
-      case 1:
-        return "bg-red-500";
-      case 2:
-        return "bg-orange-500";
-      case 3:
-        return "bg-yellow-500";
-      case 4:
-        return "bg-lime-500";
-      case 5:
-        return "bg-green-600";
-      default:
-        return "bg-gray-200";
-    }
-  };
-
   const validate = () => {
     let err = {};
+
+    if (formData.name !== undefined && !formData.name?.trim()) {
+      err.name = "Full Name is required";
+    }
 
     if (!formData.day) err.day = "Select day";
     if (!formData.month) err.month = "Select month";
     if (!formData.year) err.year = "Select year";
 
-    if (!formData.birthPlace.trim()) err.birthPlace = "Birth place is required";
-    else if (formData.birthPlace.length < 3) err.birthPlace = "Minimum 3 characters";
+    if (!formData.birthPlace?.trim()) err.birthPlace = "Birth place is required";
+    else if (formData.birthPlace.length < 2) err.birthPlace = "Minimum 2 characters";
 
     if (!formData.motherTongue) err.motherTongue = "Select mother tongue";
 
     if (!formData.gender) err.gender = "Select gender";
-
-    if (formData.email && !/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(formData.email)) {
-      err.email = "Invalid email format";
-    }
-
-    if (formData.password && formData.password.length < 6) {
-      err.password = "Password must be at least 6 characters";
-    }
 
     setErrors(err);
     return Object.keys(err).length === 0;
@@ -129,21 +91,38 @@ export default function BasicInfo({
   };
 
   return (
-    <div className="w-full max-w-3xl mx-auto bg-white rounded-3xl shadow-xl p-10">
-      <h1 className="text-3xl font-bold text-[#AE2539]">Basic Information</h1>
-      <p className="text-gray-500 mt-2 mb-8">
+    <div className="w-full max-w-3xl mx-auto bg-white rounded-3xl shadow-xl p-6 sm:p-10 border border-[#FFE4E8]">
+      <h1 className="text-2xl sm:text-3xl font-bold text-[#842029] font-serif">Basic Information</h1>
+      <p className="text-gray-500 mt-2 mb-8 text-sm sm:text-base">
         Let's begin by knowing a little about you.
       </p>
 
+      {/* Full Name */}
+      <div className="mb-6">
+        <label className="font-medium mb-2 block text-gray-700 text-sm">Full Name</label>
+        <input
+          type="text"
+          value={formData.name || ""}
+          onChange={(e) => updateField("name", e.target.value)}
+          placeholder="e.g. Rahul Sharma"
+          className={`w-full py-[10px] px-3 rounded-[10px] border-2 outline-none transition-colors text-sm ${
+            errors.name ? "border-red-500" : "border-[#DFDFDF] hover:border-[#842029] focus:border-[#842029]"
+          }`}
+        />
+        {errors.name && (
+          <p className="text-red-500 mt-1 text-xs">{errors.name}</p>
+        )}
+      </div>
+
       {/* DOB */}
-      <label className="font-medium mb-2 block text-gray-700">Date of Birth</label>
-      <div className="grid md:grid-cols-3 gap-4">
+      <label className="font-medium mb-2 block text-gray-700 text-sm">Date of Birth</label>
+      <div className="grid grid-cols-3 gap-2 sm:gap-4">
         <div>
           <select
             value={formData.day}
             onChange={(e) => updateField("day", e.target.value)}
-            className={`w-full pl-3 py-[10px] rounded-[10px] border-2 focus:ring-1 outline-none transition-colors ${
-              errors.day ? "border-red-500" : "border-[#DFDFDF] hover:border-[#AE2539] focus:border-[#AE2539]"
+            className={`w-full pl-2 sm:pl-3 py-[10px] rounded-[10px] border-2 focus:ring-1 outline-none transition-colors text-xs sm:text-sm ${
+              errors.day ? "border-red-500" : "border-[#DFDFDF] hover:border-[#842029] focus:border-[#842029]"
             }`}
           >
             <option value="">Day</option>
@@ -151,15 +130,15 @@ export default function BasicInfo({
               <option key={i + 1} value={i + 1}>{i + 1}</option>
             ))}
           </select>
-          {errors.day && <p className="text-red-500 text-sm mt-1">{errors.day}</p>}
+          {errors.day && <p className="text-red-500 text-xs mt-1">{errors.day}</p>}
         </div>
 
         <div>
           <select
             value={formData.month}
             onChange={(e) => updateField("month", e.target.value)}
-            className={`w-full pl-3 pr-4 py-[10px] rounded-[10px] border-2 focus:ring-1 outline-none transition-colors ${
-              errors.month ? "border-red-500" : "border-[#DFDFDF] hover:border-[#AE2539] focus:border-[#AE2539]"
+            className={`w-full pl-2 sm:pl-3 pr-2 sm:pr-4 py-[10px] rounded-[10px] border-2 focus:ring-1 outline-none transition-colors text-xs sm:text-sm ${
+              errors.month ? "border-red-500" : "border-[#DFDFDF] hover:border-[#842029] focus:border-[#842029]"
             }`}
           >
             <option value="">Month</option>
@@ -167,15 +146,15 @@ export default function BasicInfo({
               <option key={month} value={month}>{month}</option>
             ))}
           </select>
-          {errors.month && <p className="text-red-500 text-sm mt-1">{errors.month}</p>}
+          {errors.month && <p className="text-red-500 text-xs mt-1">{errors.month}</p>}
         </div>
 
         <div>
           <select
             value={formData.year}
             onChange={(e) => updateField("year", e.target.value)}
-            className={`w-full pl-3 pr-4 py-[10px] rounded-[10px] border-2 focus:ring-1 outline-none transition-colors ${
-              errors.year ? "border-red-500" : "border-[#DFDFDF] hover:border-[#AE2539] focus:border-[#AE2539]"
+            className={`w-full pl-2 sm:pl-3 pr-2 sm:pr-4 py-[10px] rounded-[10px] border-2 focus:ring-1 outline-none transition-colors text-xs sm:text-sm ${
+              errors.year ? "border-red-500" : "border-[#DFDFDF] hover:border-[#842029] focus:border-[#842029]"
             }`}
           >
             <option value="">Year</option>
@@ -183,48 +162,50 @@ export default function BasicInfo({
               <option key={year} value={year}>{year}</option>
             ))}
           </select>
-          {errors.year && <p className="text-red-500 text-sm mt-1">{errors.year}</p>}
+          {errors.year && <p className="text-red-500 text-xs mt-1">{errors.year}</p>}
         </div>
       </div>
 
       {/* Birth Place */}
       <div className="mt-6">
+        <label className="font-medium mb-2 block text-gray-700 text-sm">Place of Birth</label>
         <input
           type="text"
-          value={formData.birthPlace}
+          value={formData.birthPlace || ""}
           onChange={(e) => updateField("birthPlace", e.target.value)}
-          placeholder="Place of Birth"
-          className={`w-full py-[10px] px-3 rounded-[10px] border-2 outline-none transition-colors ${
-            errors.birthPlace ? "border-red-500" : "border-[#DFDFDF] hover:border-[#AE2539] focus:border-[#AE2539]"
+          placeholder="City / Town of Birth (e.g. Mumbai, Maharashtra)"
+          className={`w-full py-[10px] px-3 rounded-[10px] border-2 outline-none transition-colors text-sm ${
+            errors.birthPlace ? "border-red-500" : "border-[#DFDFDF] hover:border-[#842029] focus:border-[#842029]"
           }`}
         />
         {errors.birthPlace && (
-          <p className="text-red-500 mt-1 text-sm">{errors.birthPlace}</p>
+          <p className="text-red-500 mt-1 text-xs">{errors.birthPlace}</p>
         )}
       </div>
 
       {/* Mother Tongue */}
       <div className="mt-6">
+        <label className="font-medium mb-2 block text-gray-700 text-sm">Mother Tongue</label>
         <select
-          value={formData.motherTongue}
+          value={formData.motherTongue || ""}
           onChange={(e) => updateField("motherTongue", e.target.value)}
-          className={`w-full pl-3 pr-4 py-[10px] rounded-[10px] border-2 outline-none transition-colors ${
-            errors.motherTongue ? "border-red-500" : "border-[#DFDFDF] hover:border-[#AE2539] focus:border-[#AE2539]"
+          className={`w-full pl-3 pr-4 py-[10px] rounded-[10px] border-2 outline-none transition-colors text-sm ${
+            errors.motherTongue ? "border-red-500" : "border-[#DFDFDF] hover:border-[#842029] focus:border-[#842029]"
           }`}
         >
-          <option value="">Mother Tongue</option>
+          <option value="">Select Mother Tongue</option>
           {motherTongues.map((lang) => (
             <option key={lang} value={lang}>{lang}</option>
           ))}
         </select>
         {errors.motherTongue && (
-          <p className="text-red-500 mt-1 text-sm">{errors.motherTongue}</p>
+          <p className="text-red-500 mt-1 text-xs">{errors.motherTongue}</p>
         )}
       </div>
 
       {/* Gender */}
       <div className="mt-6">
-        <label className="font-medium block mb-2 text-gray-700">Gender</label>
+        <label className="font-medium block mb-2 text-gray-700 text-sm">Gender</label>
         <div className="grid grid-cols-2 gap-4">
           {["Male", "Female"].map((genderLabel) => {
             const genderValue = genderLabel.toLowerCase();
@@ -233,10 +214,10 @@ export default function BasicInfo({
                 key={genderLabel}
                 type="button"
                 onClick={() => updateField("gender", genderValue)}
-                className={`border-2 rounded-xl py-3 transition-all font-medium ${
+                className={`border-2 rounded-xl py-3 transition-all font-medium text-sm ${
                   formData.gender === genderValue
-                    ? "bg-[#ED5463] text-white border-[#ED5463]"
-                    : "border-[#DFDFDF] text-gray-700 hover:border-[#EE7985]"
+                    ? "bg-[#ED5463] text-white border-[#ED5463] shadow-xs"
+                    : "border-[#DFDFDF] text-gray-700 hover:border-[#ED5463]"
                 }`}
               >
                 {genderLabel}
@@ -245,72 +226,16 @@ export default function BasicInfo({
           })}
         </div>
         {errors.gender && (
-          <p className="text-red-500 mt-1 text-sm">{errors.gender}</p>
-        )}
-      </div>
-
-      {/* Email */}
-      <div className="mt-6">
-        <input
-          type="email"
-          value={formData.email}
-          onChange={(e) => updateField("email", e.target.value)}
-          placeholder="Email Address"
-          className={`w-full px-3 py-[10px] rounded-[10px] border-2 outline-none transition-colors ${
-            errors.email ? "border-red-500" : "border-[#DFDFDF] hover:border-[#AE2539] focus:border-[#AE2539]"
-          }`}
-        />
-        {errors.email && (
-          <p className="text-red-500 mt-1 text-sm">{errors.email}</p>
-        )}
-      </div>
-
-      {/* Password */}
-      <div className="mt-6">
-        <div className="relative">
-          <input
-            type={showPassword ? "text" : "password"}
-            value={formData.password}
-            onChange={(e) => updateField("password", e.target.value)}
-            placeholder="Create Password"
-            className={`w-full px-3 py-[10px] rounded-[10px] border-2 outline-none transition-colors ${
-              errors.password ? "border-red-500" : "border-[#DFDFDF] hover:border-[#AE2539] focus:border-[#AE2539]"
-            }`}
-          />
-          <button
-            type="button"
-            onClick={() => setShowPassword(!showPassword)}
-            className="absolute right-4 top-3 text-gray-500 hover:text-gray-700 transition-colors"
-          >
-            {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-          </button>
-        </div>
-        
-        {/* Password Strength Indicator */}
-        {formData.password && (
-          <div className="flex gap-1 mt-2">
-            {[1, 2, 3, 4, 5].map((level) => (
-              <div
-                key={level}
-                className={`h-1.5 w-full rounded-full transition-colors ${
-                  passwordStrength() >= level ? strengthColor() : "bg-gray-200"
-                }`}
-              />
-            ))}
-          </div>
-        )}
-        
-        {errors.password && (
-          <p className="text-red-500 mt-1 text-sm">{errors.password}</p>
+          <p className="text-red-500 mt-1 text-xs">{errors.gender}</p>
         )}
       </div>
 
       {/* Submit Button */}
       <button
         onClick={handleNext}
-        className="mt-10 w-full bg-[#ED5463] hover:bg-[#EE7985] transition-all text-white py-3 rounded-xl font-bold text-lg"
+        className="mt-10 w-full bg-[#842029] hover:bg-[#6b1b27] transition-all text-white py-3.5 rounded-xl font-bold text-base shadow-sm"
       >
-        Next
+        Continue to Personal Details →
       </button>
     </div>
   );

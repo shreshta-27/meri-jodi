@@ -11,10 +11,12 @@ import verificationRoutes from "./verification.routes.js"
 import matchingRoutes from "./matching.routes.js"
 import photoRoutes from "./photo.routes.js"
 import extractionRoutes from "./extraction.routes.js"
+import adminRoutes from "./admin.routes.js"
 
 const router = express.Router()
 
 // Protected routes
+router.use("/admin", adminRoutes)
 router.use("/profiles", profileRoutes)
 router.use("/profile", profileRoutes)
 router.use("/preferences", partnerPreferenceRoutes)
