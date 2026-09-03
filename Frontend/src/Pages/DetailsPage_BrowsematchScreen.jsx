@@ -223,12 +223,15 @@ export default function DetailsPage_BrowsematchScreen() {
         )
     }
 
-    const name = profile.name || "MeriJodi Member"
+    const name = profile.name || profile.userId?.name || "MeriJodi Member"
     const age = calculateAge(profile.dateOfBirth)
     const displayName = age ? `${name}, ${age}` : name
+    const getPhotoUrl = (p) => (typeof p === "string" ? p : p?.url)
+    const primaryPhoto = profile.photos?.find((p) => typeof p === "object" && p?.isPrimary)
     const photoUrl =
-        profile.photos?.find((p) => p.isPrimary)?.url ||
-        profile.photos?.[0]?.url ||
+        getPhotoUrl(primaryPhoto) ||
+        getPhotoUrl(profile.photos?.[0]) ||
+        profile.avatar ||
         ProfileImage
     const values = [profile.religion, profile.motherTongue, profile.lifestyle?.diet].filter(Boolean)
 
