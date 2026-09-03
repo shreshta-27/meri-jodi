@@ -12,9 +12,10 @@ export const submitDocument = [
         .withMessage(`Invalid document type. Must be one of: ${docTypeValues.join(", ")}`),
     body("documentUrl")
         .notEmpty()
-        .withMessage("Document URL is required")
-        .isURL()
-        .withMessage("Invalid document URL"),
+        .withMessage("Document URL or ID number is required")
+        .trim()
+        .isLength({ min: 3, max: 500 })
+        .withMessage("Document identifier must be between 3 and 500 characters"),
 ]
 
 export const reviewVerification = [

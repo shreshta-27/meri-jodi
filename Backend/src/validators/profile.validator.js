@@ -133,6 +133,22 @@ export const createProfile = [
     body("hobbiesAndInterests")
         .optional({ values: "falsy" })
         .isArray(),
+    body("placeOfBirth")
+        .optional({ values: "falsy" })
+        .trim()
+        .isLength({ min: 1, max: 100 }),
+    body("gotham")
+        .optional({ values: "falsy" })
+        .trim()
+        .isLength({ min: 1, max: 50 }),
+    body("rashi")
+        .optional({ values: "falsy" })
+        .trim()
+        .isLength({ min: 1, max: 50 }),
+    body("nakshtra")
+        .optional({ values: "falsy" })
+        .trim()
+        .isLength({ min: 1, max: 50 }),
     body("manglik")
         .optional({ values: "falsy" })
         .trim()
@@ -151,6 +167,10 @@ export const updateProfile = [
         .optional({ values: "falsy" })
         .isISO8601()
         .withMessage("Invalid date format"),
+    body("placeOfBirth")
+        .optional({ values: "falsy" })
+        .trim()
+        .isLength({ min: 1, max: 100 }),
     body("gender")
         .optional({ values: "falsy" })
         .isIn(genderValues),
