@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import {
   ShieldCheck,
   AlertTriangle,
@@ -60,6 +60,8 @@ export default function App() {
   const [userStatusFilter, setUserStatusFilter] = useState("all")
   const [userRoleFilter, setUserRoleFilter] = useState("all")
   const [searchQuery, setSearchQuery] = useState("")
+  const [debouncedSearch, setDebouncedSearch] = useState("")
+  const searchTimerRef = useRef(null)
 
   // Action Modals
   const [selectedVerification, setSelectedVerification] = useState(null)
@@ -140,7 +142,7 @@ export default function App() {
     if (!token) return
     setLoadingData(true)
     try {
-      const res = await fetch(`${API_BASE}/v1/verifications`, {
+      const res = await fetch(`${API_BASE}/v1/admin/verifications`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       const json = await res.json()
@@ -159,7 +161,7 @@ export default function App() {
     if (!token) return
     setLoadingData(true)
     try {
-      const res = await fetch(`${API_BASE}/v1/reports`, {
+      const res = await fetch(`${API_BASE}/v1/admin/reports`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       const json = await res.json()
@@ -181,7 +183,7 @@ export default function App() {
       const params = new URLSearchParams({ limit: "100" })
       if (userStatusFilter !== "all") params.append("status", userStatusFilter)
       if (userRoleFilter !== "all") params.append("role", userRoleFilter)
-      if (searchQuery.trim()) params.append("search", searchQuery.trim())
+      if (debouncedSearch.trim()) params.append("search", debouncedSearch.trim())
 
       const res = await fetch(`${API_BASE}/v1/admin/users?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -195,7 +197,17 @@ export default function App() {
     } finally {
       setLoadingData(false)
     }
-  }, [token, userStatusFilter, userRoleFilter, searchQuery])
+  }, [token, userStatusFilter, userRoleFilter, debouncedSearch])
+
+  useEffect(() => {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current)
+    searchTimerRef.current = setTimeout(() => {
+      setDebouncedSearch(searchQuery)
+    }, 500)
+    return () => {
+      if (searchTimerRef.current) clearTimeout(searchTimerRef.current)
+    }
+  }, [searchQuery])
 
   // Fetch User Full Dossier Detail
   const fetchUserDetail = async (userId) => {
@@ -246,7 +258,7 @@ export default function App() {
     if (!selectedVerification) return
     setActionLoading(true)
     try {
-      const res = await fetch(`${API_BASE}/v1/verifications/${selectedVerification._id}/review`, {
+      const res = await fetch(`${API_BASE}/v1/admin/verifications/${selectedVerification._id}/review`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -273,7 +285,7 @@ export default function App() {
     if (!selectedReport) return
     setActionLoading(true)
     try {
-      const res = await fetch(`${API_BASE}/v1/reports/${selectedReport._id}/status`, {
+      const res = await fetch(`${API_BASE}/v1/admin/reports/${selectedReport._id}/status`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",

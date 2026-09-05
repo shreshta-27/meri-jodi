@@ -832,59 +832,6 @@ class AuthService {
             message: "Your password has been changed successfully.",
         }
     }
-
-    /**
-     * Dedicated Admin Login:
-     * Directly authenticates administrator accounts with email and password without OTP.
-     */
-    async adminLogin({ email, password, res = null }) {
-        const cleanEmail = (email || "").toLowerCase().trim()
-        if (!cleanEmail || !password) {
-            const error = new Error("Admin email and password are required.")
-            error.statusCode = 400
-            throw error
-        }
-
-        const user = await User.findOne({ email: cleanEmail })
-        if (!user) {
-            const error = new Error("Invalid admin credentials.")
-            error.statusCode = 401
-            throw error
-        }
-
-        const isPasswordValid = await user.validatePassword(password)
-        if (!isPasswordValid) {
-            const error = new Error("Invalid admin credentials.")
-            error.statusCode = 401
-            throw error
-        }
-
-        if (user.role !== ROLES.ADMIN) {
-            const error = new Error("Access denied: Administrative privileges required.")
-            error.statusCode = 403
-            throw error
-        }
-
-        if (user.status !== USER_STATUS.ACTIVE) {
-            const error = new Error("This administrator account has been disabled.")
-            error.statusCode = 403
-            throw error
-        }
-
-        user.lastLogin = new Date()
-        await user.save()
-
-        const { accessToken, refreshToken } = await generateToken(user._id, res)
-        await redisClient.setEx(`user:${user._id}`, 3600, JSON.stringify(user.toAuthJSON()))
-
-        return {
-            message: "Welcome to MeriJodi Administration Portal",
-            user: user.toAuthJSON(),
-            token: accessToken,
-            accessToken,
-            refreshToken,
-        }
-    }
 }
 
 const authService = new AuthService()
