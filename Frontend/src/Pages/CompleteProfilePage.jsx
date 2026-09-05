@@ -86,8 +86,14 @@ const CompleteProfilePage = () => {
             </label>
           </div>
 
-          {/* Next Button */}
-          <div className="mt-10 flex justify-end">
+          {/* Next & Skip Action Buttons */}
+          <div className="mt-10 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <button
+              onClick={() => navigate("/home")}
+              className="text-sm font-semibold text-gray-500 hover:text-gray-800 transition-colors order-2 sm:order-1 cursor-pointer"
+            >
+              Skip for now &rarr; Go to Dashboard
+            </button>
             <button 
               onClick={() => {
                 if (selectedOption === "upload") {
@@ -96,9 +102,9 @@ const CompleteProfilePage = () => {
                   navigate("/add-details");
                 }
               }}
-              className="bg-[#ED5463] text-white px-8 py-3 rounded-full font-semibold hover:bg-[#D63E52] transition-colors"
+              className="w-full sm:w-auto bg-[#ED5463] text-white px-8 py-3.5 rounded-full font-semibold hover:bg-[#D63E52] transition-colors order-1 sm:order-2 cursor-pointer shadow-md"
             >
-              Next
+              Continue to Details &rarr;
             </button>
           </div>
 

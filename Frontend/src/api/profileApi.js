@@ -90,6 +90,7 @@ export const buildProfilePayload = (formData) => {
   const payload = {
     name: formData.name?.trim() || undefined,
     dateOfBirth,
+    timeOfBirth: (formData.timeOfBirth || formData.birthTiming || formData.birthTime)?.trim() || undefined,
     placeOfBirth: formData.birthPlace || formData.placeOfBirth || undefined,
     gender: formData.gender ? String(formData.gender).toLowerCase() : undefined,
     motherTongue: formData.motherTongue || undefined,
@@ -175,6 +176,9 @@ export const buildPersonalDetailsPayload = (formData) => {
     if (dob) payload.dateOfBirth = dob
   }
   if (formData.placeOfBirth?.trim()) payload.placeOfBirth = formData.placeOfBirth.trim()
+  if (formData.timeOfBirth?.trim() || formData.birthTiming?.trim() || formData.birthTime?.trim()) {
+    payload.timeOfBirth = (formData.timeOfBirth || formData.birthTiming || formData.birthTime).trim()
+  }
   if (formData.gender?.trim()) payload.gender = String(formData.gender).toLowerCase().trim()
   if (formData.heightCm) {
     const h = parseHeightCm(formData.heightCm)

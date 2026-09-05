@@ -57,6 +57,7 @@ const EditProfileModal = ({ isOpen, section: initialSection = "personal", profil
         month: profile.dateOfBirth ? MONTHS[new Date(profile.dateOfBirth).getMonth()] : "",
         year: profile.dateOfBirth ? new Date(profile.dateOfBirth).getFullYear().toString() : "",
         placeOfBirth: profile.placeOfBirth || "",
+        timeOfBirth: profile.timeOfBirth || profile.birthTime || profile.birthTiming || "",
         gender: profile.gender || "",
         heightCm: profile.heightCm ? convertCmToFeetInches(profile.heightCm) : "",
         location: profile.location?.city || "",
@@ -360,7 +361,7 @@ const EditProfileModal = ({ isOpen, section: initialSection = "personal", profil
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1.5">Place of Birth</label>
                   <input
@@ -368,6 +369,18 @@ const EditProfileModal = ({ isOpen, section: initialSection = "personal", profil
                     name="placeOfBirth"
                     placeholder="City / District"
                     value={formData.placeOfBirth || ""}
+                    onChange={handleChange}
+                    className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm focus:outline-none focus:border-[#842029]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1.5">Time of Birth</label>
+                  <input
+                    type="text"
+                    name="timeOfBirth"
+                    placeholder="e.g. 09:30 AM"
+                    value={formData.timeOfBirth || ""}
                     onChange={handleChange}
                     className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm focus:outline-none focus:border-[#842029]"
                   />

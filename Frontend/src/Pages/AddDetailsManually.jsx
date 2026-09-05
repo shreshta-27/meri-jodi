@@ -26,6 +26,8 @@ const initialFormData = {
   month: "",
   year: "",
   birthPlace: "",
+  timeOfBirth: "",
+  birthTiming: "",
   motherTongue: "",
   gender: "",
   about: "",
@@ -111,6 +113,20 @@ const AddDetailsManually = () => {
         extractedData.personal_details?.place_of_birth ||
         savedData.birthPlace ||
         extractedData.birthPlace ||
+        "",
+      timeOfBirth:
+        extractedData.personal_details?.time_of_birth ||
+        extractedData.timeOfBirth ||
+        extractedData.birthTiming ||
+        savedData.timeOfBirth ||
+        savedData.birthTiming ||
+        "",
+      birthTiming:
+        extractedData.personal_details?.time_of_birth ||
+        extractedData.timeOfBirth ||
+        extractedData.birthTiming ||
+        savedData.birthTiming ||
+        savedData.timeOfBirth ||
         "",
       motherTongue:
         extractedData.personal_details?.mother_tongue ||

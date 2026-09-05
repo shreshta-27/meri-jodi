@@ -303,6 +303,8 @@ const normalizeBiodataResult = (data = {}) => {
         name: personal.name || data.name || "",
         gender: (personal.gender || data.gender || "male").toLowerCase(),
         birthPlace: personal.place_of_birth || data.placeOfBirth || data.birthPlace || "",
+        timeOfBirth: personal.time_of_birth || data.timeOfBirth || data.birthTime || data.birthTiming || "",
+        birthTiming: personal.time_of_birth || data.timeOfBirth || data.birthTime || data.birthTiming || "",
         motherTongue: personal.mother_tongue || personal.motherTongue || data.motherTongue || "",
         about: personal.about_me || personal.about || data.about || "",
         height: personal.height || data.height || "",

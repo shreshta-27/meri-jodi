@@ -209,12 +209,17 @@ class AdminService {
             throw error
         }
 
-        const [profile, preferences, verifications, reportsAgainst, reportsBy] = await Promise.all([
+        const [profile, preferences] = await Promise.all([
             Profile.findOne({ userId }),
             PartnerPreference.findOne({ userId }),
-            Verification.find({ profileId: profile?._id }).sort({ createdAt: -1 }),
-            profile ? Report.find({ reportedProfileId: profile._id }).sort({ createdAt: -1 }) : [],
-            profile ? Report.find({ reporterProfileId: profile._id }).sort({ createdAt: -1 }) : [],
+        ])
+
+        const profileId = profile?._id
+
+        const [verifications, reportsAgainst, reportsBy] = await Promise.all([
+            profileId ? Verification.find({ profileId }).sort({ createdAt: -1 }) : [],
+            profileId ? Report.find({ reportedProfileId: profileId }).sort({ createdAt: -1 }) : [],
+            profileId ? Report.find({ reporterProfileId: profileId }).sort({ createdAt: -1 }) : [],
         ])
 
         return {
@@ -287,17 +292,24 @@ class AdminService {
     async toggleUserVerification(userId, isVerified) {
         const verifiedVal = Boolean(isVerified)
 
-        const profile = await Profile.findOneAndUpdate(
-            { userId },
-            { isVerified: verifiedVal, updatedAt: new Date() },
-            { returnDocument: "after" }
-        )
-
-        if (!profile) {
-            const error = new Error("User profile not found")
+        const user = await User.findById(userId)
+        if (!user) {
+            const error = new Error("User not found")
             error.statusCode = 404
             throw error
         }
+
+        const profile = await Profile.findOneAndUpdate(
+            { userId },
+            { 
+                userId,
+                name: user.name,
+                gender: user.gender || "male",
+                isVerified: verifiedVal, 
+                updatedAt: new Date() 
+            },
+            { upsert: true, returnDocument: "after", setDefaultsOnInsert: true }
+        )
 
         return profile
     }

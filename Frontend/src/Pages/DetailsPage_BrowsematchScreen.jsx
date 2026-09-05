@@ -479,6 +479,7 @@ export default function DetailsPage_BrowsematchScreen() {
                                     <DetailItem label="Height" value={formatHeight(profile.heightCm)} />
                                     <DetailItem label="Date of Birth" value={formatDate(profile.dateOfBirth)} />
                                     <DetailItem label="Place of Birth" value={profile.placeOfBirth} />
+                                    <DetailItem label="Time of Birth" value={profile.timeOfBirth || profile.birthTime || profile.birthTiming} />
                                     <DetailItem label="Gender" value={profile.gender ? profile.gender.charAt(0).toUpperCase() + profile.gender.slice(1) : null} />
                                     <DetailItem label="Marital Status" value={profile.maritalStatus?.replace(/_/g, " ")} />
                                     <DetailItem label="Manglik Status" value={profile.manglik} />

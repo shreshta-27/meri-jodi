@@ -9,11 +9,7 @@ import { useGoogleLogin } from "@react-oauth/google"
 const SignUpPage = () => {
     const navigate = useNavigate()
     const location = useLocation()
-    const { signIn, isAuth } = useAuth()
-
-    useEffect(() => {
-        if (isAuth) navigate("/home", { replace: true })
-    }, [isAuth, navigate])
+    const { signIn } = useAuth()
 
     const [name, setName] = useState(location.state?.name || "")
     const [email, setEmail] = useState(location.state?.email || "")

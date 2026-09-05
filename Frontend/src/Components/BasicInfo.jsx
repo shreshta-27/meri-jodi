@@ -166,21 +166,39 @@ export default function BasicInfo({
         </div>
       </div>
 
-      {/* Birth Place */}
-      <div className="mt-6">
-        <label className="font-medium mb-2 block text-gray-700 text-sm">Place of Birth</label>
-        <input
-          type="text"
-          value={formData.birthPlace || ""}
-          onChange={(e) => updateField("birthPlace", e.target.value)}
-          placeholder="City / Town of Birth (e.g. Mumbai, Maharashtra)"
-          className={`w-full py-[10px] px-3 rounded-[10px] border-2 outline-none transition-colors text-sm ${
-            errors.birthPlace ? "border-red-500" : "border-[#DFDFDF] hover:border-[#842029] focus:border-[#842029]"
-          }`}
-        />
-        {errors.birthPlace && (
-          <p className="text-red-500 mt-1 text-xs">{errors.birthPlace}</p>
-        )}
+      {/* Birth Place & Birth Timing */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
+        <div>
+          <label className="font-medium mb-2 block text-gray-700 text-sm">Place of Birth</label>
+          <input
+            type="text"
+            value={formData.birthPlace || ""}
+            onChange={(e) => updateField("birthPlace", e.target.value)}
+            placeholder="e.g. Mumbai, Maharashtra"
+            className={`w-full py-[10px] px-3 rounded-[10px] border-2 outline-none transition-colors text-sm ${
+              errors.birthPlace ? "border-red-500" : "border-[#DFDFDF] hover:border-[#842029] focus:border-[#842029]"
+            }`}
+          />
+          {errors.birthPlace && (
+            <p className="text-red-500 mt-1 text-xs">{errors.birthPlace}</p>
+          )}
+        </div>
+
+        <div>
+          <label className="font-medium mb-2 block text-gray-700 text-sm">
+            Time of Birth / Birth Timing <span className="text-xs text-gray-400 font-normal">(Optional)</span>
+          </label>
+          <input
+            type="text"
+            value={formData.timeOfBirth || formData.birthTiming || ""}
+            onChange={(e) => {
+              updateField("timeOfBirth", e.target.value)
+              updateField("birthTiming", e.target.value)
+            }}
+            placeholder="e.g. 09:30 AM or 14:15"
+            className="w-full py-[10px] px-3 rounded-[10px] border-2 border-[#DFDFDF] hover:border-[#842029] focus:border-[#842029] outline-none transition-colors text-sm"
+          />
+        </div>
       </div>
 
       {/* Mother Tongue */}

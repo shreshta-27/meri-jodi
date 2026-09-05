@@ -8,6 +8,7 @@ import { PAGINATION_DEFAULTS } from "../constants/index.js"
 const PROFILE_CREATE_FIELDS = [
     "name",
     "dateOfBirth",
+    "timeOfBirth",
     "placeOfBirth",
     "motherTongue",
     "gender",
@@ -36,6 +37,7 @@ const PROFILE_CREATE_FIELDS = [
 const PROFILE_UPDATE_FIELDS = [
     "name",
     "dateOfBirth",
+    "timeOfBirth",
     "placeOfBirth",
     "motherTongue",
     "gender",
@@ -74,6 +76,9 @@ class ProfileService {
         if (normalized.gotra && !normalized.gotham) normalized.gotham = normalized.gotra
         if (normalized.nakshatra && !normalized.nakshtra) normalized.nakshtra = normalized.nakshatra
         if (normalized.birthPlace && !normalized.placeOfBirth) normalized.placeOfBirth = normalized.birthPlace
+        if (normalized.birthTiming && !normalized.timeOfBirth) normalized.timeOfBirth = normalized.birthTiming
+        if (normalized.birthTime && !normalized.timeOfBirth) normalized.timeOfBirth = normalized.birthTime
+        if (normalized.time_of_birth && !normalized.timeOfBirth) normalized.timeOfBirth = normalized.time_of_birth
         if (normalized.about && !normalized.aboutMe) normalized.aboutMe = normalized.about
         if (normalized.hobbies && !normalized.hobbiesAndInterests) normalized.hobbiesAndInterests = normalized.hobbies
 
@@ -125,6 +130,9 @@ class ProfileService {
         if (normalized.gotra && !normalized.gotham) normalized.gotham = normalized.gotra
         if (normalized.nakshatra && !normalized.nakshtra) normalized.nakshtra = normalized.nakshatra
         if (normalized.birthPlace && !normalized.placeOfBirth) normalized.placeOfBirth = normalized.birthPlace
+        if (normalized.birthTiming && !normalized.timeOfBirth) normalized.timeOfBirth = normalized.birthTiming
+        if (normalized.birthTime && !normalized.timeOfBirth) normalized.timeOfBirth = normalized.birthTime
+        if (normalized.time_of_birth && !normalized.timeOfBirth) normalized.timeOfBirth = normalized.time_of_birth
         if (normalized.about && !normalized.aboutMe) normalized.aboutMe = normalized.about
         if (normalized.hobbies && !normalized.hobbiesAndInterests) normalized.hobbiesAndInterests = normalized.hobbies
 
@@ -330,6 +338,7 @@ class ProfileService {
     _calculateCompletion(profile) {
         const fields = [
             "dateOfBirth",
+            "timeOfBirth",
             "gender",
             "heightCm",
             "religion",

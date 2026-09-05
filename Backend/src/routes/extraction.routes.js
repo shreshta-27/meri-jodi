@@ -6,6 +6,8 @@ const router = express.Router()
 const upload = multer({ storage: multer.memoryStorage() })
 
 router.post("/extract-biodata", upload.single("file"), extractionController.extractBiodata)
+router.post("/extract", upload.single("file"), extractionController.extractBiodata)
+router.post("/upload-biodata", upload.single("file"), extractionController.extractBiodata)
 router.post("/generate-bio", extractionController.generateBio)
 router.post("/chat-suggestions", extractionController.generateChatSuggestions)
 

@@ -294,6 +294,53 @@ class AuthService {
     }
 
     /**
+     * Admin Direct Login:
+     * Validates credentials and verifies that user has ROLES.ADMIN, then issues dual JWT tokens.
+     */
+    async adminLogin({ email, password, res = null }) {
+        const cleanEmail = email.toLowerCase().trim()
+        const user = await User.findOne({ email: cleanEmail })
+        if (!user) {
+            const error = new Error("Invalid administrator credentials.")
+            error.statusCode = 401
+            throw error
+        }
+
+        const isPasswordValid = await user.validatePassword(password)
+        if (!isPasswordValid) {
+            const error = new Error("Invalid administrator credentials.")
+            error.statusCode = 401
+            throw error
+        }
+
+        if (user.role !== ROLES.ADMIN) {
+            const error = new Error("Access denied. Administrator privileges required.")
+            error.statusCode = 403
+            throw error
+        }
+
+        if (user.status !== USER_STATUS.ACTIVE) {
+            const error = new Error("Administrator account is inactive or suspended.")
+            error.statusCode = 403
+            throw error
+        }
+
+        user.lastLogin = new Date()
+        await user.save()
+
+        const { accessToken, refreshToken } = await generateToken(user._id, res)
+        await redisClient.setEx(`user:${user._id}`, 3600, JSON.stringify(user.toAuthJSON()))
+
+        return {
+            message: "Admin authentication successful.",
+            user: user.toAuthJSON(),
+            token: accessToken,
+            accessToken,
+            refreshToken,
+        }
+    }
+
+    /**
      * Login User:
      * Validates credentials, generates 6-digit OTP, stores in Redis (5 min TTL), and sends via Nodemailer.
      */

@@ -169,6 +169,10 @@ export const createProfile = [
         .optional({ values: "falsy" })
         .trim()
         .isLength({ min: 1, max: 100 }),
+    body("timeOfBirth")
+        .optional({ values: "falsy" })
+        .trim()
+        .isLength({ min: 1, max: 50 }),
     body("gotham")
         .optional({ values: "falsy" })
         .trim()
@@ -203,6 +207,10 @@ export const updateProfile = [
         .optional({ values: "falsy" })
         .trim()
         .isLength({ min: 1, max: 100 }),
+    body("timeOfBirth")
+        .optional({ values: "falsy" })
+        .trim()
+        .isLength({ min: 1, max: 50 }),
     body("gender")
         .optional({ values: "falsy" })
         .customSanitizer(sanitizeGender)

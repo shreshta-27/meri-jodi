@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import {
   ShieldCheck,
   AlertTriangle,
@@ -13,8 +13,16 @@ import {
   FileText,
   Activity,
   UserCheck,
+  UserX,
+  Trash2,
   ExternalLink,
-  Filter
+  Filter,
+  RefreshCw,
+  Heart,
+  MessageCircle,
+  Clock,
+  Shield,
+  Check
 } from "lucide-react"
 
 const API_BASE = "http://localhost:5000/api"
@@ -40,16 +48,24 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   // Data states
+  const [stats, setStats] = useState(null)
   const [verifications, setVerifications] = useState([])
   const [reports, setReports] = useState([])
   const [usersList, setUsersList] = useState([])
   const [loadingData, setLoadingData] = useState(false)
-  const [statusFilter, setStatusFilter] = useState("all")
+  
+  // Filters
+  const [verificationFilter, setVerificationFilter] = useState("all")
+  const [reportFilter, setReportFilter] = useState("all")
+  const [userStatusFilter, setUserStatusFilter] = useState("all")
+  const [userRoleFilter, setUserRoleFilter] = useState("all")
   const [searchQuery, setSearchQuery] = useState("")
 
   // Action Modals
   const [selectedVerification, setSelectedVerification] = useState(null)
   const [selectedReport, setSelectedReport] = useState(null)
+  const [selectedUserDetail, setSelectedUserDetail] = useState(null)
+  const [loadingUserDetail, setLoadingUserDetail] = useState(false)
   const [actionNote, setActionNote] = useState("")
   const [actionLoading, setActionLoading] = useState(false)
   const [toastMessage, setToastMessage] = useState("")
@@ -65,31 +81,30 @@ export default function App() {
     setLoginError("")
     setLoginLoading(true)
     try {
-      const res = await fetch(`${API_BASE}/auth/login`, {
+      let res = await fetch(`${API_BASE}/auth/admin-login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: loginEmail.trim(), password: loginPassword }),
       })
-      const data = await res.json()
+      let data = await res.json()
+
+      if (!res.ok && res.status !== 401 && res.status !== 403) {
+        res = await fetch(`${API_BASE}/auth/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: loginEmail.trim(), password: loginPassword }),
+        })
+        data = await res.json()
+      }
+
       if (!res.ok) throw new Error(data.message || "Login failed")
 
-      // Check if user is admin
-      if (data.data?.user?.role !== "admin" && data.user?.role !== "admin") {
-        // Provide bypass or role note for dev simulation
-        const adm = data.data?.user || data.user || { name: "Admin", email: loginEmail, role: "admin" }
-        const t = data.data?.accessToken || data.data?.token || data.token || "admin_session_token"
-        setToken(t)
-        setAdminUser(adm)
-        localStorage.setItem("admin_token", t)
-        localStorage.setItem("admin_user", JSON.stringify(adm))
-      } else {
-        const u = data.data?.user || data.user
-        const t = data.data?.accessToken || data.token
-        setToken(t)
-        setAdminUser(u)
-        localStorage.setItem("admin_token", t)
-        localStorage.setItem("admin_user", JSON.stringify(u))
-      }
+      const adm = data.data?.user || data.user || { name: "Admin", email: loginEmail, role: "admin" }
+      const t = data.data?.accessToken || data.data?.token || data.token || "admin_session_token"
+      setToken(t)
+      setAdminUser(adm)
+      localStorage.setItem("admin_token", t)
+      localStorage.setItem("admin_user", JSON.stringify(adm))
     } catch (err) {
       setLoginError(err.message)
     } finally {
@@ -104,8 +119,25 @@ export default function App() {
     setAdminUser(null)
   }
 
+  // Fetch Dashboard Stats & Overview
+  const fetchStats = useCallback(async () => {
+    if (!token) return
+    try {
+      const res = await fetch(`${API_BASE}/v1/admin/stats`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const json = await res.json()
+      if (res.ok && json.success) {
+        setStats(json.data)
+      }
+    } catch (err) {
+      console.error("Failed to load admin stats:", err)
+    }
+  }, [token])
+
   // Fetch Verifications
-  const fetchVerifications = async () => {
+  const fetchVerifications = useCallback(async () => {
+    if (!token) return
     setLoadingData(true)
     try {
       const res = await fetch(`${API_BASE}/v1/verifications`, {
@@ -116,14 +148,15 @@ export default function App() {
         setVerifications(json.data?.verifications || (Array.isArray(json.data) ? json.data : []))
       }
     } catch (err) {
-      console.error(err)
+      console.error("Failed to fetch verifications:", err)
     } finally {
       setLoadingData(false)
     }
-  }
+  }, [token])
 
   // Fetch Reports
-  const fetchReports = async () => {
+  const fetchReports = useCallback(async () => {
+    if (!token) return
     setLoadingData(true)
     try {
       const res = await fetch(`${API_BASE}/v1/reports`, {
@@ -134,38 +167,81 @@ export default function App() {
         setReports(json.data?.reports || (Array.isArray(json.data) ? json.data : []))
       }
     } catch (err) {
-      console.error(err)
+      console.error("Failed to fetch reports:", err)
     } finally {
       setLoadingData(false)
     }
-  }
+  }, [token])
 
-  // Fetch Users / Profiles
-  const fetchUsers = async () => {
+  // Fetch Users via Admin Users endpoint
+  const fetchUsers = useCallback(async () => {
+    if (!token) return
     setLoadingData(true)
     try {
-      const res = await fetch(`${API_BASE}/v1/profiles/search?limit=50`, {
+      const params = new URLSearchParams({ limit: "100" })
+      if (userStatusFilter !== "all") params.append("status", userStatusFilter)
+      if (userRoleFilter !== "all") params.append("role", userRoleFilter)
+      if (searchQuery.trim()) params.append("search", searchQuery.trim())
+
+      const res = await fetch(`${API_BASE}/v1/admin/users?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       const json = await res.json()
       if (res.ok && json.success) {
-        setUsersList(json.data?.profiles || (Array.isArray(json.data) ? json.data : []))
+        setUsersList(json.data?.users || (Array.isArray(json.data) ? json.data : []))
       }
     } catch (err) {
-      console.error(err)
+      console.error("Failed to fetch admin users:", err)
     } finally {
       setLoadingData(false)
     }
+  }, [token, userStatusFilter, userRoleFilter, searchQuery])
+
+  // Fetch User Full Dossier Detail
+  const fetchUserDetail = async (userId) => {
+    setLoadingUserDetail(true)
+    try {
+      const res = await fetch(`${API_BASE}/v1/admin/users/${userId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const json = await res.json()
+      if (res.ok && json.success) {
+        setSelectedUserDetail(json.data)
+      } else {
+        alert(json.message || "Failed to load user details")
+      }
+    } catch (err) {
+      alert("Error loading user details: " + err.message)
+    } finally {
+      setLoadingUserDetail(false)
+    }
+  }
+
+  // Reload all data
+  const refreshAll = () => {
+    fetchStats()
+    fetchVerifications()
+    fetchReports()
+    fetchUsers()
   }
 
   useEffect(() => {
     if (!token) return
-    if (currentTab === "verifications" || currentTab === "overview") fetchVerifications()
-    if (currentTab === "reports" || currentTab === "overview") fetchReports()
-    if (currentTab === "users" || currentTab === "overview") fetchUsers()
-  }, [token, currentTab])
+    fetchStats()
+    if (currentTab === "overview") {
+      fetchVerifications()
+      fetchReports()
+      fetchUsers()
+    } else if (currentTab === "verifications") {
+      fetchVerifications()
+    } else if (currentTab === "reports") {
+      fetchReports()
+    } else if (currentTab === "users") {
+      fetchUsers()
+    }
+  }, [token, currentTab, fetchStats, fetchVerifications, fetchReports, fetchUsers])
 
-  // Review Verification Action
+  // Review Verification Action (Approve / Reject)
   const handleReviewVerification = async (status) => {
     if (!selectedVerification) return
     setActionLoading(true)
@@ -184,6 +260,7 @@ export default function App() {
       setSelectedVerification(null)
       setActionNote("")
       fetchVerifications()
+      fetchStats()
     } catch (err) {
       alert(err.message)
     } finally {
@@ -191,7 +268,7 @@ export default function App() {
     }
   }
 
-  // Update Report Status
+  // Update Report Status (Resolved / Dismissed)
   const handleUpdateReport = async (status) => {
     if (!selectedReport) return
     setActionLoading(true)
@@ -202,7 +279,7 @@ export default function App() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ status, actionTaken: actionNote.trim() || undefined }),
+        body: JSON.stringify({ status, actionTaken: actionNote.trim() || undefined, resolutionNotes: actionNote.trim() || undefined }),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.message || "Failed to update report")
@@ -210,10 +287,103 @@ export default function App() {
       setSelectedReport(null)
       setActionNote("")
       fetchReports()
+      fetchStats()
     } catch (err) {
       alert(err.message)
     } finally {
       setActionLoading(false)
+    }
+  }
+
+  // Update User Status (active / banned / inactive)
+  const handleUpdateUserStatus = async (userId, newStatus) => {
+    if (!confirm(`Are you sure you want to change user status to "${newStatus}"?`)) return
+    try {
+      const res = await fetch(`${API_BASE}/v1/admin/users/${userId}/status`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ status: newStatus }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.message || "Failed to update status")
+      showToast(`User status updated to ${newStatus}`)
+      fetchUsers()
+      fetchStats()
+      if (selectedUserDetail && selectedUserDetail.user?._id === userId) {
+        fetchUserDetail(userId)
+      }
+    } catch (err) {
+      alert(err.message)
+    }
+  }
+
+  // Update User Role (user / admin)
+  const handleUpdateUserRole = async (userId, newRole) => {
+    if (!confirm(`Are you sure you want to change user role to "${newRole}"?`)) return
+    try {
+      const res = await fetch(`${API_BASE}/v1/admin/users/${userId}/role`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ role: newRole }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.message || "Failed to update role")
+      showToast(`User role updated to ${newRole}`)
+      fetchUsers()
+      if (selectedUserDetail && selectedUserDetail.user?._id === userId) {
+        fetchUserDetail(userId)
+      }
+    } catch (err) {
+      alert(err.message)
+    }
+  }
+
+  // Toggle User Profile Verification
+  const handleToggleVerification = async (userId, currentVerified) => {
+    try {
+      const res = await fetch(`${API_BASE}/v1/admin/users/${userId}/verify`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ isVerified: !currentVerified }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.message || "Failed to toggle verification")
+      showToast(`User verification set to ${!currentVerified}`)
+      fetchUsers()
+      fetchStats()
+      if (selectedUserDetail && selectedUserDetail.user?._id === userId) {
+        fetchUserDetail(userId)
+      }
+    } catch (err) {
+      alert(err.message)
+    }
+  }
+
+  // Delete User
+  const handleDeleteUser = async (userId) => {
+    if (!confirm("⚠️ Are you sure you want to PERMANENTLY delete this user and their profile? This action cannot be undone.")) return
+    try {
+      const res = await fetch(`${API_BASE}/v1/admin/users/${userId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.message || "Failed to delete user")
+      showToast("User deleted successfully")
+      if (selectedUserDetail) setSelectedUserDetail(null)
+      fetchUsers()
+      fetchStats()
+    } catch (err) {
+      alert(err.message)
     }
   }
 
@@ -223,14 +393,14 @@ export default function App() {
       <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#FAF8F5", padding: "1.5rem" }}>
         <div style={{ background: "#ffffff", maxWidth: "420px", width: "100%", borderRadius: "24px", padding: "2.5rem", border: "1px solid #FFE4E8", boxShadow: "0 10px 25px -5px rgba(0,0,0,0.05)" }}>
           <div style={{ textAlign: "center", marginBottom: "2rem" }}>
-            <div style={{ width: "56px", height: "56px", borderRadius: "50%", background: "#FFF0F2", color: "#842029", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 1rem", fontSize: "1.5rem" }}>
+            <div style={{ width: "56px", height: "56px", borderRadius: "50%", background: "#FFF0F2", color: "#842029", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 1rem" }}>
               <ShieldCheck size={28} />
             </div>
             <h1 className="font-serif" style={{ fontSize: "1.75rem", fontWeight: "bold", color: "#640515" }}>
               MeriJodi Admin
             </h1>
             <p style={{ fontSize: "0.875rem", color: "#6B7280", marginTop: "0.25rem" }}>
-              Trust & Safety Portal Access
+              Trust &amp; Safety Portal Access
             </p>
           </div>
 
@@ -273,7 +443,7 @@ export default function App() {
               type="submit"
               disabled={loginLoading}
               className="btn btn-primary"
-              style={{ padding: "0.875rem", fontSize: "0.9375rem", marginTop: "0.5rem" }}
+              style={{ padding: "0.875rem", fontSize: "0.9375rem", marginTop: "0.5rem", width: "100%" }}
             >
               {loginLoading ? "Authenticating..." : "Sign In to Admin Console"}
             </button>
@@ -283,13 +453,22 @@ export default function App() {
     )
   }
 
-  // Compute Overview Stats
-  const pendingVerificationsCount = verifications.filter((v) => v.status === "pending").length
-  const pendingReportsCount = reports.filter((r) => r.status === "pending").length
-  const totalVerifiedCount = usersList.filter((u) => u.isVerified).length
+  // Computed counts from live stats or cached lists
+  const totalUsersCount = stats?.counts?.totalUsers ?? usersList.length
+  const verifiedProfilesCount = stats?.counts?.verifiedProfiles ?? usersList.filter((u) => u.isVerified).length
+  const pendingVerificationsCount = stats?.counts?.pendingVerifications ?? verifications.filter((v) => v.status === "pending" || v.status === "submitted" || v.status === "under_review").length
+  const pendingReportsCount = stats?.counts?.pendingReports ?? reports.filter((r) => r.status === "pending").length
 
   return (
     <div className="admin-container">
+      {/* Sidebar Overlay on mobile */}
+      {sidebarOpen && (
+        <div
+          onClick={() => setSidebarOpen(false)}
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 25 }}
+        />
+      )}
+
       {/* Sidebar */}
       <aside className={`admin-sidebar ${sidebarOpen ? "open" : ""}`}>
         <div style={{ padding: "1.5rem", borderBottom: "1px solid var(--primary-border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -303,7 +482,7 @@ export default function App() {
           </div>
           <button
             onClick={() => setSidebarOpen(false)}
-            style={{ display: "none", background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)" }}
+            style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)" }}
             className="mobile-close-btn"
           >
             <X size={20} />
@@ -328,7 +507,7 @@ export default function App() {
               fontSize: "0.875rem",
             }}
           >
-            <Activity size={18} /> Overview & KPIs
+            <Activity size={18} /> Overview &amp; KPIs
           </button>
 
           <button
@@ -433,14 +612,22 @@ export default function App() {
               <Menu size={22} />
             </button>
             <h1 style={{ fontSize: "1.125rem", fontWeight: "700", color: "#1F2937" }}>
-              {currentTab === "overview" && "Dashboard Overview"}
+              {currentTab === "overview" && "Dashboard Overview & Platform KPIs"}
               {currentTab === "verifications" && "KYC Document Verification Requests"}
               {currentTab === "reports" && "Safety & Abuse Reports"}
-              {currentTab === "users" && "User Directory & Profiles"}
+              {currentTab === "users" && "User Directory & Moderation"}
             </h1>
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+            <button
+              onClick={refreshAll}
+              title="Refresh Data"
+              className="btn btn-outline btn-sm"
+              style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}
+            >
+              <RefreshCw size={14} className={loadingData ? "animate-spin" : ""} /> Refresh
+            </button>
             <span className="badge badge-approved">System Operational</span>
           </div>
         </header>
@@ -462,8 +649,8 @@ export default function App() {
                     <Users size={26} />
                   </div>
                   <div>
-                    <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: "600", textTransform: "uppercase" }}>Total Users</span>
-                    <h3 style={{ fontSize: "1.5rem", fontWeight: "800", color: "#1F2937" }}>{usersList.length || 12}</h3>
+                    <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: "600", textTransform: "uppercase" }}>Total Registered</span>
+                    <h3 style={{ fontSize: "1.5rem", fontWeight: "800", color: "#1F2937" }}>{totalUsersCount}</h3>
                   </div>
                 </div>
 
@@ -473,7 +660,7 @@ export default function App() {
                   </div>
                   <div>
                     <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: "600", textTransform: "uppercase" }}>Verified Profiles</span>
-                    <h3 style={{ fontSize: "1.5rem", fontWeight: "800", color: "#1F2937" }}>{totalVerifiedCount || 8}</h3>
+                    <h3 style={{ fontSize: "1.5rem", fontWeight: "800", color: "#1F2937" }}>{verifiedProfilesCount}</h3>
                   </div>
                 </div>
 
@@ -497,6 +684,51 @@ export default function App() {
                   </div>
                 </div>
               </div>
+
+              {/* Engagement Stats row */}
+              {stats?.counts && (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem", marginBottom: "2rem" }}>
+                  <div style={{ background: "#ffffff", padding: "1.25rem", borderRadius: "16px", border: "1px solid var(--primary-border)", display: "flex", alignItems: "center", gap: "1rem" }}>
+                    <div style={{ width: "42px", height: "42px", borderRadius: "12px", background: "#FFF0F2", color: "#842029", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <Heart size={20} />
+                    </div>
+                    <div>
+                      <p style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Total Match Interests</p>
+                      <h4 style={{ fontSize: "1.25rem", fontWeight: "800" }}>{stats.counts.totalInterests || 0}</h4>
+                    </div>
+                  </div>
+
+                  <div style={{ background: "#ffffff", padding: "1.25rem", borderRadius: "16px", border: "1px solid var(--primary-border)", display: "flex", alignItems: "center", gap: "1rem" }}>
+                    <div style={{ width: "42px", height: "42px", borderRadius: "12px", background: "#ECFDF5", color: "#10B981", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <CheckCircle size={20} />
+                    </div>
+                    <div>
+                      <p style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Accepted Matches</p>
+                      <h4 style={{ fontSize: "1.25rem", fontWeight: "800" }}>{stats.counts.acceptedInterests || 0}</h4>
+                    </div>
+                  </div>
+
+                  <div style={{ background: "#ffffff", padding: "1.25rem", borderRadius: "16px", border: "1px solid var(--primary-border)", display: "flex", alignItems: "center", gap: "1rem" }}>
+                    <div style={{ width: "42px", height: "42px", borderRadius: "12px", background: "#F5F3FF", color: "#7C3AED", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <MessageCircle size={20} />
+                    </div>
+                    <div>
+                      <p style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Direct Chat Messages</p>
+                      <h4 style={{ fontSize: "1.25rem", fontWeight: "800" }}>{stats.counts.totalMessages || 0}</h4>
+                    </div>
+                  </div>
+
+                  <div style={{ background: "#ffffff", padding: "1.25rem", borderRadius: "16px", border: "1px solid var(--primary-border)", display: "flex", alignItems: "center", gap: "1rem" }}>
+                    <div style={{ width: "42px", height: "42px", borderRadius: "12px", background: "#FEF2F2", color: "#EF4444", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <UserX size={20} />
+                    </div>
+                    <div>
+                      <p style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Banned Accounts</p>
+                      <h4 style={{ fontSize: "1.25rem", fontWeight: "800" }}>{stats.counts.bannedUsers || 0}</h4>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Pending Queues Preview */}
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(400px, 1fr))", gap: "1.5rem" }}>
@@ -526,7 +758,7 @@ export default function App() {
                             <td style={{ textTransform: "uppercase" }}>{v.documentType || "ID Proof"}</td>
                             <td><span className={`badge badge-${v.status}`}>{v.status}</span></td>
                             <td>
-                              <button onClick={() => setSelectedVerification(v)} className="btn btn-primary btn-sm">
+                              <button onClick={() => { setSelectedVerification(v); setActionNote(v.reviewNote || "") }} className="btn btn-primary btn-sm">
                                 Review
                               </button>
                             </td>
@@ -566,7 +798,7 @@ export default function App() {
                             <td>{r.reason}</td>
                             <td><span className={`badge badge-${r.status}`}>{r.status}</span></td>
                             <td>
-                              <button onClick={() => setSelectedReport(r)} className="btn btn-outline btn-sm">
+                              <button onClick={() => { setSelectedReport(r); setActionNote(r.actionTaken || "") }} className="btn btn-outline btn-sm">
                                 Inspect
                               </button>
                             </td>
@@ -590,18 +822,21 @@ export default function App() {
                 <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
                   <Filter size={16} color="var(--text-muted)" />
                   <select
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    style={{ padding: "0.5rem 1rem", borderRadius: "9999px", border: "1px solid var(--border-color)", fontSize: "0.8125rem" }}
+                    value={verificationFilter}
+                    onChange={(e) => setVerificationFilter(e.target.value)}
+                    style={{ padding: "0.5rem 1rem", borderRadius: "9999px", border: "1px solid var(--border-color)", fontSize: "0.8125rem", outline: "none" }}
                   >
                     <option value="all">All Statuses</option>
-                    <option value="pending">Pending Only</option>
-                    <option value="approved">Approved Only</option>
-                    <option value="rejected">Rejected Only</option>
+                    <option value="pending">Pending</option>
+                    <option value="submitted">Submitted</option>
+                    <option value="under_review">Under Review</option>
+                    <option value="approved">Approved</option>
+                    <option value="verified">Verified</option>
+                    <option value="rejected">Rejected</option>
                   </select>
                 </div>
                 <span style={{ fontSize: "0.8125rem", color: "var(--text-muted)" }}>
-                  Showing {verifications.filter((v) => statusFilter === "all" || v.status === statusFilter).length} submissions
+                  Showing {verifications.filter((v) => verificationFilter === "all" || v.status === verificationFilter).length} submissions
                 </span>
               </div>
 
@@ -619,7 +854,7 @@ export default function App() {
                   </thead>
                   <tbody>
                     {verifications
-                      .filter((v) => statusFilter === "all" || v.status === statusFilter)
+                      .filter((v) => verificationFilter === "all" || v.status === verificationFilter)
                       .map((v) => (
                         <tr key={v._id}>
                           <td style={{ fontWeight: "700" }}>{v.profileId?.name || "MeriJodi Member"}</td>
@@ -631,6 +866,7 @@ export default function App() {
                             <button
                               onClick={() => { setSelectedVerification(v); setActionNote(v.reviewNote || "") }}
                               className="btn btn-primary btn-sm"
+                              style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}
                             >
                               <Eye size={14} /> Review
                             </button>
@@ -653,9 +889,9 @@ export default function App() {
                 <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
                   <Filter size={16} color="var(--text-muted)" />
                   <select
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    style={{ padding: "0.5rem 1rem", borderRadius: "9999px", border: "1px solid var(--border-color)", fontSize: "0.8125rem" }}
+                    value={reportFilter}
+                    onChange={(e) => setReportFilter(e.target.value)}
+                    style={{ padding: "0.5rem 1rem", borderRadius: "9999px", border: "1px solid var(--border-color)", fontSize: "0.8125rem", outline: "none" }}
                   >
                     <option value="all">All Reports</option>
                     <option value="pending">Pending Review</option>
@@ -671,7 +907,7 @@ export default function App() {
                     <tr>
                       <th>Reported User</th>
                       <th>Reporter</th>
-                      <th>Violation Type</th>
+                      <th>Violation Reason</th>
                       <th>Description</th>
                       <th>Status</th>
                       <th>Actions</th>
@@ -679,7 +915,7 @@ export default function App() {
                   </thead>
                   <tbody>
                     {reports
-                      .filter((r) => statusFilter === "all" || r.status === statusFilter)
+                      .filter((r) => reportFilter === "all" || r.status === reportFilter)
                       .map((r) => (
                         <tr key={r._id}>
                           <td style={{ fontWeight: "700" }}>{r.reportedProfileId?.name || "Reported Member"}</td>
@@ -708,19 +944,42 @@ export default function App() {
             </div>
           )}
 
-          {/* TAB 4: USERS DIRECTORY */}
+          {/* TAB 4: USERS DIRECTORY & MODERATION */}
           {currentTab === "users" && (
             <div className="data-table-container">
-              <div className="table-header-bar">
-                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", background: "#F3F4F6", padding: "0.5rem 1rem", borderRadius: "9999px", width: "320px" }}>
+              <div className="table-header-bar" style={{ display: "flex", flexWrap: "wrap", gap: "1rem", justifyContent: "space-between", alignItems: "center" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", background: "#F3F4F6", padding: "0.5rem 1rem", borderRadius: "9999px", minWidth: "260px" }}>
                   <Search size={16} color="#9CA3AF" />
                   <input
                     type="text"
-                    placeholder="Search by name or location..."
+                    placeholder="Search by name, email, phone..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     style={{ border: "none", background: "transparent", outline: "none", width: "100%", fontSize: "0.8125rem" }}
                   />
+                </div>
+
+                <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
+                  <select
+                    value={userStatusFilter}
+                    onChange={(e) => setUserStatusFilter(e.target.value)}
+                    style={{ padding: "0.4rem 0.8rem", borderRadius: "8px", border: "1px solid var(--border-color)", fontSize: "0.8125rem", outline: "none" }}
+                  >
+                    <option value="all">All Statuses</option>
+                    <option value="active">Active</option>
+                    <option value="banned">Banned</option>
+                    <option value="inactive">Inactive</option>
+                  </select>
+
+                  <select
+                    value={userRoleFilter}
+                    onChange={(e) => setUserRoleFilter(e.target.value)}
+                    style={{ padding: "0.4rem 0.8rem", borderRadius: "8px", border: "1px solid var(--border-color)", fontSize: "0.8125rem", outline: "none" }}
+                  >
+                    <option value="all">All Roles</option>
+                    <option value="user">User</option>
+                    <option value="admin">Admin</option>
+                  </select>
                 </div>
               </div>
 
@@ -728,40 +987,131 @@ export default function App() {
                 <table>
                   <thead>
                     <tr>
-                      <th>Member</th>
-                      <th>Gender</th>
-                      <th>Location</th>
-                      <th>Profession</th>
+                      <th>User / Profile</th>
+                      <th>Email / Contact</th>
+                      <th>Role &amp; Status</th>
                       <th>Verification</th>
                       <th>Completeness</th>
+                      <th>Moderation Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {usersList
-                      .filter((u) => !searchQuery || u.name?.toLowerCase().includes(searchQuery.toLowerCase()) || u.location?.city?.toLowerCase().includes(searchQuery.toLowerCase()))
+                      .filter((u) => {
+                        if (!searchQuery) return true
+                        const q = searchQuery.toLowerCase()
+                        return (
+                          u.name?.toLowerCase().includes(q) ||
+                          u.email?.toLowerCase().includes(q) ||
+                          u.phone?.toLowerCase().includes(q) ||
+                          u.location?.city?.toLowerCase().includes(q)
+                        )
+                      })
                       .map((u) => (
                         <tr key={u._id}>
-                          <td style={{ fontWeight: "700" }}>{u.name || u.userId?.name || "Member"}</td>
-                          <td style={{ textTransform: "capitalize" }}>{u.gender || "—"}</td>
-                          <td>{u.location?.city || "India"}</td>
-                          <td>{u.career?.occupation || "Professional"}</td>
+                          <td>
+                            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                              <div style={{ width: "36px", height: "36px", borderRadius: "50%", background: "#FFE4E8", color: "#842029", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", fontSize: "0.875rem" }}>
+                                {u.name ? u.name.charAt(0).toUpperCase() : "U"}
+                              </div>
+                              <div>
+                                <p style={{ fontWeight: "700", color: "var(--text-dark)" }}>{u.name || "Member"}</p>
+                                <p style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>
+                                  {u.gender ? u.gender.charAt(0).toUpperCase() + u.gender.slice(1) : ""} &bull; {u.location?.city || "India"}
+                                </p>
+                              </div>
+                            </div>
+                          </td>
+                          <td>
+                            <p style={{ fontSize: "0.8125rem" }}>{u.email}</p>
+                            <p style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>{u.phone || "No phone"}</p>
+                          </td>
+                          <td>
+                            <div style={{ display: "flex", gap: "0.35rem", flexWrap: "wrap" }}>
+                              <span className={`badge ${u.role === "admin" ? "badge-approved" : "badge-pending"}`}>
+                                {u.role}
+                              </span>
+                              <span className={`badge ${u.status === "active" ? "badge-approved" : u.status === "banned" ? "badge-rejected" : "badge-pending"}`}>
+                                {u.status}
+                              </span>
+                            </div>
+                          </td>
                           <td>
                             {u.isVerified ? (
-                              <span className="badge badge-approved"><CheckCircle size={12} /> Verified</span>
+                              <span className="badge badge-approved" style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem" }}>
+                                <CheckCircle size={12} /> Verified
+                              </span>
                             ) : (
                               <span className="badge badge-pending">Unverified</span>
                             )}
                           </td>
                           <td>
                             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                              <div style={{ flex: 1, height: "6px", background: "#E5E7EB", borderRadius: "9999px", width: "60px" }}>
-                                <div style={{ width: `${u.profileCompletionPct || 50}%`, height: "100%", background: "var(--primary)", borderRadius: "9999px" }} />
+                              <div style={{ width: "50px", height: "5px", background: "#E5E7EB", borderRadius: "9999px", overflow: "hidden" }}>
+                                <div style={{ width: `${u.profileCompletionPct || 0}%`, height: "100%", background: "var(--primary)" }} />
                               </div>
-                              <span style={{ fontSize: "0.75rem", fontWeight: "600" }}>{u.profileCompletionPct || 50}%</span>
+                              <span style={{ fontSize: "0.75rem", fontWeight: "700" }}>{u.profileCompletionPct || 0}%</span>
+                            </div>
+                          </td>
+                          <td>
+                            <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", flexWrap: "wrap" }}>
+                              {/* Inspect details button */}
+                              <button
+                                onClick={() => fetchUserDetail(u._id)}
+                                title="View Complete Dossier"
+                                className="btn btn-outline btn-sm"
+                                style={{ padding: "0.35rem 0.5rem" }}
+                              >
+                                <Eye size={13} /> Details
+                              </button>
+
+                              {/* Toggle Verify */}
+                              <button
+                                onClick={() => handleToggleVerification(u._id, u.isVerified)}
+                                title={u.isVerified ? "Revoke Verification" : "Verify Profile"}
+                                className={`btn btn-sm ${u.isVerified ? "btn-outline" : "btn-primary"}`}
+                                style={{ padding: "0.35rem 0.5rem" }}
+                              >
+                                {u.isVerified ? <UserX size={13} /> : <UserCheck size={13} />}
+                              </button>
+
+                              {/* Ban / Activate */}
+                              {u.status === "banned" ? (
+                                <button
+                                  onClick={() => handleUpdateUserStatus(u._id, "active")}
+                                  title="Unban User"
+                                  className="btn btn-success btn-sm"
+                                  style={{ padding: "0.35rem 0.5rem" }}
+                                >
+                                  <CheckCircle size={13} /> Unban
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => handleUpdateUserStatus(u._id, "banned")}
+                                  title="Ban User"
+                                  className="btn btn-danger btn-sm"
+                                  style={{ padding: "0.35rem 0.5rem" }}
+                                >
+                                  <UserX size={13} /> Ban
+                                </button>
+                              )}
+
+                              {/* Delete */}
+                              <button
+                                onClick={() => handleDeleteUser(u._id)}
+                                title="Delete Account"
+                                className="btn btn-outline btn-sm"
+                                style={{ padding: "0.35rem 0.5rem", color: "var(--danger)", borderColor: "#FECACA" }}
+                              >
+                                <Trash2 size={13} />
+                              </button>
                             </div>
                           </td>
                         </tr>
                       ))}
+                    {usersList.length === 0 && (
+                      <tr><td colSpan="6" style={{ textAlign: "center", padding: "3rem", color: "var(--text-muted)" }}>No users found matching filter.</td></tr>
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -773,10 +1123,10 @@ export default function App() {
       {/* MODAL 1: VERIFICATION REVIEW */}
       {selectedVerification && (
         <div style={{ position: "fixed", inset: 0, zIndex: 50, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}>
-          <div style={{ background: "#ffffff", borderRadius: "24px", maxWidth: "560px", width: "100%", overflow: "hidden", boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1)" }}>
+          <div style={{ background: "#ffffff", borderRadius: "24px", maxWidth: "560px", width: "100%", maxHeight: "90vh", overflowY: "auto", boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1)" }}>
             <div style={{ padding: "1.25rem 1.5rem", borderBottom: "1px solid var(--border-color)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <h3 style={{ fontSize: "1.125rem", fontWeight: "bold", color: "var(--primary)" }}>
-                Review KYC Submission
+                Review KYC Document Submission
               </h3>
               <button onClick={() => setSelectedVerification(null)} style={{ background: "none", border: "none", cursor: "pointer" }}><X size={20} /></button>
             </div>
@@ -788,12 +1138,14 @@ export default function App() {
               </div>
 
               <div style={{ marginBottom: "1.5rem" }}>
-                <p style={{ fontSize: "0.8125rem", color: "var(--text-muted)", marginBottom: "0.5rem" }}>Submitted Document ({selectedVerification.documentType})</p>
-                <div style={{ border: "1px solid var(--border-color)", borderRadius: "12px", overflow: "hidden", maxHeight: "240px", display: "flex", alignItems: "center", justifyContent: "center", background: "#F9FAFB" }}>
+                <p style={{ fontSize: "0.8125rem", color: "var(--text-muted)", marginBottom: "0.5rem" }}>
+                  Submitted Document ({selectedVerification.documentType || "ID Proof"})
+                </p>
+                <div style={{ border: "1px solid var(--border-color)", borderRadius: "12px", overflow: "hidden", maxHeight: "260px", display: "flex", alignItems: "center", justifyContent: "center", background: "#F9FAFB" }}>
                   {selectedVerification.documentUrl ? (
-                    <img src={selectedVerification.documentUrl} alt="KYC Document" style={{ width: "100%", height: "auto", objectFit: "contain", maxHeight: "240px" }} />
+                    <img src={selectedVerification.documentUrl} alt="KYC Document" style={{ width: "100%", height: "auto", objectFit: "contain", maxHeight: "260px" }} />
                   ) : (
-                    <p style={{ padding: "2rem", color: "var(--text-muted)", fontSize: "0.875rem" }}>No preview available</p>
+                    <p style={{ padding: "2rem", color: "var(--text-muted)", fontSize: "0.875rem" }}>No document preview available</p>
                   )}
                 </div>
               </div>
@@ -807,24 +1159,26 @@ export default function App() {
                   placeholder="e.g. Government Aadhaar Verified Successfully"
                   value={actionNote}
                   onChange={(e) => setActionNote(e.target.value)}
-                  style={{ width: "100%", padding: "0.75rem", borderRadius: "10px", border: "1px solid var(--border-color)", fontSize: "0.875rem" }}
+                  style={{ width: "100%", padding: "0.75rem", borderRadius: "10px", border: "1px solid var(--border-color)", fontSize: "0.875rem", outline: "none" }}
                 />
               </div>
 
-              <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end" }}>
+              <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end", flexWrap: "wrap" }}>
                 <button
                   type="button"
                   onClick={() => handleReviewVerification("rejected")}
                   disabled={actionLoading}
                   className="btn btn-danger"
+                  style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}
                 >
                   <XCircle size={16} /> Reject Document
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleReviewVerification("approved")}
+                  onClick={() => handleReviewVerification("verified")}
                   disabled={actionLoading}
                   className="btn btn-success"
+                  style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}
                 >
                   <CheckCircle size={16} /> Approve &amp; Verify Profile
                 </button>
@@ -837,7 +1191,7 @@ export default function App() {
       {/* MODAL 2: REPORT RESOLUTION */}
       {selectedReport && (
         <div style={{ position: "fixed", inset: 0, zIndex: 50, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}>
-          <div style={{ background: "#ffffff", borderRadius: "24px", maxWidth: "560px", width: "100%", overflow: "hidden", boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1)" }}>
+          <div style={{ background: "#ffffff", borderRadius: "24px", maxWidth: "560px", width: "100%", maxHeight: "90vh", overflowY: "auto", boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1)" }}>
             <div style={{ padding: "1.25rem 1.5rem", borderBottom: "1px solid var(--border-color)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <h3 style={{ fontSize: "1.125rem", fontWeight: "bold", color: "var(--danger)" }}>
                 Inspect Safety &amp; Abuse Report
@@ -871,11 +1225,11 @@ export default function App() {
                   placeholder="e.g. Warning issued to user, content removed"
                   value={actionNote}
                   onChange={(e) => setActionNote(e.target.value)}
-                  style={{ width: "100%", padding: "0.75rem", borderRadius: "10px", border: "1px solid var(--border-color)", fontSize: "0.875rem" }}
+                  style={{ width: "100%", padding: "0.75rem", borderRadius: "10px", border: "1px solid var(--border-color)", fontSize: "0.875rem", outline: "none" }}
                 />
               </div>
 
-              <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end" }}>
+              <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end", flexWrap: "wrap" }}>
                 <button
                   type="button"
                   onClick={() => handleUpdateReport("dismissed")}
@@ -891,6 +1245,123 @@ export default function App() {
                   className="btn btn-primary"
                 >
                   Mark as Resolved
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 3: USER FULL DOSSIER DETAIL */}
+      {selectedUserDetail && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 50, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}>
+          <div style={{ background: "#ffffff", borderRadius: "24px", maxWidth: "700px", width: "100%", maxHeight: "90vh", overflowY: "auto", boxShadow: "0 20px 25px -5px rgba(0,0,0,0.15)" }}>
+            <div style={{ padding: "1.25rem 1.5rem", borderBottom: "1px solid var(--border-color)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                <div style={{ width: "42px", height: "42px", borderRadius: "50%", background: "#FFF0F2", color: "#842029", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold" }}>
+                  {selectedUserDetail.user?.name ? selectedUserDetail.user.name.charAt(0).toUpperCase() : "U"}
+                </div>
+                <div>
+                  <h3 style={{ fontSize: "1.125rem", fontWeight: "bold", color: "var(--primary)" }}>
+                    {selectedUserDetail.user?.name || "Member Profile"}
+                  </h3>
+                  <p style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                    {selectedUserDetail.user?.email} &bull; {selectedUserDetail.user?.phone || "No phone"}
+                  </p>
+                </div>
+              </div>
+              <button onClick={() => setSelectedUserDetail(null)} style={{ background: "none", border: "none", cursor: "pointer" }}><X size={20} /></button>
+            </div>
+
+            <div style={{ padding: "1.5rem", display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+              {/* Account Badges */}
+              <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                <span className={`badge ${selectedUserDetail.user?.role === "admin" ? "badge-approved" : "badge-pending"}`}>
+                  Role: {selectedUserDetail.user?.role}
+                </span>
+                <span className={`badge ${selectedUserDetail.user?.status === "active" ? "badge-approved" : "badge-rejected"}`}>
+                  Status: {selectedUserDetail.user?.status}
+                </span>
+                <span className={`badge ${selectedUserDetail.profile?.isVerified ? "badge-approved" : "badge-pending"}`}>
+                  {selectedUserDetail.profile?.isVerified ? "KYC Verified" : "Unverified"}
+                </span>
+                <span className="badge badge-pending">
+                  Completeness: {selectedUserDetail.profile?.profileCompletionPct || 0}%
+                </span>
+              </div>
+
+              {/* Personal & Horoscope Info */}
+              <div style={{ background: "#F9FAFB", padding: "1.25rem", borderRadius: "16px", border: "1px solid var(--border-color)" }}>
+                <h4 style={{ fontSize: "0.8125rem", fontWeight: "700", color: "#842029", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "0.75rem" }}>
+                  Personal &amp; Horoscope Details
+                </h4>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: "0.75rem", fontSize: "0.8125rem" }}>
+                  <div><span style={{ color: "var(--text-muted)" }}>Gender:</span> <p style={{ fontWeight: "700", textTransform: "capitalize" }}>{selectedUserDetail.profile?.gender || "—"}</p></div>
+                  <div><span style={{ color: "var(--text-muted)" }}>Date of Birth:</span> <p style={{ fontWeight: "700" }}>{selectedUserDetail.profile?.dateOfBirth ? new Date(selectedUserDetail.profile.dateOfBirth).toLocaleDateString("en-IN") : "—"}</p></div>
+                  <div><span style={{ color: "var(--text-muted)" }}>Birth Place:</span> <p style={{ fontWeight: "700" }}>{selectedUserDetail.profile?.placeOfBirth || "—"}</p></div>
+                  <div><span style={{ color: "var(--text-muted)" }}>Birth Time:</span> <p style={{ fontWeight: "700", color: "#842029" }}>{selectedUserDetail.profile?.timeOfBirth || "—"}</p></div>
+                  <div><span style={{ color: "var(--text-muted)" }}>Religion:</span> <p style={{ fontWeight: "700" }}>{selectedUserDetail.profile?.religion || "—"}</p></div>
+                  <div><span style={{ color: "var(--text-muted)" }}>Caste:</span> <p style={{ fontWeight: "700" }}>{selectedUserDetail.profile?.caste || "—"}</p></div>
+                  <div><span style={{ color: "var(--text-muted)" }}>Gotra:</span> <p style={{ fontWeight: "700" }}>{selectedUserDetail.profile?.gotham || "—"}</p></div>
+                  <div><span style={{ color: "var(--text-muted)" }}>Rashi / Nakshatra:</span> <p style={{ fontWeight: "700" }}>{selectedUserDetail.profile?.rashi || "—"} / {selectedUserDetail.profile?.nakshtra || "—"}</p></div>
+                  <div><span style={{ color: "var(--text-muted)" }}>Manglik:</span> <p style={{ fontWeight: "700", textTransform: "capitalize" }}>{selectedUserDetail.profile?.manglik || "—"}</p></div>
+                  <div><span style={{ color: "var(--text-muted)" }}>Marital Status:</span> <p style={{ fontWeight: "700", textTransform: "capitalize" }}>{selectedUserDetail.profile?.maritalStatus?.replace(/_/g, " ") || "—"}</p></div>
+                </div>
+              </div>
+
+              {/* Career & Location */}
+              <div style={{ background: "#F9FAFB", padding: "1.25rem", borderRadius: "16px", border: "1px solid var(--border-color)" }}>
+                <h4 style={{ fontSize: "0.8125rem", fontWeight: "700", color: "#842029", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "0.75rem" }}>
+                  Career &amp; Location
+                </h4>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: "0.75rem", fontSize: "0.8125rem" }}>
+                  <div><span style={{ color: "var(--text-muted)" }}>Highest Degree:</span> <p style={{ fontWeight: "700" }}>{selectedUserDetail.profile?.education?.highestDegree || "—"}</p></div>
+                  <div><span style={{ color: "var(--text-muted)" }}>Occupation:</span> <p style={{ fontWeight: "700" }}>{selectedUserDetail.profile?.career?.occupation || "—"}</p></div>
+                  <div><span style={{ color: "var(--text-muted)" }}>Company:</span> <p style={{ fontWeight: "700" }}>{selectedUserDetail.profile?.career?.companyName || "—"}</p></div>
+                  <div><span style={{ color: "var(--text-muted)" }}>Annual Income:</span> <p style={{ fontWeight: "700" }}>{selectedUserDetail.profile?.career?.annualIncome || "—"}</p></div>
+                  <div><span style={{ color: "var(--text-muted)" }}>Location:</span> <p style={{ fontWeight: "700" }}>{selectedUserDetail.profile?.location?.city || "—"}, {selectedUserDetail.profile?.location?.state || ""}</p></div>
+                  <div><span style={{ color: "var(--text-muted)" }}>Mother Tongue:</span> <p style={{ fontWeight: "700" }}>{selectedUserDetail.profile?.motherTongue || "—"}</p></div>
+                </div>
+              </div>
+
+              {/* Moderation Controls within Dossier */}
+              <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", justifyContent: "flex-end", paddingTop: "0.75rem", borderTop: "1px solid var(--border-color)" }}>
+                {selectedUserDetail.user?.status === "banned" ? (
+                  <button
+                    onClick={() => handleUpdateUserStatus(selectedUserDetail.user._id, "active")}
+                    className="btn btn-success btn-sm"
+                  >
+                    <CheckCircle size={14} /> Unban User
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => handleUpdateUserStatus(selectedUserDetail.user._id, "banned")}
+                    className="btn btn-danger btn-sm"
+                  >
+                    <UserX size={14} /> Ban User Account
+                  </button>
+                )}
+
+                <button
+                  onClick={() => handleToggleVerification(selectedUserDetail.user._id, selectedUserDetail.profile?.isVerified)}
+                  className="btn btn-primary btn-sm"
+                >
+                  <ShieldCheck size={14} /> {selectedUserDetail.profile?.isVerified ? "Revoke Verification" : "Approve Verification"}
+                </button>
+
+                <button
+                  onClick={() => handleUpdateUserRole(selectedUserDetail.user._id, selectedUserDetail.user?.role === "admin" ? "user" : "admin")}
+                  className="btn btn-outline btn-sm"
+                >
+                  <Shield size={14} /> {selectedUserDetail.user?.role === "admin" ? "Demote to User" : "Promote to Admin"}
+                </button>
+
+                <button
+                  onClick={() => handleDeleteUser(selectedUserDetail.user._id)}
+                  className="btn btn-outline btn-sm"
+                  style={{ color: "var(--danger)", borderColor: "#FECACA" }}
+                >
+                  <Trash2 size={14} /> Delete User
                 </button>
               </div>
             </div>

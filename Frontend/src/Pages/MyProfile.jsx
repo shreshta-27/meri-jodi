@@ -439,6 +439,7 @@ export default function MyProfile() {
                             <DetailRow label="Height" value={formatHeight(profile.heightCm)} onAdd={() => setEditingSection("personal")} />
                             <DetailRow label="Date of Birth" value={formatDate(profile.dateOfBirth)} onAdd={() => setEditingSection("personal")} />
                             <DetailRow label="Place of Birth" value={profile.placeOfBirth} onAdd={() => setEditingSection("personal")} />
+                            <DetailRow label="Time of Birth" value={profile.timeOfBirth || profile.birthTime || profile.birthTiming} onAdd={() => setEditingSection("personal")} />
                             <DetailRow label="Gender" value={profile.gender ? profile.gender.charAt(0).toUpperCase() + profile.gender.slice(1) : null} onAdd={() => setEditingSection("personal")} />
                             <DetailRow label="Marital Status" value={profile.maritalStatus?.replace("_", " ")} onAdd={() => setEditingSection("personal")} />
                             <DetailRow label="Manglik Status" value={profile.manglik} onAdd={() => setEditingSection("personal")} />

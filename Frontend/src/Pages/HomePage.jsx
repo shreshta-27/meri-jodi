@@ -204,6 +204,13 @@ const HomePage = () => {
             <span className="absolute top-4 h-12 border-l border-red-400" />
           </div>
           <div className="flex flex-wrap gap-3 sm:gap-4 md:gap-6">
+            <button
+              type="button"
+              onClick={() => navigate("/add-details")}
+              className="flex items-center gap-2 bg-[#842029] text-white rounded-full px-4 py-2 text-sm font-semibold shadow-xs hover:bg-[#6b1b27] transition-all cursor-pointer"
+            >
+              <span>✎</span> Complete Personal Info
+            </button>
             {[
               { label: "Add Photo", icon: Camera, section: "basic" },
               { label: "Add Hobbies", icon: Heart, section: "lifestyle" },

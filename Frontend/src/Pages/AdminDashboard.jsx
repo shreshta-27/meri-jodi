@@ -1098,6 +1098,7 @@ export default function AdminDashboard() {
                                     <div><span className="text-gray-400">Gender:</span> <p className="font-bold capitalize">{selectedUserDetail.profile?.gender || "—"}</p></div>
                                     <div><span className="text-gray-400">DOB:</span> <p className="font-bold">{selectedUserDetail.profile?.dateOfBirth ? new Date(selectedUserDetail.profile.dateOfBirth).toLocaleDateString() : "—"}</p></div>
                                     <div><span className="text-gray-400">Birth Place:</span> <p className="font-bold">{selectedUserDetail.profile?.placeOfBirth || "—"}</p></div>
+                                    <div><span className="text-gray-400">Birth Time:</span> <p className="font-bold">{selectedUserDetail.profile?.timeOfBirth || "—"}</p></div>
                                     <div><span className="text-gray-400">Religion:</span> <p className="font-bold">{selectedUserDetail.profile?.religion || "—"}</p></div>
                                     <div><span className="text-gray-400">Caste:</span> <p className="font-bold">{selectedUserDetail.profile?.caste || "—"}</p></div>
                                     <div><span className="text-gray-400">Gotra:</span> <p className="font-bold">{selectedUserDetail.profile?.gotham || "—"}</p></div>

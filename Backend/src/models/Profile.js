@@ -72,6 +72,7 @@ const profileSchema = new Schema(
         },
         name: { type: String, trim: true },
         dateOfBirth: { type: Date },
+        timeOfBirth: { type: String, trim: true },
         placeOfBirth: String,
         motherTongue: String,
         gender: {
