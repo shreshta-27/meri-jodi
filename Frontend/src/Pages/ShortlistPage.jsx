@@ -6,6 +6,7 @@ import Footer from "../Components/Footer"
 import home1 from "../assets/home1.png"
 import { getShortlistedProfiles, toggleShortlist } from "../api/shortlistApi"
 import { sendInterest } from "../api/interestApi"
+import { useToast } from "../context/ToastContext"
 
 const COLORS = {
     pageBg: "#FBF9F9",
@@ -23,21 +24,21 @@ const calculateAge = (dateOfBirth) => {
 
 export default function ShortlistPage() {
     const navigate = useNavigate()
+    const { addToast } = useToast?.() || { addToast: () => {} }
     const [shortlists, setShortlists] = useState([])
     const [loading, setLoading] = useState(true)
+    const [error, setError] = useState("")
     const [actionMsg, setActionMsg] = useState("")
 
     const fetchShortlists = async () => {
         setLoading(true)
+        setError("")
         try {
             const data = await getShortlistedProfiles()
-            const valid = (Array.isArray(data) ? data : []).filter(
-                (item) => item && item.shortlistedProfileId && (item.shortlistedProfileId.name || item.shortlistedProfileId.userId)
-            )
-            setShortlists(valid)
+            const list = Array.isArray(data) ? data : data?.shortlists || []
+            setShortlists(list)
         } catch (err) {
-            console.error("Failed to load shortlists:", err)
-            setShortlists([])
+            setError(err.response?.data?.message || "Failed to load shortlisted profiles.")
         } finally {
             setLoading(false)
         }
@@ -58,20 +59,18 @@ export default function ShortlistPage() {
                     return pId !== profileId
                 })
             )
-            setActionMsg("Profile removed from your shortlist.")
-            setTimeout(() => setActionMsg(""), 3000)
+            addToast("Profile removed from your shortlist.", "info")
         } catch (err) {
-            alert(err.response?.data?.message || "Failed to remove from shortlist.")
+            addToast(err.response?.data?.message || "Failed to remove from shortlist.", "error")
         }
     }
 
     const handleSendInterest = async (profileId) => {
         try {
             await sendInterest(profileId)
-            setActionMsg("Interest expressed successfully!")
-            setTimeout(() => setActionMsg(""), 3000)
+            addToast("Interest expressed successfully!", "success")
         } catch (err) {
-            alert(err.response?.data?.message || "Failed to send interest.")
+            addToast(err.response?.data?.message || "Failed to send interest.", "error")
         }
     }
 

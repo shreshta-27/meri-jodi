@@ -35,15 +35,16 @@ const UploadBiodataPage = () => {
     const maxSize = 10 * 1024 * 1024; // 10MB
 
     if (!validTypes.includes(file.type)) {
-      alert("Please upload PDF, JPG, or PNG files only");
+      setError("Please upload PDF, JPG, or PNG files only.");
       return;
     }
 
     if (file.size > maxSize) {
-      alert("File size must be less than 10MB");
+      setError("File size must be less than 10MB.");
       return;
     }
 
+    setError("");
     setUploadedFile(file);
   };
 

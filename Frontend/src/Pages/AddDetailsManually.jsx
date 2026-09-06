@@ -10,6 +10,7 @@ import Logo from "../assets/logo_1.svg"
 import BasicInfo from "../Components/BasicInfo"
 import PersonalDetails from "../Components/PersonalDetails"
 import Interest from "../Components/Interest"
+import { useToast } from "../context/ToastContext"
 
 const STORAGE_KEY_FORM = "merijodi_draft_profile"
 const STORAGE_KEY_STEP = "merijodi_draft_step"
@@ -75,6 +76,7 @@ const AddDetailsManually = () => {
   const { user } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
+  const { addToast } = useToast?.() || { addToast: () => {} }
   const extractedData = location.state?.initialData || {}
   const [step, setStep] = useState(() => {
     try {
@@ -316,7 +318,7 @@ const AddDetailsManually = () => {
       navigate("/home")
     } catch (err) {
       const message = err.response?.data?.message || "Something went wrong."
-      alert(message)
+      addToast(message, "error")
     } finally {
       setLoading(false)
     }

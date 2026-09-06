@@ -35,6 +35,7 @@ import {
     updateAdminReportStatus,
 } from "../api/adminApi"
 import { useToast } from "../context/ToastContext"
+import ConfirmModal from "../Components/ConfirmModal"
 
 export default function AdminDashboard() {
     const navigate = useNavigate()
@@ -42,6 +43,7 @@ export default function AdminDashboard() {
 
     // Navigation & Tabs
     const [activeTab, setActiveTab] = useState("overview") // 'overview' | 'verifications' | 'reports' | 'users'
+    const [deleteConfirm, setDeleteConfirm] = useState(null) // { userId, userName }
 
     // Data States
     const [stats, setStats] = useState(null)
@@ -168,11 +170,14 @@ export default function AdminDashboard() {
         }
     }
 
-    // Delete User
-    const handleDeleteUser = async (userId, userName) => {
-        if (!window.confirm(`Are you sure you want to permanently delete "${userName}"? This cannot be undone.`)) {
-            return
-        }
+    // Delete User Confirmation
+    const handleDeleteUser = (userId, userName) => {
+        setDeleteConfirm({ userId, userName })
+    }
+
+    const performDeleteUser = async () => {
+        if (!deleteConfirm) return
+        const { userId, userName } = deleteConfirm
         setActionLoading(userId)
         try {
             await deleteAdminUser(userId)
@@ -180,6 +185,7 @@ export default function AdminDashboard() {
             if (selectedUserDetail?.user?._id === userId) {
                 setSelectedUserDetail(null)
             }
+            setDeleteConfirm(null)
             fetchAllData()
         } catch (err) {
             addToast("Failed to delete user account", "error")
@@ -1174,6 +1180,18 @@ export default function AdminDashboard() {
                     </div>
                 </div>
             )}
+
+            <ConfirmModal
+                isOpen={Boolean(deleteConfirm)}
+                title="Permanently Delete Account"
+                message={`Are you sure you want to permanently delete user "${deleteConfirm?.userName || "this member"}"? All associated biodata, photos, messages, and preferences will be permanently wiped.`}
+                confirmText="Delete Account"
+                cancelText="Cancel"
+                type="danger"
+                loading={actionLoading === deleteConfirm?.userId}
+                onConfirm={performDeleteUser}
+                onCancel={() => setDeleteConfirm(null)}
+            />
 
             <Footer />
         </div>

@@ -1,6 +1,7 @@
 import { useState, useRef } from "react"
 import { X, Upload, Trash2, Star, Image as ImageIcon, Check } from "lucide-react"
 import { uploadPhoto, deletePhoto, setPrimaryPhoto } from "../api/photoApi"
+import ConfirmModal from "./ConfirmModal"
 
 export default function PhotoUploadModal({ isOpen, photos = [], onClose, onPhotosUpdated }) {
     const [selectedFile, setSelectedFile] = useState(null)
@@ -9,6 +10,7 @@ export default function PhotoUploadModal({ isOpen, photos = [], onClose, onPhoto
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState("")
     const [successMsg, setSuccessMsg] = useState("")
+    const [deletePhotoId, setDeletePhotoId] = useState(null)
     const fileInputRef = useRef(null)
 
     if (!isOpen) return null
@@ -50,12 +52,17 @@ export default function PhotoUploadModal({ isOpen, photos = [], onClose, onPhoto
         }
     }
 
-    const handleDelete = async (photoId) => {
-        if (!window.confirm("Are you sure you want to delete this photo?")) return
+    const handleDelete = (photoId) => {
+        setDeletePhotoId(photoId)
+    }
+
+    const performDelete = async () => {
+        if (!deletePhotoId) return
         setLoading(true)
         setError("")
         try {
-            const updatedProfile = await deletePhoto(photoId)
+            const updatedProfile = await deletePhoto(deletePhotoId)
+            setDeletePhotoId(null)
             if (onPhotosUpdated) onPhotosUpdated(updatedProfile)
         } catch (err) {
             setError(err.response?.data?.message || "Failed to delete photo.")
@@ -247,6 +254,18 @@ export default function PhotoUploadModal({ isOpen, photos = [], onClose, onPhoto
                     </button>
                 </div>
             </div>
+
+            <ConfirmModal
+                isOpen={Boolean(deletePhotoId)}
+                title="Delete Photo"
+                message="Are you sure you want to remove this profile photo? This cannot be undone."
+                confirmText="Delete"
+                cancelText="Keep Photo"
+                type="danger"
+                loading={loading}
+                onConfirm={performDelete}
+                onCancel={() => setDeletePhotoId(null)}
+            />
         </div>
     )
 }

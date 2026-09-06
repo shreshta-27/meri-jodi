@@ -70,11 +70,47 @@ export default function App() {
   const [loadingUserDetail, setLoadingUserDetail] = useState(false)
   const [actionNote, setActionNote] = useState("")
   const [actionLoading, setActionLoading] = useState(false)
-  const [toastMessage, setToastMessage] = useState("")
+  const [toast, setToast] = useState({ message: "", type: "success" })
 
-  const showToast = (msg) => {
-    setToastMessage(msg)
-    setTimeout(() => setToastMessage(""), 3500)
+  const showToast = (msg, type = "success") => {
+    setToast({ message: msg, type })
+    setTimeout(() => setToast({ message: "", type: "success" }), 3500)
+  }
+
+  // In-UI Confirmation Modal State
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+    confirmText: "Confirm",
+    cancelText: "Cancel",
+    type: "danger",
+    onConfirm: null,
+    loading: false,
+  })
+
+  const openConfirmModal = ({
+    title,
+    message,
+    confirmText = "Confirm",
+    cancelText = "Cancel",
+    type = "danger",
+    onConfirm,
+  }) => {
+    setConfirmModal({
+      isOpen: true,
+      title,
+      message,
+      confirmText,
+      cancelText,
+      type,
+      onConfirm,
+      loading: false,
+    })
+  }
+
+  const closeConfirmModal = () => {
+    setConfirmModal((prev) => ({ ...prev, isOpen: false, onConfirm: null, loading: false }))
   }
 
   // Handle Admin Login
@@ -220,10 +256,10 @@ export default function App() {
       if (res.ok && json.success) {
         setSelectedUserDetail(json.data)
       } else {
-        alert(json.message || "Failed to load user details")
+        showToast(json.message || "Failed to load user details", "error")
       }
     } catch (err) {
-      alert("Error loading user details: " + err.message)
+      showToast("Error loading user details: " + err.message, "error")
     } finally {
       setLoadingUserDetail(false)
     }
@@ -268,13 +304,13 @@ export default function App() {
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.message || "Failed to update verification")
-      showToast(`Document ${status} successfully.`)
+      showToast(`Document ${status} successfully.`, "success")
       setSelectedVerification(null)
       setActionNote("")
       fetchVerifications()
       fetchStats()
     } catch (err) {
-      alert(err.message)
+      showToast(err.message, "error")
     } finally {
       setActionLoading(false)
     }
@@ -295,65 +331,85 @@ export default function App() {
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.message || "Failed to update report")
-      showToast(`Report marked as ${status}.`)
+      showToast(`Report marked as ${status}.`, "success")
       setSelectedReport(null)
       setActionNote("")
       fetchReports()
       fetchStats()
     } catch (err) {
-      alert(err.message)
+      showToast(err.message, "error")
     } finally {
       setActionLoading(false)
     }
   }
 
   // Update User Status (active / banned / inactive)
-  const handleUpdateUserStatus = async (userId, newStatus) => {
-    if (!confirm(`Are you sure you want to change user status to "${newStatus}"?`)) return
-    try {
-      const res = await fetch(`${API_BASE}/v1/admin/users/${userId}/status`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ status: newStatus }),
-      })
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.message || "Failed to update status")
-      showToast(`User status updated to ${newStatus}`)
-      fetchUsers()
-      fetchStats()
-      if (selectedUserDetail && selectedUserDetail.user?._id === userId) {
-        fetchUserDetail(userId)
-      }
-    } catch (err) {
-      alert(err.message)
-    }
+  const handleUpdateUserStatus = (userId, newStatus, userName = "this user") => {
+    openConfirmModal({
+      title: newStatus === "banned" ? "Ban User Account" : "Update Account Status",
+      message: newStatus === "banned"
+        ? `Are you sure you want to ban ${userName}? They will be immediately blocked from accessing the platform.`
+        : `Are you sure you want to change user status for ${userName} to "${newStatus}"?`,
+      confirmText: newStatus === "banned" ? "Ban Account" : "Update Status",
+      cancelText: "Cancel",
+      type: newStatus === "banned" ? "danger" : "warning",
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`${API_BASE}/v1/admin/users/${userId}/status`, {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ status: newStatus }),
+          })
+          const json = await res.json()
+          if (!res.ok) throw new Error(json.message || "Failed to update status")
+          showToast(`User status updated to ${newStatus}`, "success")
+          closeConfirmModal()
+          fetchUsers()
+          fetchStats()
+          if (selectedUserDetail && selectedUserDetail.user?._id === userId) {
+            fetchUserDetail(userId)
+          }
+        } catch (err) {
+          showToast(err.message, "error")
+        }
+      },
+    })
   }
 
   // Update User Role (user / admin)
-  const handleUpdateUserRole = async (userId, newRole) => {
-    if (!confirm(`Are you sure you want to change user role to "${newRole}"?`)) return
-    try {
-      const res = await fetch(`${API_BASE}/v1/admin/users/${userId}/role`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ role: newRole }),
-      })
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.message || "Failed to update role")
-      showToast(`User role updated to ${newRole}`)
-      fetchUsers()
-      if (selectedUserDetail && selectedUserDetail.user?._id === userId) {
-        fetchUserDetail(userId)
-      }
-    } catch (err) {
-      alert(err.message)
-    }
+  const handleUpdateUserRole = (userId, newRole, userName = "this user") => {
+    openConfirmModal({
+      title: "Change Account Role",
+      message: `Are you sure you want to change the role of ${userName} to "${newRole}"?`,
+      confirmText: `Set as ${newRole}`,
+      cancelText: "Cancel",
+      type: newRole === "admin" ? "warning" : "info",
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`${API_BASE}/v1/admin/users/${userId}/role`, {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ role: newRole }),
+          })
+          const json = await res.json()
+          if (!res.ok) throw new Error(json.message || "Failed to update role")
+          showToast(`User role updated to ${newRole}`, "success")
+          closeConfirmModal()
+          fetchUsers()
+          if (selectedUserDetail && selectedUserDetail.user?._id === userId) {
+            fetchUserDetail(userId)
+          }
+        } catch (err) {
+          showToast(err.message, "error")
+        }
+      },
+    })
   }
 
   // Toggle User Profile Verification
@@ -369,34 +425,43 @@ export default function App() {
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.message || "Failed to toggle verification")
-      showToast(`User verification set to ${!currentVerified}`)
+      showToast(`User verification set to ${!currentVerified}`, "success")
       fetchUsers()
       fetchStats()
       if (selectedUserDetail && selectedUserDetail.user?._id === userId) {
         fetchUserDetail(userId)
       }
     } catch (err) {
-      alert(err.message)
+      showToast(err.message, "error")
     }
   }
 
   // Delete User
-  const handleDeleteUser = async (userId) => {
-    if (!confirm("⚠️ Are you sure you want to PERMANENTLY delete this user and their profile? This action cannot be undone.")) return
-    try {
-      const res = await fetch(`${API_BASE}/v1/admin/users/${userId}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.message || "Failed to delete user")
-      showToast("User deleted successfully")
-      if (selectedUserDetail) setSelectedUserDetail(null)
-      fetchUsers()
-      fetchStats()
-    } catch (err) {
-      alert(err.message)
-    }
+  const handleDeleteUser = (userId, userName = "this user") => {
+    openConfirmModal({
+      title: "Permanently Delete Account",
+      message: `Are you sure you want to permanently delete ${userName} and their entire matrimonial profile? This action cannot be undone.`,
+      confirmText: "Delete Permanently",
+      cancelText: "Cancel",
+      type: "danger",
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`${API_BASE}/v1/admin/users/${userId}`, {
+            method: "DELETE",
+            headers: { Authorization: `Bearer ${token}` },
+          })
+          const json = await res.json()
+          if (!res.ok) throw new Error(json.message || "Failed to delete user")
+          showToast("User deleted permanently", "success")
+          closeConfirmModal()
+          if (selectedUserDetail) setSelectedUserDetail(null)
+          fetchUsers()
+          fetchStats()
+        } catch (err) {
+          showToast(err.message, "error")
+        }
+      },
+    })
   }
 
   // If Not Authenticated, Render Admin Sign In Screen
@@ -1378,6 +1443,156 @@ export default function App() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* IN-UI CONFIRMATION MODAL POPUP */}
+      {confirmModal.isOpen && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 100,
+            background: "rgba(15, 23, 42, 0.65)",
+            backdropFilter: "blur(4px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "1.25rem",
+            animation: "fadeIn 0.2s ease-out",
+          }}
+        >
+          <div
+            style={{
+              background: "#ffffff",
+              borderRadius: "24px",
+              maxWidth: "440px",
+              width: "100%",
+              padding: "2rem",
+              boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+              border: "1px solid #FFE4E8",
+              position: "relative",
+              textAlign: "center",
+            }}
+          >
+            <button
+              onClick={closeConfirmModal}
+              style={{
+                position: "absolute",
+                top: "1rem",
+                right: "1rem",
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                color: "#9CA3AF",
+                padding: "0.25rem",
+              }}
+            >
+              <X size={20} />
+            </button>
+
+            <div
+              style={{
+                width: "56px",
+                height: "56px",
+                borderRadius: "18px",
+                background: confirmModal.type === "danger" ? "#FEF2F2" : confirmModal.type === "warning" ? "#FFFBEB" : "#FFF0F2",
+                color: confirmModal.type === "danger" ? "#DC2626" : confirmModal.type === "warning" ? "#D97706" : "#842029",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                margin: "0 auto 1.25rem",
+              }}
+            >
+              <AlertTriangle size={28} />
+            </div>
+
+            <h3
+              className="font-serif"
+              style={{
+                fontSize: "1.25rem",
+                fontWeight: "700",
+                color: "#1F2937",
+                marginBottom: "0.5rem",
+              }}
+            >
+              {confirmModal.title}
+            </h3>
+
+            <p
+              style={{
+                fontSize: "0.875rem",
+                color: "#4B5563",
+                lineHeight: "1.5",
+                marginBottom: "1.75rem",
+              }}
+            >
+              {confirmModal.message}
+            </p>
+
+            <div style={{ display: "flex", gap: "0.75rem" }}>
+              <button
+                type="button"
+                onClick={closeConfirmModal}
+                className="btn btn-outline"
+                style={{
+                  flex: 1,
+                  padding: "0.75rem 1rem",
+                  borderRadius: "14px",
+                  fontWeight: "600",
+                }}
+              >
+                {confirmModal.cancelText}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (confirmModal.onConfirm) confirmModal.onConfirm()
+                }}
+                className={`btn ${confirmModal.type === "danger" ? "btn-danger" : confirmModal.type === "warning" ? "btn-primary" : "btn-primary"}`}
+                style={{
+                  flex: 1,
+                  padding: "0.75rem 1rem",
+                  borderRadius: "14px",
+                  fontWeight: "600",
+                  backgroundColor: confirmModal.type === "danger" ? "#DC2626" : "#842029",
+                }}
+              >
+                {confirmModal.confirmText}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* IN-UI TOAST NOTIFICATION */}
+      {toast.message && (
+        <div
+          style={{
+            position: "fixed",
+            bottom: "1.5rem",
+            right: "1.5rem",
+            zIndex: 110,
+            background: toast.type === "error" ? "#991B1B" : toast.type === "warning" ? "#B45309" : "#065F46",
+            color: "#ffffff",
+            padding: "0.875rem 1.25rem",
+            borderRadius: "16px",
+            boxShadow: "0 10px 25px -5px rgba(0,0,0,0.3)",
+            display: "flex",
+            alignItems: "center",
+            gap: "0.75rem",
+            fontSize: "0.875rem",
+            fontWeight: "500",
+            maxWidth: "400px",
+            animation: "slideUp 0.25s ease-out",
+          }}
+        >
+          {toast.type === "error" ? (
+            <XCircle size={18} />
+          ) : (
+            <CheckCircle size={18} />
+          )}
+          <span>{toast.message}</span>
         </div>
       )}
     </div>
