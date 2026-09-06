@@ -38,7 +38,7 @@ class ErrorBoundary extends Component {
               Something went wrong
             </h1>
             <p className="text-sm text-[#6B6F72] mb-6 leading-relaxed">
-              An unexpected error occurred. Please try refreshing the page.
+              {this.state.error?.message || "An unexpected error occurred. Please try refreshing the page."}
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
               <button

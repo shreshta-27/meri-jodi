@@ -84,7 +84,7 @@ const UploadBiodataPage = () => {
       }
 
       const extracted = result.data?.data || result.data;
-      navigate("/add-details", { state: { initialData: extracted } });
+      navigate("/add-details", { state: { initialData: extracted, fromUpload: true } });
     } catch (err) {
       console.error(err);
       setError("An error occurred while uploading. Please try again.");

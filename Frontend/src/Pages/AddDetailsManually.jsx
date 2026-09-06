@@ -59,17 +59,60 @@ const steps = [
 
 const parseSafeDob = (dobStr) => {
   if (!dobStr) return { day: "", month: "", year: "" }
+  const clean = String(dobStr).trim()
+  const months = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+  ]
+
+  // DD/MM/YYYY or DD-MM-YYYY
+  const dmyMatch = clean.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})$/)
+  if (dmyMatch) {
+    const day = parseInt(dmyMatch[1], 10).toString()
+    const monthIdx = parseInt(dmyMatch[2], 10) - 1
+    const year = dmyMatch[3]
+    if (monthIdx >= 0 && monthIdx < 12) {
+      return { day, month: months[monthIdx], year }
+    }
+  }
+
+  // YYYY-MM-DD
+  const ymdMatch = clean.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})$/)
+  if (ymdMatch) {
+    const year = ymdMatch[1]
+    const monthIdx = parseInt(ymdMatch[2], 10) - 1
+    const day = parseInt(ymdMatch[3], 10).toString()
+    if (monthIdx >= 0 && monthIdx < 12) {
+      return { day, month: months[monthIdx], year }
+    }
+  }
+
+  // DD Month YYYY (e.g. 15 August 1996)
+  const textMatch = clean.match(/^(\d{1,2})\s+([A-Za-z]{3,9})\s+(\d{4})$/)
+  if (textMatch) {
+    const day = parseInt(textMatch[1], 10).toString()
+    const monthStr = textMatch[2].toLowerCase()
+    const year = textMatch[3]
+    const monthIdx = months.findIndex((m) => m.toLowerCase().startsWith(monthStr.slice(0, 3)))
+    if (monthIdx >= 0) {
+      return { day, month: months[monthIdx], year }
+    }
+  }
+
   try {
-    const d = new Date(dobStr)
-    if (isNaN(d.getTime())) return { day: "", month: "", year: "" }
-    return {
-      year: d.getFullYear().toString(),
-      month: d.toLocaleString("default", { month: "long" }),
-      day: d.getDate().toString(),
+    const d = new Date(clean)
+    if (!isNaN(d.getTime())) {
+      return {
+        year: d.getFullYear().toString(),
+        month: d.toLocaleString("default", { month: "long" }),
+        day: d.getDate().toString(),
+      }
     }
   } catch {
-    return { day: "", month: "", year: "" }
+    // ignore
   }
+
+  return { day: "", month: "", year: "" }
 }
 
 const AddDetailsManually = () => {
@@ -78,7 +121,13 @@ const AddDetailsManually = () => {
   const navigate = useNavigate()
   const { addToast } = useToast?.() || { addToast: () => {} }
   const extractedData = location.state?.initialData || {}
+  const fromUpload = Boolean(
+    location.state?.fromUpload ||
+    (location.state?.initialData && Object.keys(location.state.initialData).length > 0)
+  )
+
   const [step, setStep] = useState(() => {
+    if (fromUpload) return 1
     try {
       const savedStep = localStorage.getItem(STORAGE_KEY_STEP)
       const num = Number(savedStep)
@@ -92,155 +141,199 @@ const AddDetailsManually = () => {
 
   const [formData, setFormData] = useState(() => {
     let savedData = {}
-    try {
-      const item = localStorage.getItem(STORAGE_KEY_FORM)
-      if (item) savedData = JSON.parse(item)
-    } catch (e) {
-      console.warn("Could not read draft from localStorage", e)
+    if (!fromUpload) {
+      try {
+        const item = localStorage.getItem(STORAGE_KEY_FORM)
+        if (item) savedData = JSON.parse(item)
+      } catch (e) {
+        console.warn("Could not read draft from localStorage", e)
+      }
+    } else {
+      try {
+        localStorage.removeItem(STORAGE_KEY_FORM)
+        localStorage.removeItem(STORAGE_KEY_STEP)
+      } catch (e) {
+        // ignore
+      }
     }
 
-    const dobParts = parseSafeDob(extractedData.personal_details?.date_of_birth)
+    const rawDob =
+      extractedData.personal_details?.date_of_birth ||
+      extractedData.dateOfBirth ||
+      extractedData.date_of_birth ||
+      ""
+    const dobParts = parseSafeDob(rawDob)
 
     return {
       ...initialFormData,
       ...savedData,
       ...extractedData,
       name:
-        extractedData.personal_details?.name ||
         extractedData.name ||
+        extractedData.personal_details?.name ||
         savedData.name ||
         user?.name ||
         "",
       birthPlace:
+        extractedData.birthPlace ||
         extractedData.personal_details?.place_of_birth ||
         savedData.birthPlace ||
-        extractedData.birthPlace ||
         "",
       timeOfBirth:
-        extractedData.personal_details?.time_of_birth ||
         extractedData.timeOfBirth ||
         extractedData.birthTiming ||
+        extractedData.personal_details?.time_of_birth ||
         savedData.timeOfBirth ||
         savedData.birthTiming ||
         "",
       birthTiming:
-        extractedData.personal_details?.time_of_birth ||
-        extractedData.timeOfBirth ||
         extractedData.birthTiming ||
+        extractedData.timeOfBirth ||
+        extractedData.personal_details?.time_of_birth ||
         savedData.birthTiming ||
         savedData.timeOfBirth ||
         "",
       motherTongue:
+        extractedData.motherTongue ||
         extractedData.personal_details?.mother_tongue ||
         savedData.motherTongue ||
-        extractedData.motherTongue ||
         "",
-      gender: extractedData.personal_details?.gender
-        ? extractedData.personal_details.gender.toLowerCase()
-        : savedData.gender || extractedData.gender || "",
+      gender: (
+        extractedData.gender ||
+        extractedData.personal_details?.gender ||
+        savedData.gender ||
+        ""
+      ).toLowerCase(),
       year:
+        extractedData.year ||
         dobParts.year ||
         savedData.year ||
-        extractedData.year ||
         "",
       month:
+        extractedData.month ||
         dobParts.month ||
         savedData.month ||
-        extractedData.month ||
         "",
       day:
+        extractedData.day ||
         dobParts.day ||
         savedData.day ||
-        extractedData.day ||
         "",
       about:
+        extractedData.about ||
         extractedData.personal_details?.about_me ||
         savedData.about ||
-        extractedData.about ||
         "",
       height:
+        extractedData.height ||
         extractedData.personal_details?.height ||
         savedData.height ||
-        extractedData.height ||
         "",
       location:
-        extractedData.contact_details?.city ||
-        savedData.location ||
         extractedData.location ||
+        extractedData.contact_details?.city ||
+        extractedData.city ||
+        savedData.location ||
         "",
       education:
+        extractedData.education ||
         extractedData.personal_details?.highest_education ||
         savedData.education ||
-        extractedData.education ||
         "",
       occupation:
-        extractedData.personal_details?.organization_name ||
-        savedData.occupation ||
         extractedData.occupation ||
+        extractedData.personal_details?.occupation ||
+        savedData.occupation ||
         "",
       company:
-        savedData.company ||
         extractedData.company ||
+        extractedData.personal_details?.organization_name ||
+        savedData.company ||
         "",
       income:
+        extractedData.income ||
         extractedData.personal_details?.annual_income ||
         savedData.income ||
-        extractedData.income ||
         "",
       city:
+        extractedData.city ||
+        extractedData.location ||
         extractedData.contact_details?.city ||
         savedData.city ||
-        extractedData.city ||
         "",
       religion:
+        extractedData.religion ||
         extractedData.personal_details?.religion ||
         savedData.religion ||
-        extractedData.religion ||
         "",
       caste:
+        extractedData.caste ||
         extractedData.personal_details?.caste ||
         savedData.caste ||
-        extractedData.caste ||
-        "",
+        "No Preference",
       gotham:
+        extractedData.gotham ||
         extractedData.personal_details?.gotra ||
         savedData.gotham ||
-        extractedData.gotham ||
         "",
       rashi:
+        extractedData.rashi ||
         extractedData.personal_details?.rashi ||
         savedData.rashi ||
-        extractedData.rashi ||
         "",
       nakshtra:
+        extractedData.nakshtra ||
         extractedData.personal_details?.nakshatra ||
         savedData.nakshtra ||
-        extractedData.nakshtra ||
         "",
       manglik:
+        extractedData.manglik ||
         extractedData.personal_details?.manglik ||
         savedData.manglik ||
-        extractedData.manglik ||
-        "",
+        "no",
       complexion:
+        extractedData.complexion ||
         extractedData.personal_details?.complexion ||
         savedData.complexion ||
-        extractedData.complexion ||
         "",
       maritalStatus:
+        extractedData.maritalStatus ||
         extractedData.personal_details?.marital_status ||
         savedData.maritalStatus ||
-        extractedData.maritalStatus ||
-        "",
+        "never_married",
       hobbies:
-        Array.isArray(savedData.hobbies)
-          ? savedData.hobbies
-          : Array.isArray(extractedData.personal_details?.hobbies)
-          ? extractedData.personal_details.hobbies
-          : Array.isArray(extractedData.hobbies)
+        Array.isArray(extractedData.hobbies) && extractedData.hobbies.length > 0
           ? extractedData.hobbies
+          : Array.isArray(extractedData.personal_details?.hobbies) && extractedData.personal_details.hobbies.length > 0
+          ? extractedData.personal_details.hobbies
+          : Array.isArray(savedData.hobbies) && savedData.hobbies.length > 0
+          ? savedData.hobbies
           : [],
-      acceptTerms: Boolean(savedData.acceptTerms || extractedData.acceptTerms),
+      acceptTerms: Boolean(extractedData.acceptTerms || savedData.acceptTerms || fromUpload),
+      minAge:
+        extractedData.minAge ||
+        savedData.minAge ||
+        "",
+      maxAge:
+        extractedData.maxAge ||
+        savedData.maxAge ||
+        "",
+      partnereducation:
+        extractedData.partnereducation ||
+        savedData.partnereducation ||
+        "",
+      partneroccupation:
+        extractedData.partneroccupation ||
+        savedData.partneroccupation ||
+        "",
+      partnerincome:
+        extractedData.partnerincome ||
+        savedData.partnerincome ||
+        "",
+      additionalPreference:
+        extractedData.additionalPreference ||
+        savedData.additionalPreference ||
+        "",
     }
   })
 

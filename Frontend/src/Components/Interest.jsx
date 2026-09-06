@@ -43,6 +43,28 @@ const incomeRanges = [
   "Above ₹50 LPA",
 ];
 
+const hobbies = [
+  "Traveling",
+  "Cooking",
+  "Reading",
+  "Music",
+  "Fitness & Gym",
+  "Photography",
+  "Cricket",
+  "Yoga & Meditation",
+  "Technology",
+  "Art & Painting",
+  "Movies & Cinema",
+  "Gaming",
+  "Pet Lover",
+  "Writing",
+  "Dancing",
+  "Trekking",
+  "Badminton",
+  "Swimming",
+  "Gardening",
+  "Volunteering",
+];
 
 export default function Interest({
   formData,
@@ -268,8 +290,8 @@ export default function Interest({
                 </option>
               ))}
             </select>
-            {errors.education && (
-              <p className="text-sm text-red-500 mt-2">{errors.education}</p>
+            {errors.partnereducation && (
+              <p className="text-sm text-red-500 mt-2">{errors.partnereducation}</p>
             )}
           </div>
         </div>
@@ -293,8 +315,8 @@ export default function Interest({
                 </option>
               ))}
             </select>
-            {errors.occupation && (
-              <p className="text-sm text-red-500 mt-2">{errors.occupation}</p>
+            {errors.partneroccupation && (
+              <p className="text-sm text-red-500 mt-2">{errors.partneroccupation}</p>
             )}
           </div>
 
@@ -315,8 +337,8 @@ export default function Interest({
                 </option>
               ))}
             </select>
-            {errors.income && (
-              <p className="text-sm text-red-500 mt-2">{errors.income}</p>
+            {errors.partnerincome && (
+              <p className="text-sm text-red-500 mt-2">{errors.partnerincome}</p>
             )}
           </div>
         </div>
