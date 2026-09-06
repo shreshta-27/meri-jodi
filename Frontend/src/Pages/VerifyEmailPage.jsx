@@ -114,6 +114,28 @@ const VerifyEmailPage = () => {
                             </div>
                         )}
 
+                        <div className="flex justify-center gap-2 mb-6">
+                            <a
+                                href="https://mail.google.com"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-rose-50 text-[#ED5463] hover:bg-[#ED5463] hover:text-white border border-[#ED5463]/30 transition-all shadow-xs"
+                            >
+                                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
+                                </svg>
+                                Open Gmail Inbox ↗
+                            </a>
+                            <a
+                                href="https://outlook.live.com"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium bg-gray-50 text-gray-700 hover:bg-gray-100 border border-gray-200 transition-all"
+                            >
+                                Open Webmail ↗
+                            </a>
+                        </div>
+
                         <form onSubmit={handleManualSubmit} className="space-y-4">
                             <div>
                                 <input

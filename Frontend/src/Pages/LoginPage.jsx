@@ -18,6 +18,7 @@ const LoginPage = () => {
     const [email, setEmail] = useState("")
     const [password, setPassword] = useState("")
     const [otp, setOtp] = useState(["", "", "", "", "", ""])
+    const [devOtp, setDevOtp] = useState("")
     const [error, setError] = useState("")
     const [infoMsg, setInfoMsg] = useState("")
     const [loading, setLoading] = useState(false)
@@ -94,6 +95,7 @@ const LoginPage = () => {
         e.preventDefault()
         setError("")
         setInfoMsg("")
+        setDevOtp("")
 
         if (!email.trim() || !password) {
             setError("Please enter your email and password.")
@@ -104,6 +106,9 @@ const LoginPage = () => {
         try {
             const data = await loginWithEmail(email.trim(), password)
             setInfoMsg(data.message || "Verification code sent to your email.")
+            if (data.otp) {
+                setDevOtp(data.otp)
+            }
             setStep("otp")
             setResendTimer(60)
             setCanResend(false)
@@ -160,8 +165,11 @@ const LoginPage = () => {
         setError("")
         setLoading(true)
         try {
-            await resendLoginOtp(email.trim())
+            const data = await resendLoginOtp(email.trim())
             setInfoMsg("A new verification code has been sent to your email.")
+            if (data.otp) {
+                setDevOtp(data.otp)
+            }
             setResendTimer(60)
             setCanResend(false)
         } catch (err) {
@@ -321,7 +329,47 @@ const LoginPage = () => {
                                 <p className="text-sm text-[#6B7280]">
                                     We sent a 6-digit verification code to <span className="font-semibold text-gray-800">{email}</span>.
                                 </p>
+                                <div className="mt-3 flex flex-wrap gap-2">
+                                    <a
+                                        href="https://mail.google.com"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-rose-50 text-[#ED5463] hover:bg-[#ED5463] hover:text-white border border-[#ED5463]/30 transition-all shadow-xs"
+                                    >
+                                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                                            <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
+                                        </svg>
+                                        Open Gmail Inbox ↗
+                                    </a>
+                                    <a
+                                        href="https://outlook.live.com"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium bg-gray-50 text-gray-700 hover:bg-gray-100 border border-gray-200 transition-all"
+                                    >
+                                        Open Webmail ↗
+                                    </a>
+                                </div>
                             </div>
+
+                            {devOtp && (
+                                <div className="mb-4 p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-left text-xs text-[#842029] flex items-center justify-between shadow-xs">
+                                    <div>
+                                        <span className="font-bold">⚡ Security Code:</span>{" "}
+                                        <span className="font-mono text-base font-extrabold tracking-widest bg-white px-2 py-0.5 rounded border border-rose-200 ml-1">{devOtp}</span>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const parts = devOtp.toString().split("").slice(0, 6)
+                                            setOtp(parts)
+                                        }}
+                                        className="px-3 py-1 bg-[#842029] text-white rounded-lg font-semibold hover:bg-[#6b1b27] transition-colors cursor-pointer text-xs"
+                                    >
+                                        Auto-fill Code
+                                    </button>
+                                </div>
+                            )}
 
                             {infoMsg && (
                                 <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-700 text-xs sm:text-sm rounded-xl">

@@ -18,6 +18,7 @@ const SignUpPage = () => {
     const [phone, setPhone] = useState("")
     const [error, setError] = useState("")
     const [verifyToken, setVerifyToken] = useState("")
+    const [devOtp, setDevOtp] = useState("")
     const [successMsg, setSuccessMsg] = useState("")
     const [loading, setLoading] = useState(false)
     const [otpInput, setOtpInput] = useState("")
@@ -29,6 +30,7 @@ const SignUpPage = () => {
         setError("")
         setSuccessMsg("")
         setVerifyToken("")
+        setDevOtp("")
 
         if (!name.trim() || !email.trim() || !password) {
             setError("Please fill in all required fields.")
@@ -55,6 +57,10 @@ const SignUpPage = () => {
             )
             if (data.verifyToken) {
                 setVerifyToken(data.verifyToken)
+            }
+            if (data.otp) {
+                setDevOtp(data.otp)
+                setOtpInput(data.otp)
             }
         } catch (err) {
             setError(err.response?.data?.message || "Registration failed. Please try again.")
@@ -179,12 +185,50 @@ const SignUpPage = () => {
                                 ✉️
                             </div>
                             <div>
-                                <h3 className="text-xl font-bold text-gray-900 font-serif mb-2">Check Your Email</h3>
+                                <h3 className="text-xl font-bold text-gray-900 font-serif mb-1">Check Your Email</h3>
                                 <p className="text-sm text-gray-600 leading-relaxed">
                                     We sent a 6-digit verification code and link to{" "}
                                     <strong className="text-gray-900">{email}</strong>.
                                 </p>
                             </div>
+
+                            {/* Direct Open Gmail Button */}
+                            <div className="flex flex-col sm:flex-row gap-2.5 justify-center items-center">
+                                <a
+                                    href="https://mail.google.com"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-6 py-2.5 bg-[#EA4335] hover:bg-[#D33828] text-white text-sm font-semibold rounded-full shadow-sm hover:shadow-md transition-all cursor-pointer"
+                                >
+                                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.91 1.528-1.145C21.69 2.28 24 3.434 24 5.457z"/>
+                                    </svg>
+                                    Open Gmail Inbox ↗
+                                </a>
+                                {!email.toLowerCase().endsWith("@gmail.com") && (
+                                    <a
+                                        href="https://outlook.live.com"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 text-xs font-semibold rounded-full shadow-2xs transition-all cursor-pointer"
+                                    >
+                                        Open Outlook / Webmail ↗
+                                    </a>
+                                )}
+                            </div>
+
+                            {/* Helper / Fallback code when email is pending */}
+                            {devOtp && (
+                                <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-left text-xs text-[#842029] space-y-1.5">
+                                    <div className="flex items-center justify-between">
+                                        <span className="font-bold">⚡ Verification Code:</span>
+                                        <span className="font-mono text-base font-extrabold tracking-widest bg-white px-2.5 py-0.5 rounded border border-rose-200">{devOtp}</span>
+                                    </div>
+                                    <p className="text-[11px] text-gray-600">
+                                        Auto-filled in the box below. Click <strong>Verify Code &amp; Start Setup</strong> to activate your account.
+                                    </p>
+                                </div>
+                            )}
 
                             {/* Direct OTP input box */}
                             <form onSubmit={handleOtpVerify} className="p-4 bg-[#FFF5F6] rounded-xl border border-[#FFE4E8] space-y-3">
@@ -211,10 +255,6 @@ const SignUpPage = () => {
                                 </button>
                             </form>
 
-                            <p className="text-xs text-gray-500">
-                                Or click the verification link sent directly to your inbox.
-                            </p>
-
                             {verifyToken && (
                                 <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-left text-xs text-amber-800 space-y-2">
                                     <p className="font-semibold">⚡ Quick Verification Link:</p>
@@ -222,7 +262,7 @@ const SignUpPage = () => {
                                         to={`/verify-email/${verifyToken}`}
                                         className="block text-center font-bold text-white bg-[#842029] hover:bg-[#6b1b27] py-2.5 px-4 rounded-lg transition-colors"
                                     >
-                                        Verify Email & Continue →
+                                        Verify Email &amp; Continue →
                                     </Link>
                                 </div>
                             )}
@@ -234,14 +274,18 @@ const SignUpPage = () => {
                                         setSuccessMsg("")
                                         setError("")
                                         setOtpError("")
+                                        setDevOtp("")
                                     }}
-                                    className="text-gray-500 hover:text-gray-800 underline"
+                                    className="text-gray-500 hover:text-gray-800 underline cursor-pointer"
                                 >
                                     ← Change Email
                                 </button>
-                                <Link to="/login" className="text-[#ED5463] font-semibold hover:underline">
-                                    Proceed to Sign In
-                                </Link>
+                                <span className="text-gray-400">
+                                    Already verified?{" "}
+                                    <Link to="/login" className="text-[#ED5463] font-semibold hover:underline">
+                                        Sign In
+                                    </Link>
+                                </span>
                             </div>
                         </div>
                     ) : (
