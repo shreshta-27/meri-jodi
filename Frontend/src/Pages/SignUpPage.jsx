@@ -97,7 +97,11 @@ const SignUpPage = () => {
                     accessToken: tokenResponse.access_token,
                 })
                 signIn(data.token || data.accessToken, data.user)
-                navigate("/complete-profile")
+                if (!data.isNewUser || data.isProfileComplete) {
+                    navigate("/home")
+                } else {
+                    navigate("/complete-profile")
+                }
             } catch (err) {
                 setError(err.response?.data?.message || "Google registration failed.")
             } finally {
@@ -110,33 +114,12 @@ const SignUpPage = () => {
     })
 
     const handleGoogleRegister = () => {
-        if (import.meta.env.VITE_GOOGLE_CLIENT_ID) {
-            googleRegisterHook()
-        } else {
-            (async () => {
-                setError("")
-                setLoading(true)
-                try {
-                    const dummyGoogleId = "google_" + Date.now()
-                    const dummyEmail = email.trim() || `user_${Date.now().toString().slice(-4)}@gmail.com`
-                    const dummyName = name.trim() || "New Member"
-
-                    const data = await googleAuth({
-                        googleId: dummyGoogleId,
-                        email: dummyEmail,
-                        name: dummyName,
-                        avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80",
-                    })
-
-                    signIn(data.token || data.accessToken, data.user)
-                    navigate("/complete-profile")
-                } catch (err) {
-                    setError(err.response?.data?.message || "Google registration failed.")
-                } finally {
-                    setLoading(false)
-                }
-            })()
+        setError("")
+        if (!import.meta.env.VITE_GOOGLE_CLIENT_ID || import.meta.env.VITE_GOOGLE_CLIENT_ID.includes("dummy")) {
+            setError("Google Client ID is not configured. Please add your real Google OAuth Client ID to Frontend/.env (VITE_GOOGLE_CLIENT_ID) to register with Google.")
+            return
         }
+        googleRegisterHook()
     }
 
     return (

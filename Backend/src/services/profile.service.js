@@ -89,7 +89,16 @@ class ProfileService {
             }
         }
 
-        if (!sanitized.name) {
+        if (sanitized.name) {
+            const updatedUser = await User.findByIdAndUpdate(
+                userId,
+                { name: sanitized.name.trim() },
+                { new: true }
+            )
+            if (updatedUser) {
+                await redisClient.setEx(`user:${userId}`, 3600, JSON.stringify(updatedUser.toAuthJSON()))
+            }
+        } else {
             const user = await User.findById(userId)
             if (user && user.name) sanitized.name = user.name
         }
@@ -144,7 +153,14 @@ class ProfileService {
         }
 
         if (sanitized.name) {
-            await User.findByIdAndUpdate(userId, { name: sanitized.name.trim() })
+            const updatedUser = await User.findByIdAndUpdate(
+                userId,
+                { name: sanitized.name.trim() },
+                { new: true }
+            )
+            if (updatedUser) {
+                await redisClient.setEx(`user:${userId}`, 3600, JSON.stringify(updatedUser.toAuthJSON()))
+            }
         }
 
         // Build atomic $set object with dot-notation for nested fields to prevent field obliteration

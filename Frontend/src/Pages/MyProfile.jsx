@@ -144,7 +144,7 @@ const PreferenceField = ({ label, value, onEdit }) => (
 
 export default function MyProfile() {
     const navigate = useNavigate()
-    const { user } = useAuth()
+    const { user, updateUser } = useAuth()
     const [profile, setProfile] = useState(null)
     const [preferences, setPreferences] = useState(null)
     const [recommendedMatches, setRecommendedMatches] = useState([])
@@ -166,6 +166,9 @@ export default function MyProfile() {
                 setProfile(profileData)
                 setPreferences(prefData)
                 setRecommendedMatches(matchData?.matches || [])
+                if (profileData.name && user?.name !== profileData.name && updateUser) {
+                    updateUser({ name: profileData.name })
+                }
                 setStatus("found")
             } else {
                 setStatus("empty")
@@ -183,7 +186,12 @@ export default function MyProfile() {
     const handleEditComplete = async () => {
         try {
             const data = await getMyProfile()
-            if (data) setProfile(data)
+            if (data) {
+                setProfile(data)
+                if (data.name && updateUser) {
+                    updateUser({ name: data.name })
+                }
+            }
         } catch (err) {
             console.error("Failed to refetch profile:", err)
         }
@@ -199,7 +207,14 @@ export default function MyProfile() {
         setProfile(updatedProfile)
     }
 
-    const fullName = user?.name || profile?.name || "MeriJodi Member"
+    const isPlaceholder = (n) => !n || ["Google Member", "MeriJodi Member", "New Member"].includes(n)
+    const fullName =
+        (!isPlaceholder(profile?.name) ? profile.name : "") ||
+        (!isPlaceholder(profile?.userId?.name) ? profile.userId.name : "") ||
+        (!isPlaceholder(user?.name) ? user.name : "") ||
+        profile?.name ||
+        user?.name ||
+        "MeriJodi Member"
     const email = user?.email || "—"
     const phone = user?.phone || "—"
 

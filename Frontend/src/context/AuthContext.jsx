@@ -39,6 +39,10 @@ export const AuthProvider = ({ children }) => {
         }
     }, [saveToken])
 
+    const updateUser = useCallback((updatedFields) => {
+        setUser((prev) => (prev ? { ...prev, ...updatedFields } : updatedFields))
+    }, [])
+
     const refreshUser = useCallback(async () => {
         try {
             const data = await getMe()
@@ -81,7 +85,7 @@ export const AuthProvider = ({ children }) => {
     const isAuth = Boolean(token)
 
     return (
-        <AuthContext.Provider value={{ user, token, isAuth, loading, signIn, signOut, logOut: signOut, refreshUser }}>
+        <AuthContext.Provider value={{ user, token, isAuth, loading, signIn, signOut, logOut: signOut, refreshUser, updateUser }}>
             {children}
         </AuthContext.Provider>
     )

@@ -116,7 +116,7 @@ const parseSafeDob = (dobStr) => {
 }
 
 const AddDetailsManually = () => {
-  const { user } = useAuth()
+  const { user, updateUser, refreshUser } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
   const { addToast } = useToast?.() || { addToast: () => {} }
@@ -172,7 +172,7 @@ const AddDetailsManually = () => {
         extractedData.name ||
         extractedData.personal_details?.name ||
         savedData.name ||
-        user?.name ||
+        (user?.name && !["Google Member", "MeriJodi Member", "New Member"].includes(user.name) ? user.name : "") ||
         "",
       birthPlace:
         extractedData.birthPlace ||
@@ -339,6 +339,47 @@ const AddDetailsManually = () => {
 
   const [errors, setErrors] = useState({})
 
+  // Re-sync form data if user arrives with extracted biodata from upload page
+  useEffect(() => {
+    if (location.state?.initialData && Object.keys(location.state.initialData).length > 0) {
+      const ext = location.state.initialData
+      const rawDob = ext.personal_details?.date_of_birth || ext.dateOfBirth || ext.date_of_birth || ""
+      const dobParts = parseSafeDob(rawDob)
+
+      setFormData((prev) => ({
+        ...prev,
+        ...ext,
+        name:
+          ext.name ||
+          ext.personal_details?.name ||
+          (prev.name && !["Google Member", "MeriJodi Member", "New Member"].includes(prev.name) ? prev.name : "") ||
+          (user?.name && !["Google Member", "MeriJodi Member", "New Member"].includes(user.name) ? user.name : "") ||
+          "",
+        birthPlace: ext.birthPlace || ext.personal_details?.place_of_birth || prev.birthPlace || "",
+        timeOfBirth: ext.timeOfBirth || ext.birthTiming || ext.personal_details?.time_of_birth || prev.timeOfBirth || "",
+        birthTiming: ext.birthTiming || ext.timeOfBirth || ext.personal_details?.time_of_birth || prev.birthTiming || "",
+        motherTongue: ext.motherTongue || ext.personal_details?.mother_tongue || prev.motherTongue || "",
+        gender: (ext.gender || ext.personal_details?.gender || prev.gender || "").toLowerCase(),
+        year: ext.year || dobParts.year || prev.year || "",
+        month: ext.month || dobParts.month || prev.month || "",
+        day: ext.day || dobParts.day || prev.day || "",
+        about: ext.about || ext.personal_details?.about_me || prev.about || "",
+        height: ext.height || ext.personal_details?.height || prev.height || "",
+        location: ext.location || ext.contact_details?.city || ext.city || prev.location || "",
+        education: ext.education || ext.personal_details?.highest_education || prev.education || "",
+        occupation: ext.occupation || ext.personal_details?.occupation || prev.occupation || "",
+        company: ext.company || ext.personal_details?.organization_name || prev.company || "",
+        income: ext.income || ext.personal_details?.annual_income || prev.income || "",
+        city: ext.city || ext.location || ext.contact_details?.city || prev.city || "",
+        religion: ext.religion || ext.personal_details?.religion || prev.religion || "",
+        caste: ext.caste || ext.personal_details?.caste || prev.caste || "No Preference",
+        hobbies: Array.isArray(ext.hobbies) && ext.hobbies.length > 0 ? ext.hobbies : (Array.isArray(ext.personal_details?.hobbies) ? ext.personal_details.hobbies : prev.hobbies),
+        acceptTerms: true,
+      }))
+      setStep(1)
+    }
+  }, [location.state])
+
   // Auto-save form data to localStorage whenever user types
   useEffect(() => {
     try {
@@ -371,6 +412,14 @@ const AddDetailsManually = () => {
       setLoading(true)
       const payload = buildProfilePayload(formData)
       await createProfile(payload)
+
+      // Instantly update user in AuthContext and refresh session
+      if (formData.name && updateUser) {
+        updateUser({ name: formData.name.trim() })
+      }
+      if (refreshUser) {
+        await refreshUser()
+      }
 
       if (
         formData.minAge ||

@@ -34,7 +34,11 @@ const LoginPage = () => {
                     accessToken: tokenResponse.access_token,
                 })
                 signIn(data.token || data.accessToken, data.user)
-                navigate("/home")
+                if (!data.isNewUser || data.isProfileComplete) {
+                    navigate("/home")
+                } else {
+                    navigate("/complete-profile")
+                }
             } catch (err) {
                 setError(err.response?.data?.message || "Google authentication failed.")
             } finally {
@@ -47,32 +51,12 @@ const LoginPage = () => {
     })
 
     const handleGoogleLogin = () => {
-        if (import.meta.env.VITE_GOOGLE_CLIENT_ID) {
-            googleLoginHook()
-        } else {
-            // Dev fallback simulation when Google Client ID is not set
-            (async () => {
-                setError("")
-                setLoading(true)
-                try {
-                    const dummyGoogleId = "google_" + Date.now()
-                    const dummyEmail = email.trim() || `google.user${Date.now().toString().slice(-4)}@gmail.com`
-                    const dummyName = "Google Member"
-                    const data = await googleAuth({
-                        googleId: dummyGoogleId,
-                        email: dummyEmail,
-                        name: dummyName,
-                        avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
-                    })
-                    signIn(data.token || data.accessToken, data.user)
-                    navigate("/home")
-                } catch (err) {
-                    setError(err.response?.data?.message || "Google authentication failed.")
-                } finally {
-                    setLoading(false)
-                }
-            })()
+        setError("")
+        if (!import.meta.env.VITE_GOOGLE_CLIENT_ID || import.meta.env.VITE_GOOGLE_CLIENT_ID.includes("dummy")) {
+            setError("Google Client ID is not configured. Please add your real Google OAuth Client ID to Frontend/.env (VITE_GOOGLE_CLIENT_ID) to use Google Sign-In.")
+            return
         }
+        googleLoginHook()
     }
     useEffect(() => {
         let timer

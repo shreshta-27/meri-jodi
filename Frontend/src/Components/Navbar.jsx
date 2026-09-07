@@ -107,7 +107,11 @@ export default function Navbar() {
                                 className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full bg-white border border-[#FFE4E8] text-xs sm:text-sm font-semibold text-gray-800 hover:border-[#842029] transition-all shadow-xs"
                             >
                                 <User size={14} className="text-[#842029]" />
-                                <span className="max-w-[100px] truncate">{user?.name?.split(" ")[0] || "Profile"}</span>
+                                <span className="max-w-[100px] truncate">
+                                    {(user?.name && !["Google Member", "MeriJodi Member", "New Member"].includes(user.name))
+                                        ? user.name.split(" ")[0]
+                                        : "Profile"}
+                                </span>
                             </Link>
                             <button
                                 onClick={handleLogout}

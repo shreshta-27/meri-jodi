@@ -67,12 +67,13 @@ router.post("/register", sanitizeBody, async (req, res) => {
 const handleEmailVerification = async (req, res) => {
     const apiResponse = new ApiResponse(res)
     try {
-        const { token } = req.params
+        const token = req.params.token || req.body?.token || req.body?.otp || req.body?.code
+        const email = req.body?.email || req.query?.email
         if (!token) {
-            return apiResponse.error("Verification token is missing", 400)
+            return apiResponse.error("Verification token or code is missing", 400)
         }
 
-        const result = await authService.verifyEmailToken(token, res)
+        const result = await authService.verifyEmailToken(token, res, email)
         return apiResponse.success(result, result.message, 200)
     } catch (error) {
         return apiResponse.error(error.message, error.statusCode || 400)
@@ -134,6 +135,13 @@ router.post("/login", sanitizeBody, async (req, res) => {
 const handleVerifyOtp = async (req, res) => {
     const apiResponse = new ApiResponse(res)
     try {
+        // If request provides token or code without email, resolve via email verification handler
+        if (req.body?.token || (req.body?.code && !req.body?.email)) {
+            const token = req.body.token || req.body.code
+            const result = await authService.verifyEmailToken(token, res, req.body.email)
+            return apiResponse.success(result, result.message, 200)
+        }
+
         const validation = verifyOtpSchema.safeParse(req.body)
         const errorDetails = formatZodError(validation)
         if (errorDetails) {

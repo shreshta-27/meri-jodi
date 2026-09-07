@@ -15,17 +15,14 @@ const getTransporter = () => {
                 user: config.smtp.user,
                 pass: config.smtp.pass,
             },
+            connectionTimeout: 4000,
+            greetingTimeout: 4000,
+            socketTimeout: 5000,
         })
     } else {
         // Dev fallback simulated transporter
         transporter = {
             sendMail: async (mailOptions) => {
-                console.log("\n================ [EMAIL SIMULATION (DEV MODE)] ================")
-                console.log(`To: ${mailOptions.to}`)
-                console.log(`Subject: ${mailOptions.subject}`)
-                if (mailOptions.text) console.log(`Text Body: ${mailOptions.text}`)
-                console.log(`From: ${mailOptions.from || config.appName}`)
-                console.log("=================================================================\n")
                 return { messageId: "simulated-" + Date.now() }
             },
         }
@@ -35,6 +32,15 @@ const getTransporter = () => {
 }
 
 export const sendMail = async ({ email, subject, html, text }) => {
+    // Always print prominent notification in console for testing convenience
+    console.log("\n================ [EMAIL DISPATCH] ================")
+    console.log(`To:      ${email}`)
+    console.log(`Subject: ${subject}`)
+    if (text) {
+        console.log(`Body:    ${text}`)
+    }
+    console.log("==================================================\n")
+
     try {
         const client = getTransporter()
         const fromAddress = config.smtp.user
@@ -50,9 +56,7 @@ export const sendMail = async ({ email, subject, html, text }) => {
         })
         return result
     } catch (error) {
-        console.error("Nodemailer error:", error.message)
-        // In case live SMTP fails (e.g. invalid app password), log email and allow flow to continue in dev
-        console.log(`[Email Fallback Notice] Email to ${email} (Subject: ${subject}) could not be sent via SMTP (${error.message}).`)
+        console.warn(`[Live SMTP Notice] Could not deliver live email to ${email} (${error.message}).`)
         return { error: error.message }
     }
 }

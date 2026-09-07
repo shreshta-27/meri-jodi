@@ -150,14 +150,17 @@ class AuthService {
         await redisClient.set(verifyOtpKey, JSON.stringify({ token: verifyToken, otp: verifyOtp }), { EX: 600 })
 
         // 6. Send verification email via Nodemailer with both code and direct link
+        const baseUrl = config.frontendUrl || config.frontendDomain || "http://localhost:5173"
+        const verifyUrl = `${baseUrl.replace(/\/+$/, "")}/verify-email/${encodeURIComponent(verifyToken)}`
         const subject = `${config.appName} Verification: ${verifyOtp}`
+        const text = `Your verification code is: ${verifyOtp}\nOr verify your email by clicking: ${verifyUrl}`
         const html = getVerifyEmailHtml({
             email: cleanEmail,
             token: verifyToken,
             otp: verifyOtp,
             appName: config.appName,
         })
-        const mailResult = await sendMail({ email: cleanEmail, subject, html })
+        const mailResult = await sendMail({ email: cleanEmail, subject, html, text })
         if (mailResult && mailResult.error) {
             console.warn(`[Registration Email Warning] Live SMTP delivery issue for ${cleanEmail}: ${mailResult.error}`)
         }
@@ -178,7 +181,7 @@ class AuthService {
     /**
      * Verify email token (or 6-digit OTP) and create User + Profile in MongoDB
      */
-    async verifyEmailToken(tokenOrOtp, res = null) {
+    async verifyEmailToken(tokenOrOtp, res = null, email = null) {
         if (!tokenOrOtp) {
             const error = new Error("Verification token or code is required.")
             error.statusCode = 400
@@ -190,9 +193,30 @@ class AuthService {
         // 1. Resolve token: could be direct 32-byte hex token or 6-digit numeric OTP
         let token = input
         if (/^\d{6}$/.test(input)) {
+            // Check if this OTP was already successfully verified (StrictMode deduplication)
+            const recentOtpVerified = await redisClient.get(`verified-code:${input}`)
+            if (recentOtpVerified) {
+                const cached = JSON.parse(recentOtpVerified)
+                return {
+                    message: "Email verified successfully! Your account is active.",
+                    user: cached.user,
+                    token: cached.accessToken,
+                    accessToken: cached.accessToken,
+                    refreshToken: cached.refreshToken,
+                }
+            }
+
             const mappedToken = await redisClient.get(`verify-code:${input}`)
             if (mappedToken) {
                 token = mappedToken
+            } else if (email) {
+                const regOtpJson = await redisClient.get(`verify-otp:${email.toLowerCase().trim()}`)
+                if (regOtpJson) {
+                    const regData = JSON.parse(regOtpJson)
+                    if (regData.otp === input) {
+                        token = regData.token
+                    }
+                }
             }
         }
 
@@ -264,16 +288,16 @@ class AuthService {
         // Cache user in Redis for 1 hour
         await redisClient.setEx(`user:${user._id}`, 3600, JSON.stringify(user.toAuthJSON()))
 
-        // Cache verified token for 10 minutes to protect against double execution in React StrictMode
-        await redisClient.set(
-            `verified:${token}`,
-            JSON.stringify({
-                user: user.toAuthJSON(),
-                accessToken,
-                refreshToken,
-            }),
-            { EX: 600 }
-        )
+        // Cache verified token & code for 10 minutes to protect against double execution in React StrictMode
+        const verifiedPayload = JSON.stringify({
+            user: user.toAuthJSON(),
+            accessToken,
+            refreshToken,
+        })
+        await redisClient.set(`verified:${token}`, verifiedPayload, { EX: 600 })
+        if (userData.otp) {
+            await redisClient.set(`verified-code:${userData.otp}`, verifiedPayload, { EX: 600 })
+        }
 
         return {
             message: "Email verified successfully! Your account has been created.",
@@ -378,8 +402,9 @@ class AuthService {
 
         // 7. Send OTP email via Nodemailer
         const subject = `${config.appName} Login Verification Code: ${otp}`
+        const text = `Your login verification code is: ${otp} (valid for 5 minutes).`
         const html = getOtpHtml({ email: cleanEmail, otp, appName: config.appName })
-        const mailResult = await sendMail({ email: cleanEmail, subject, html })
+        const mailResult = await sendMail({ email: cleanEmail, subject, html, text })
         if (mailResult?.error) {
             console.warn(`[Login Email Warning] Live SMTP delivery issue for ${cleanEmail}: ${mailResult.error}`)
         }
@@ -410,6 +435,20 @@ class AuthService {
             throw error
         }
 
+        // Check if recently verified (e.g. React StrictMode or double-click deduplication)
+        const dedupeKey = `login-verified:${cleanEmail}:${cleanOtp}`
+        const recentLogin = await redisClient.get(dedupeKey)
+        if (recentLogin) {
+            const cached = JSON.parse(recentLogin)
+            return {
+                message: "Authentication successful.",
+                user: cached.user,
+                token: cached.accessToken,
+                accessToken: cached.accessToken,
+                refreshToken: cached.refreshToken,
+            }
+        }
+
         const otpKey = `otp:${cleanEmail}`
         let storedOtp = await redisClient.get(otpKey)
 
@@ -419,7 +458,7 @@ class AuthService {
             if (regOtpJson) {
                 const regData = JSON.parse(regOtpJson)
                 if (regData.otp === cleanOtp) {
-                    return this.verifyEmailToken(regData.token, res)
+                    return this.verifyEmailToken(regData.token, res, cleanEmail)
                 }
             }
             const error = new Error("OTP has expired or is invalid. Please request a new code.")
@@ -453,6 +492,17 @@ class AuthService {
 
         // Cache user in Redis (1 hour)
         await redisClient.setEx(`user:${user._id}`, 3600, JSON.stringify(user.toAuthJSON()))
+
+        // Cache recent login for 60 seconds to protect against React StrictMode duplicate invocations
+        await redisClient.set(
+            dedupeKey,
+            JSON.stringify({
+                user: user.toAuthJSON(),
+                accessToken,
+                refreshToken,
+            }),
+            { EX: 60 }
+        )
 
         return {
             message: `Welcome back, ${user.name || "Member"}!`,
@@ -489,8 +539,9 @@ class AuthService {
         await redisClient.set(otpKey, otp, { EX: 300 })
 
         const subject = `${config.appName} - New Login Verification Code: ${otp}`
+        const text = `Your new login verification code is: ${otp} (valid for 5 minutes).`
         const html = getOtpHtml({ email: cleanEmail, otp, appName: config.appName })
-        const mailResult = await sendMail({ email: cleanEmail, subject, html })
+        const mailResult = await sendMail({ email: cleanEmail, subject, html, text })
         if (mailResult?.error) {
             console.warn(`[Resend Email Warning] Live SMTP delivery issue for ${cleanEmail}: ${mailResult.error}`)
         }
@@ -588,6 +639,7 @@ class AuthService {
         }
 
         let user = null
+        let isNewUser = false
         if (verifiedGoogleId) {
             user = await User.findOne({ googleId: verifiedGoogleId })
         }
@@ -598,11 +650,22 @@ class AuthService {
         if (user) {
             if (verifiedGoogleId && !user.googleId) user.googleId = verifiedGoogleId
             if (verifiedAvatar && !user.avatar) user.avatar = verifiedAvatar
-            if (verifiedName && !user.name) user.name = verifiedName
+            if (verifiedName && (!user.name || user.name === "Google Member" || user.name === "MeriJodi Member" || user.name === "New Member")) {
+                user.name = verifiedName
+            }
             user.isEmailVerified = true
             user.lastLogin = new Date()
             await user.save()
+
+            // Also update initial profile if it was left with a placeholder name
+            if (verifiedName) {
+                await Profile.updateOne(
+                    { userId: user._id, name: { $in: ["Google Member", "MeriJodi Member", "New Member", ""] } },
+                    { $set: { name: verifiedName } }
+                )
+            }
         } else {
+            isNewUser = true
             user = await User.create({
                 name: verifiedName || "MeriJodi Member",
                 email: verifiedEmail ? verifiedEmail.toLowerCase().trim() : undefined,
@@ -625,6 +688,13 @@ class AuthService {
             )
         }
 
+        // Check if user already has an existing completed profile
+        const userProfile = await Profile.findOne({ userId: user._id })
+        const isProfileComplete = Boolean(
+            userProfile &&
+            (userProfile.profileCompletionPct >= 30 || userProfile.location?.city || userProfile.religion)
+        )
+
         // Generate dual tokens and cookies
         const { accessToken, refreshToken } = await generateToken(user._id, res)
 
@@ -632,11 +702,13 @@ class AuthService {
         await redisClient.setEx(`user:${user._id}`, 3600, JSON.stringify(user.toAuthJSON()))
 
         return {
-            message: "Google login successful",
+            message: isNewUser ? "Account created successfully with Google." : "Google login successful.",
             user: user.toAuthJSON(),
             token: accessToken,
             accessToken,
             refreshToken,
+            isNewUser,
+            isProfileComplete,
         }
     }
 
