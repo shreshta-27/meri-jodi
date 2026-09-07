@@ -19,5 +19,6 @@ router.get("/search", searchProfiles, validate, profileController.searchProfiles
 router.get("/:id", validateObjectId("id"), validate, profileController.getProfileById.bind(profileController))
 router.post("/", createProfile, validate, profileController.createProfile.bind(profileController))
 router.put("/me", updateProfile, validate, profileController.updateProfile.bind(profileController))
+router.put("/", updateProfile, validate, profileController.updateProfile.bind(profileController))
 
 export default router
