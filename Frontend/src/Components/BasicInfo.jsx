@@ -151,13 +151,16 @@ export default function BasicInfo({
 
         <div>
           <select
-            value={formData.year}
+            value={formData.year || ""}
             onChange={(e) => updateField("year", e.target.value)}
             className={`w-full pl-2 sm:pl-3 pr-2 sm:pr-4 py-[10px] rounded-[10px] border-2 focus:ring-1 outline-none transition-colors text-xs sm:text-sm ${
               errors.year ? "border-red-500" : "border-[#DFDFDF] hover:border-[#842029] focus:border-[#842029]"
             }`}
           >
             <option value="">Year</option>
+            {formData.year && !years.includes(Number(formData.year)) && (
+              <option value={formData.year}>{formData.year}</option>
+            )}
             {years.map((year) => (
               <option key={year} value={year}>{year}</option>
             ))}
@@ -212,6 +215,9 @@ export default function BasicInfo({
           }`}
         >
           <option value="">Select Mother Tongue</option>
+          {formData.motherTongue && !motherTongues.includes(formData.motherTongue) && (
+            <option value={formData.motherTongue}>{formData.motherTongue}</option>
+          )}
           {motherTongues.map((lang) => (
             <option key={lang} value={lang}>{lang}</option>
           ))}

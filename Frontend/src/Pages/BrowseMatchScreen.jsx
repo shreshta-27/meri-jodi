@@ -15,7 +15,8 @@ import {
 import { useNavigate } from "react-router-dom"
 import Navbar from "../Components/Navbar"
 import Footer from "../Components/Footer"
-import home1 from "../assets/home1.png"
+import userImage from "../assets/user.jpg"
+import femaleProfile from "../assets/female_profile2.jpg"
 import { getMyMatches } from "../api/matchingApi"
 import { getMyProfile } from "../api/profileApi"
 import { sendInterest, getSentInterests, getReceivedInterests } from "../api/interestApi"
@@ -40,29 +41,35 @@ const calculateAge = (dateOfBirth) => {
     return Math.floor((Date.now() - dob.getTime()) / (365.25 * 24 * 60 * 60 * 1000))
 }
 
-const mapProfileToCard = (profile) => ({
-    id: profile._id,
-    name: profile.name || profile.userId?.name || "MeriJodi Member",
-    age: calculateAge(profile.dateOfBirth),
-    match: profile.compatibilityScore,
-    location: profile.location?.city || "India",
-    state: profile.location?.state || "",
-    education: profile.education?.highestDegree || "",
-    occupation: profile.career?.occupation || "Professional",
-    tags: [profile.religion, profile.caste, profile.lifestyle?.diet].filter(Boolean),
-    quote: profile.aboutMe ? `"${profile.aboutMe.slice(0, 140)}..."` : "",
-    isVerified: !!profile.isVerified,
-    hasPhoto: !!(profile.photos && profile.photos.length > 0 && profile.photos[0]?.url),
-    createdAt: profile.createdAt ? new Date(profile.createdAt) : null,
-    image:
-        profile.photos?.find((p) => p.isPrimary)?.url ||
-        profile.photos?.[0]?.url ||
-        home1,
-})
+const mapProfileToCard = (profile) => {
+    const fallbackPhoto = profile.gender === "female" ? femaleProfile : userImage
+    return {
+        id: profile._id,
+        name: profile.name || profile.userId?.name || "MeriJodi Member",
+        gender: profile.gender,
+        age: calculateAge(profile.dateOfBirth),
+        match: profile.compatibilityScore,
+        location: profile.location?.city || "India",
+        state: profile.location?.state || "",
+        education: profile.education?.highestDegree || "",
+        occupation: profile.career?.occupation || "Professional",
+        tags: [profile.religion, profile.caste, profile.lifestyle?.diet].filter(Boolean),
+        quote: profile.aboutMe ? `"${profile.aboutMe.slice(0, 140)}..."` : "",
+        isVerified: !!profile.isVerified,
+        hasPhoto: !!(profile.photos && profile.photos.length > 0 && profile.photos[0]?.url),
+        createdAt: profile.createdAt ? new Date(profile.createdAt) : null,
+        fallbackPhoto,
+        image:
+            profile.photos?.find((p) => p.isPrimary)?.url ||
+            profile.photos?.[0]?.url ||
+            fallbackPhoto,
+    }
+}
 
 const MatchCard = ({
     id,
     image,
+    fallbackPhoto,
     name,
     age,
     match,
@@ -84,7 +91,16 @@ const MatchCard = ({
         className="relative bg-white rounded-3xl border border-gray-100 p-4 sm:p-5 flex flex-col sm:flex-row gap-5 shadow-xs hover:shadow-md transition-all"
     >
         <div className="relative w-full sm:w-44 md:w-52 h-64 sm:h-auto self-stretch shrink-0 rounded-2xl overflow-hidden bg-gray-100">
-            <img src={image} alt={name} className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
+            <img
+                src={image}
+                alt={name}
+                className="absolute inset-0 w-full h-full object-cover"
+                loading="lazy"
+                onError={(e) => {
+                    e.currentTarget.onerror = null
+                    e.currentTarget.src = fallbackPhoto || userImage
+                }}
+            />
             {typeof match === "number" && (
                 <span
                     className="absolute bottom-3 left-3 flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold text-white shadow"

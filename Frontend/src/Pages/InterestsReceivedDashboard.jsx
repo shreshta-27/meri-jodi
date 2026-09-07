@@ -4,7 +4,8 @@ import { Check, X, Heart, MessageSquare, MapPin, Briefcase, Sparkles } from "luc
 import Navbar from "../Components/Navbar"
 import Footer from "../Components/Footer"
 import ConfirmModal from "../Components/ConfirmModal"
-import home1 from "../assets/home1.png"
+import userImage from "../assets/user.jpg"
+import femaleProfile from "../assets/female_profile2.jpg"
 import { getReceivedInterests, acceptInterest, declineInterest } from "../api/interestApi"
 
 const calculateAge = (dateOfBirth) => {
@@ -21,10 +22,11 @@ const ReceivedInterestCard = ({ interest, onAccept, onDecline, onNavigate }) => 
     const pId = profile._id || profile.id
     const name = profile.name || profile.userId?.name || "MeriJodi Member"
     const age = calculateAge(profile.dateOfBirth)
+    const fallbackPhoto = profile.gender === "female" ? femaleProfile : userImage
     const photoUrl =
         profile.photos?.find((p) => p.isPrimary)?.url ||
         profile.photos?.[0]?.url ||
-        home1
+        fallbackPhoto
     const occupation = profile.career?.occupation || "Professional"
     const location = profile.location?.city || "India"
     const isPending = interest.status?.toLowerCase() === "pending"
@@ -33,7 +35,15 @@ const ReceivedInterestCard = ({ interest, onAccept, onDecline, onNavigate }) => 
     return (
         <div className="bg-white border border-gray-100 rounded-3xl p-5 sm:p-6 shadow-xs hover:shadow-md transition-all flex flex-col sm:flex-row gap-6">
             <div className="relative w-full sm:w-44 md:w-48 aspect-4/3 sm:aspect-square rounded-2xl overflow-hidden bg-gray-100 shrink-0">
-                <img src={photoUrl} alt={name} className="w-full h-full object-cover" />
+                <img
+                    src={photoUrl}
+                    alt={name}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                        e.currentTarget.onerror = null
+                        e.currentTarget.src = fallbackPhoto
+                    }}
+                />
             </div>
 
             <div className="flex-1 flex flex-col justify-between">

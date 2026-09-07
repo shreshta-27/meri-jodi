@@ -7,6 +7,7 @@ import EditProfileModal from "../Components/EditProfileModal"
 import PartnerPreferenceModal from "../Components/PartnerPreferenceModal"
 import PhotoUploadModal from "../Components/PhotoUploadModal"
 import userImage from "../assets/user.jpg"
+import femaleProfile from "../assets/female_profile2.jpg"
 import home1 from "../assets/home1.png"
 import { getMyProfile } from "../api/profileApi"
 import { getPartnerPreferences, updatePartnerPreferences } from "../api/partnerPreferenceApi"
@@ -218,10 +219,11 @@ export default function MyProfile() {
     const email = user?.email || "—"
     const phone = user?.phone || "—"
 
+    const fallbackPhoto = profile?.gender === "female" ? femaleProfile : userImage
     const primaryPhoto =
         profile?.photos?.find((p) => p.isPrimary)?.url ||
         profile?.photos?.[0]?.url ||
-        userImage
+        fallbackPhoto
 
     const photosList = profile?.photos?.length ? profile.photos : []
 
@@ -275,6 +277,10 @@ export default function MyProfile() {
                                 src={primaryPhoto}
                                 alt={fullName}
                                 className="w-full h-full object-cover"
+                                onError={(e) => {
+                                    e.currentTarget.onerror = null
+                                    e.currentTarget.src = fallbackPhoto
+                                }}
                             />
                             <button
                                 onClick={() => setIsPhotoModalOpen(true)}

@@ -157,6 +157,9 @@ export default function PersonalDetails({
               }`}
             >
               <option value="">Select Height</option>
+              {formData.height && !heights.includes(formData.height) && (
+                <option value={formData.height}>{formData.height}</option>
+              )}
               {heights.map((height) => (
                 <option key={height} value={height}>
                   {height}
@@ -174,7 +177,7 @@ export default function PersonalDetails({
               type="text"
               value={formData.location || ""}
               onChange={(e) => updateField("location", e.target.value)}
-              placeholder=" Location"
+              placeholder=" Current Location / City"
               className={`w-full rounded-xl border-2 h-14 px-4 focus:outline-none transition-colors ${
                 errors.location ? "border-red-400" : "border-[#DFDFDF] hover:border-[#AE2539] focus:border-[#AE2539]"
               }`}
@@ -197,6 +200,9 @@ export default function PersonalDetails({
               }`}
             >
               <option value="">Select Education</option>
+              {formData.education && !["High School", "Diploma", "Bachelor's Degree", "Master's Degree", "MBA", "M.Tech", "PhD"].includes(formData.education) && (
+                <option value={formData.education}>{formData.education}</option>
+              )}
               <option value="High School">High School</option>
               <option value="Diploma">Diploma</option>
               <option value="Bachelor's Degree">Bachelor's Degree</option>
@@ -220,6 +226,9 @@ export default function PersonalDetails({
               }`}
             >
               <option value="">Select Occupation</option>
+              {formData.occupation && !["Software Engineer", "Doctor", "Teacher", "Business", "Government Employee", "Lawyer", "Student", "Self Employed", "Other"].includes(formData.occupation) && (
+                <option value={formData.occupation}>{formData.occupation}</option>
+              )}
               <option value="Software Engineer">Software Engineer</option>
               <option value="Doctor">Doctor</option>
               <option value="Teacher">Teacher</option>
@@ -243,8 +252,11 @@ export default function PersonalDetails({
             <input
               type="text"
               placeholder="Company / Organization (Optional)"
-              value={formData.company || ""}
-              onChange={(e) => updateField("company", e.target.value)}
+              value={formData.company || formData.companyName || ""}
+              onChange={(e) => {
+                updateField("company", e.target.value)
+                updateField("companyName", e.target.value)
+              }}
               className={`w-full h-14 rounded-xl border-2 px-4 focus:outline-none transition-colors ${
                 errors.company ? "border-red-400" : "border-[#DFDFDF] hover:border-[#AE2539] focus:border-[#AE2539]"
               }`}
@@ -264,6 +276,9 @@ export default function PersonalDetails({
               }`}
             >
               <option value="">Select Income</option>
+              {formData.income && !["Below ₹2 LPA", "₹2 - ₹5 LPA", "₹5 - ₹10 LPA", "₹10 - ₹20 LPA", "₹20 - ₹35 LPA", "₹35 - ₹50 LPA", "Above ₹50 LPA"].includes(formData.income) && (
+                <option value={formData.income}>{formData.income}</option>
+              )}
               <option value="Below ₹2 LPA">Below ₹2 LPA</option>
               <option value="₹2 - ₹5 LPA">₹2 - ₹5 LPA</option>
               <option value="₹5 - ₹10 LPA">₹5 - ₹10 LPA</option>

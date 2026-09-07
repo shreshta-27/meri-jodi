@@ -21,6 +21,7 @@ import Footer from "../Components/Footer.jsx"
 import ConfirmInterestModal from "../Components/ConfirmInterestModal.jsx"
 import BlockReportModal from "../Components/BlockReportModal.jsx"
 import ProfileImage from "../assets/female_profile2.jpg"
+import userImage from "../assets/user.jpg"
 import { getProfileById } from "../api/matchingApi"
 import { sendInterest, getSentInterests, getReceivedInterests } from "../api/interestApi"
 import { toggleShortlist, getShortlistedProfiles } from "../api/shortlistApi"
@@ -255,11 +256,12 @@ export default function DetailsPage_BrowsematchScreen() {
     const displayName = age ? `${name}, ${age}` : name
     const getPhotoUrl = (p) => (typeof p === "string" ? p : p?.url)
     const primaryPhoto = profile.photos?.find((p) => typeof p === "object" && p?.isPrimary)
+    const fallbackPhoto = profile.gender === "female" ? ProfileImage : userImage
     const photoUrl =
         getPhotoUrl(primaryPhoto) ||
         getPhotoUrl(profile.photos?.[0]) ||
         profile.avatar ||
-        ProfileImage
+        fallbackPhoto
     const values = [profile.religion, profile.motherTongue, profile.lifestyle?.diet].filter(Boolean)
 
     return (
@@ -290,6 +292,10 @@ export default function DetailsPage_BrowsematchScreen() {
                                 src={photoUrl}
                                 alt={name}
                                 className="w-full h-full object-cover"
+                                onError={(e) => {
+                                    e.currentTarget.onerror = null
+                                    e.currentTarget.src = fallbackPhoto
+                                }}
                             />
                             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-6 text-white">
                                 <h1 className="text-3xl sm:text-4xl font-bold font-serif leading-tight">

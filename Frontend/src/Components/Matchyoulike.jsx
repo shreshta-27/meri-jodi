@@ -1,7 +1,9 @@
+import { useNavigate } from "react-router-dom";
 import ProfileImage from "../assets/female_profile2.jpg";
 import { ArrowRight } from "lucide-react";
 
 const Matchyoulike = () => {
+  const navigate = useNavigate();
   const matches = [
     {
       image: ProfileImage,
@@ -32,7 +34,10 @@ const Matchyoulike = () => {
           Matches You Would Like to View
         </h2>
 
-        <button className="flex items-center gap-2 text-[#b3243a] font-semibold hover:gap-3 transition-all">
+        <button 
+          onClick={() => navigate("/browse-matches")}
+          className="flex items-center gap-2 text-[#b3243a] font-semibold hover:gap-3 transition-all cursor-pointer"
+        >
           View All
           <ArrowRight size={18} />
         </button>
@@ -42,6 +47,7 @@ const Matchyoulike = () => {
         {matches.map((match, index) => (
           <div
             key={index}
+            onClick={() => navigate("/browse-matches")}
             className="relative overflow-hidden rounded-2xl h-[430px] group cursor-pointer"
           >
             <img

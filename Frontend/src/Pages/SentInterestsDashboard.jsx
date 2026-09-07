@@ -4,7 +4,8 @@ import { CheckCircle, Clock, Heart, Trash2, MapPin, Briefcase, ExternalLink, Mes
 import Navbar from "../Components/Navbar"
 import Footer from "../Components/Footer"
 import ConfirmModal from "../Components/ConfirmModal"
-import home1 from "../assets/home1.png"
+import userImage from "../assets/user.jpg"
+import femaleProfile from "../assets/female_profile2.jpg"
 import { getSentInterests, withdrawInterest } from "../api/interestApi"
 
 const calculateAge = (dateOfBirth) => {
@@ -15,16 +16,17 @@ const calculateAge = (dateOfBirth) => {
 }
 
 const SentInterestCard = ({ interest, onWithdraw, onNavigate }) => {
-    const profile = interest.recipientProfileId
+    const profile = interest.receiverProfileId || interest.recipientProfileId
     if (!profile) return null
 
     const pId = profile._id || profile.id
     const name = profile.name || profile.userId?.name || "MeriJodi Member"
     const age = calculateAge(profile.dateOfBirth)
+    const fallbackPhoto = profile.gender === "female" ? femaleProfile : userImage
     const photoUrl =
         profile.photos?.find((p) => p.isPrimary)?.url ||
         profile.photos?.[0]?.url ||
-        home1
+        fallbackPhoto
     const occupation = profile.career?.occupation || "Professional"
     const location = profile.location?.city || "India"
     const isPending = interest.status?.toLowerCase() === "pending"
@@ -35,7 +37,15 @@ const SentInterestCard = ({ interest, onWithdraw, onNavigate }) => {
         <div className="bg-white border border-gray-100 rounded-3xl p-5 shadow-xs hover:shadow-md transition-all flex flex-col justify-between">
             <div>
                 <div className="relative aspect-4/3 rounded-2xl overflow-hidden bg-gray-100 mb-4">
-                    <img src={photoUrl} alt={name} className="w-full h-full object-cover" />
+                    <img
+                        src={photoUrl}
+                        alt={name}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                            e.currentTarget.onerror = null
+                            e.currentTarget.src = fallbackPhoto
+                        }}
+                    />
                     <div className="absolute top-3 right-3">
                         {isPending && (
                             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 shadow-2xs">

@@ -204,7 +204,7 @@ export default function Interest({
         <div className="grid md:grid-cols-2 gap-6 mb-4">
           <div>
             <select
-              value={formData.religion}
+              value={formData.religion || ""}
               onChange={(e) => updateField("religion", e.target.value)}
               className={`w-full h-14 rounded-xl border-2 px-4 focus:outline-none transition-all duration-300 ${
                 errors.religion
@@ -214,6 +214,9 @@ export default function Interest({
             >
               <option value="">Select Religion</option>
               <option value="Any">Any Religion / No Preference</option>
+              {formData.religion && formData.religion !== "Any" && !religions.includes(formData.religion) && (
+                <option value={formData.religion}>{formData.religion}</option>
+              )}
               {religions.map((religion) => (
                 <option key={religion} value={religion}>
                   {religion}
@@ -227,7 +230,7 @@ export default function Interest({
 
           <div>
             <select
-              value={formData.motherTongue}
+              value={formData.motherTongue || ""}
               onChange={(e) => updateField("motherTongue", e.target.value)}
               className={`w-full h-14 rounded-xl border-2 px-4 focus:outline-none transition-all duration-300 ${
                 errors.motherTongue
@@ -236,6 +239,9 @@ export default function Interest({
               }`}
             >
               <option value="">Select Mother Tongue / Language</option>
+              {formData.motherTongue && !motherTongues.includes(formData.motherTongue) && (
+                <option value={formData.motherTongue}>{formData.motherTongue}</option>
+              )}
               {motherTongues.map((lang) => (
                 <option key={lang} value={lang}>{lang}</option>
               ))}
@@ -259,6 +265,9 @@ export default function Interest({
               }`}
             >
               <option value="No Preference">No Preference (Open to All Castes)</option>
+              {formData.caste && formData.caste !== "No Preference" && !getCastesForLanguage(formData.motherTongue, false).includes(formData.caste) && (
+                <option value={formData.caste}>{formData.caste}</option>
+              )}
               {getCastesForLanguage(formData.motherTongue, false).map((caste) => (
                 <option key={caste} value={caste}>{caste}</option>
               ))}
@@ -275,7 +284,7 @@ export default function Interest({
 
           <div>
             <select
-              value={formData.partnereducation}
+              value={formData.partnereducation || ""}
               onChange={(e) => updateField("partnereducation", e.target.value)}
               className={`w-full h-14 rounded-xl border-2 px-4 focus:outline-none transition-all duration-300 ${
                 errors.partnereducation
@@ -284,6 +293,9 @@ export default function Interest({
               }`}
             >
               <option value="">Select Education</option>
+              {formData.partnereducation && !educations.includes(formData.partnereducation) && (
+                <option value={formData.partnereducation}>{formData.partnereducation}</option>
+              )}
               {educations.map((item) => (
                 <option key={item} value={item}>
                   {item}
@@ -300,7 +312,7 @@ export default function Interest({
         <div className="grid md:grid-cols-2 gap-6 mb-4">
           <div>
             <select
-              value={formData.partneroccupation}
+              value={formData.partneroccupation || ""}
               onChange={(e) => updateField("partneroccupation", e.target.value)}
               className={`w-full h-14 rounded-xl border-2 px-4 focus:outline-none transition-all duration-300 ${
                 errors.partneroccupation
@@ -309,6 +321,9 @@ export default function Interest({
               }`}
             >
               <option value="">Select Occupation</option>
+              {formData.partneroccupation && !occupations.includes(formData.partneroccupation) && (
+                <option value={formData.partneroccupation}>{formData.partneroccupation}</option>
+              )}
               {occupations.map((item) => (
                 <option key={item} value={item}>
                   {item}
@@ -322,7 +337,7 @@ export default function Interest({
 
           <div>
             <select
-              value={formData.partnerincome}
+              value={formData.partnerincome || ""}
               onChange={(e) => updateField("partnerincome", e.target.value)}
               className={`w-full h-14 rounded-xl border-2 px-4 focus:outline-none transition-all duration-300 ${
                 errors.partnerincome
@@ -331,6 +346,9 @@ export default function Interest({
               }`}
             >
               <option value="">Select Income</option>
+              {formData.partnerincome && !incomeRanges.includes(formData.partnerincome) && (
+                <option value={formData.partnerincome}>{formData.partnerincome}</option>
+              )}
               {incomeRanges.map((item) => (
                 <option key={item} value={item}>
                   {item}
