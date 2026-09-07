@@ -162,19 +162,17 @@ class AuthService {
         })
         const mailResult = await sendMail({ email: cleanEmail, subject, html, text })
         if (mailResult && mailResult.error) {
-            console.warn(`[Registration Email Warning] Live SMTP delivery issue for ${cleanEmail}: ${mailResult.error}`)
+            console.error(`[Registration Email Error] SMTP delivery failed for ${cleanEmail}: ${mailResult.error}`)
+            const err = new Error(`Failed to send verification email to your inbox: ${mailResult.error}. Please check your SMTP App Password in .env.`)
+            err.statusCode = 500
+            throw err
         }
 
         // 7. Set 5-second rate limit
         await redisClient.set(rateLimitKey, "true", { EX: 5 })
 
         return {
-            message: mailResult && mailResult.error
-                ? "A verification code and link have been generated (SMTP delivery issue: check App Password)."
-                : "A verification code and link have been sent to your email.",
-            verifyToken,
-            otp: verifyOtp,
-            mailError: mailResult?.error || undefined,
+            message: "Registration successful! A verification code has been sent to your email inbox.",
         }
     }
 
@@ -406,18 +404,17 @@ class AuthService {
         const html = getOtpHtml({ email: cleanEmail, otp, appName: config.appName })
         const mailResult = await sendMail({ email: cleanEmail, subject, html, text })
         if (mailResult?.error) {
-            console.warn(`[Login Email Warning] Live SMTP delivery issue for ${cleanEmail}: ${mailResult.error}`)
+            console.error(`[Login Email Error] SMTP delivery failed for ${cleanEmail}: ${mailResult.error}`)
+            const err = new Error(`Failed to deliver verification code to your inbox (${mailResult.error}). Please check your SMTP settings in .env.`)
+            err.statusCode = 500
+            throw err
         }
 
         // 8. Set 60s rate limit for sending next OTP
         await redisClient.set(rateLimitKey, "true", { EX: 60 })
 
         return {
-            message: mailResult?.error
-                ? "Security code generated (SMTP email delivery had an issue, see below)."
-                : "A verification code has been sent to your email. It will be valid for 5 minutes.",
-            otp,
-            mailError: mailResult?.error || undefined,
+            message: "A verification code has been sent to your email. Please check your inbox.",
         }
     }
 
@@ -543,17 +540,16 @@ class AuthService {
         const html = getOtpHtml({ email: cleanEmail, otp, appName: config.appName })
         const mailResult = await sendMail({ email: cleanEmail, subject, html, text })
         if (mailResult?.error) {
-            console.warn(`[Resend Email Warning] Live SMTP delivery issue for ${cleanEmail}: ${mailResult.error}`)
+            console.error(`[Resend Email Error] SMTP delivery failed for ${cleanEmail}: ${mailResult.error}`)
+            const err = new Error(`Failed to deliver new code to ${cleanEmail} (${mailResult.error}). Please check your SMTP settings in .env.`)
+            err.statusCode = 500
+            throw err
         }
 
         await redisClient.set(resendKey, "true", { EX: 60 })
 
         return {
-            message: mailResult?.error
-                ? "A new verification code was generated (SMTP email delivery had an issue, see below)."
-                : "A new verification code has been sent to your email.",
-            otp,
-            mailError: mailResult?.error || undefined,
+            message: "A new verification code has been sent to your email. Please check your inbox.",
         }
     }
 

@@ -17,8 +17,6 @@ const SignUpPage = () => {
     const [gender, setGender] = useState("male")
     const [phone, setPhone] = useState("")
     const [error, setError] = useState("")
-    const [verifyToken, setVerifyToken] = useState("")
-    const [devOtp, setDevOtp] = useState("")
     const [successMsg, setSuccessMsg] = useState("")
     const [loading, setLoading] = useState(false)
     const [otpInput, setOtpInput] = useState("")
@@ -29,8 +27,6 @@ const SignUpPage = () => {
         e.preventDefault()
         setError("")
         setSuccessMsg("")
-        setVerifyToken("")
-        setDevOtp("")
 
         if (!name.trim() || !email.trim() || !password) {
             setError("Please fill in all required fields.")
@@ -53,15 +49,8 @@ const SignUpPage = () => {
             })
             setSuccessMsg(
                 data.message ||
-                    "Registration successful! We have sent a verification link to your email. Please check your inbox to activate your account."
+                    "Registration successful! We have sent a verification code to your email. Please check your inbox."
             )
-            if (data.verifyToken) {
-                setVerifyToken(data.verifyToken)
-            }
-            if (data.otp) {
-                setDevOtp(data.otp)
-                setOtpInput(data.otp)
-            }
         } catch (err) {
             setError(err.response?.data?.message || "Registration failed. Please try again.")
         } finally {
@@ -200,18 +189,7 @@ const SignUpPage = () => {
                                 )}
                             </div>
 
-                            {/* Helper / Fallback code when email is pending */}
-                            {devOtp && (
-                                <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-left text-xs text-[#842029] space-y-1.5">
-                                    <div className="flex items-center justify-between">
-                                        <span className="font-bold">⚡ Verification Code:</span>
-                                        <span className="font-mono text-base font-extrabold tracking-widest bg-white px-2.5 py-0.5 rounded border border-rose-200">{devOtp}</span>
-                                    </div>
-                                    <p className="text-[11px] text-gray-600">
-                                        Auto-filled in the box below. Click <strong>Verify Code &amp; Start Setup</strong> to activate your account.
-                                    </p>
-                                </div>
-                            )}
+
 
                             {/* Direct OTP input box */}
                             <form onSubmit={handleOtpVerify} className="p-4 bg-[#FFF5F6] rounded-xl border border-[#FFE4E8] space-y-3">
@@ -238,17 +216,7 @@ const SignUpPage = () => {
                                 </button>
                             </form>
 
-                            {verifyToken && (
-                                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-left text-xs text-amber-800 space-y-2">
-                                    <p className="font-semibold">⚡ Quick Verification Link:</p>
-                                    <Link
-                                        to={`/verify-email/${verifyToken}`}
-                                        className="block text-center font-bold text-white bg-[#842029] hover:bg-[#6b1b27] py-2.5 px-4 rounded-lg transition-colors"
-                                    >
-                                        Verify Email &amp; Continue →
-                                    </Link>
-                                </div>
-                            )}
+
 
                             <div className="pt-3 border-t border-gray-100 flex justify-between items-center text-xs">
                                 <button

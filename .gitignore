@@ -32,3 +32,10 @@ dist-ssr
 .env.test.local
 .env.production.local
 
+# Sample documents and test scripts
+*.pdf
+MANUAL_TESTING_GUIDE.md
+scripts/
+Backend/scripts/
+Frontend/public/*.pdf
+
