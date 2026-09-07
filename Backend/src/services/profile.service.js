@@ -2,6 +2,7 @@ import mongoose from "mongoose"
 import { Profile } from "../models/Profile.js"
 import { User } from "../models/User.js"
 import { ProfileView } from "../models/ProfileView.js"
+import { redisClient } from "../config/redis.js"
 import notificationService from "./notification.service.js"
 import { PAGINATION_DEFAULTS } from "../constants/index.js"
 
@@ -71,6 +72,11 @@ class ProfileService {
      * @returns {Promise<object>} Created profile
      */
     async create(userId, data) {
+        const existing = await Profile.findOne({ userId })
+        if (existing) {
+            return this.update(userId, data)
+        }
+
         // Normalize aliases
         const normalized = { ...data }
         if (normalized.gotra && !normalized.gotham) normalized.gotham = normalized.gotra

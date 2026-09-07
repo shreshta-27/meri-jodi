@@ -33,6 +33,11 @@ const sanitizeFamilyAffluence = (val) => {
 }
 
 export const createProfile = [
+    body("name")
+        .optional({ values: "falsy" })
+        .trim()
+        .isLength({ min: 1, max: 100 })
+        .withMessage("Name must be between 1 and 100 characters"),
     body("dateOfBirth")
         .notEmpty()
         .withMessage("Date of birth is required")
@@ -165,6 +170,17 @@ export const createProfile = [
     body("hobbiesAndInterests")
         .optional({ values: "falsy" })
         .isArray(),
+    body("hobbies")
+        .optional({ values: "falsy" })
+        .isArray(),
+    body("gotra")
+        .optional({ values: "falsy" })
+        .trim()
+        .isLength({ min: 1, max: 50 }),
+    body("nakshatra")
+        .optional({ values: "falsy" })
+        .trim()
+        .isLength({ min: 1, max: 50 }),
     body("placeOfBirth")
         .optional({ values: "falsy" })
         .trim()
@@ -199,6 +215,11 @@ export const createProfile = [
 ]
 
 export const updateProfile = [
+    body("name")
+        .optional({ values: "falsy" })
+        .trim()
+        .isLength({ min: 1, max: 100 })
+        .withMessage("Name must be between 1 and 100 characters"),
     body("dateOfBirth")
         .optional({ values: "falsy" })
         .isISO8601()
@@ -346,6 +367,17 @@ export const updateProfile = [
     body("hobbiesAndInterests")
         .optional({ values: "falsy" })
         .isArray(),
+    body("hobbies")
+        .optional({ values: "falsy" })
+        .isArray(),
+    body("gotra")
+        .optional({ values: "falsy" })
+        .trim()
+        .isLength({ min: 1, max: 50 }),
+    body("nakshatra")
+        .optional({ values: "falsy" })
+        .trim()
+        .isLength({ min: 1, max: 50 }),
     body("manglik")
         .optional({ values: "falsy" })
         .trim()

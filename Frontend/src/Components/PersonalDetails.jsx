@@ -88,11 +88,6 @@ export default function PersonalDetails({
     if (!formData.education) newErrors.education = "Select your education.";
     
     if (!formData.occupation) newErrors.occupation = "Select your occupation.";
-    
-    // Require company name if they are employed
-    if (formData.occupation && formData.occupation !== "Student" && !formData.company?.trim()) {
-      newErrors.company = "Company name is required.";
-    }
 
     if (!formData.income) newErrors.income = "Select your income.";
 
@@ -247,7 +242,7 @@ export default function PersonalDetails({
           <div className={`${formData.occupation && formData.occupation !== "Student" ? "block" : "invisible"}`}>
             <input
               type="text"
-              placeholder="Company Name"
+              placeholder="Company / Organization (Optional)"
               value={formData.company || ""}
               onChange={(e) => updateField("company", e.target.value)}
               className={`w-full h-14 rounded-xl border-2 px-4 focus:outline-none transition-colors ${

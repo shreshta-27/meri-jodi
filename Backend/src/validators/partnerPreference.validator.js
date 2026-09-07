@@ -6,35 +6,35 @@ const maritalStatusValues = Object.values(MARITAL_STATUS)
 
 export const createOrUpdatePreferences = [
     body("gender")
-        .optional()
+        .optional({ values: "falsy" })
         .isIn(genderValues)
         .withMessage(`Gender must be one of: ${genderValues.join(", ")}`),
     body("ageMin")
-        .optional()
+        .optional({ values: "falsy" })
         .isInt({ min: 18, max: 80 })
         .withMessage("Minimum age must be between 18 and 80"),
     body("ageMax")
-        .optional()
+        .optional({ values: "falsy" })
         .isInt({ min: 18, max: 80 })
         .withMessage("Maximum age must be between 18 and 80"),
     body("religion")
-        .optional()
+        .optional({ values: "falsy" })
         .trim()
         .isLength({ min: 1, max: 50 }),
     body("caste")
-        .optional()
+        .optional({ values: "falsy" })
         .trim()
         .isLength({ min: 1, max: 50 }),
     body("location")
-        .optional()
+        .optional({ values: "falsy" })
         .trim()
         .isLength({ min: 1, max: 100 }),
     body("education")
-        .optional()
+        .optional({ values: "falsy" })
         .trim()
         .isLength({ min: 1, max: 100 }),
     body("occupation")
-        .optional()
+        .optional({ values: "falsy" })
         .trim()
         .isLength({ min: 1, max: 100 }),
     body("annualIncome")

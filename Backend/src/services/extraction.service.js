@@ -2,7 +2,7 @@ import { GoogleGenAI, Type } from "@google/genai"
 
 let aiClient = null
 const getAI = () => {
-    if (!aiClient && process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.startsWith("AIzaSy")) {
+    if (!aiClient && process.env.GEMINI_API_KEY) {
         try {
             aiClient = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
         } catch (e) {
@@ -600,9 +600,10 @@ class ExtractionService {
         // Tier 1: Extract raw text if PDF
         if (isPdf) {
             try {
-                const { PDFParse } = await import("pdf-parse")
+                const pdfMod = await import("pdf-parse")
+                const PDFParse = pdfMod.PDFParse || pdfMod.default
                 const parser = new PDFParse({ data: fileBuffer })
-                const parseResult = await parser.getText()
+                const parseResult = await parser.parse()
                 if (typeof parseResult === "string") {
                     pdfText = parseResult.trim()
                 } else if (parseResult && parseResult.text) {
@@ -653,7 +654,7 @@ class ExtractionService {
 Return ONLY valid JSON. No conversational text or markdown codeblocks outside JSON.`
 
         // Tier 2: Try Gemini if key is available
-        if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.startsWith("AIzaSy")) {
+        if (process.env.GEMINI_API_KEY) {
             try {
                 const ai = getAI()
                 if (ai) {
@@ -799,7 +800,7 @@ Guidelines:
 5. Do NOT include headings, quotes, bullet points, or placeholders. Output ONLY the raw paragraph text.`
 
         // Try Gemini 2.5 Flash first
-        if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.startsWith("AIzaSy")) {
+        if (process.env.GEMINI_API_KEY) {
             try {
                 const ai = getAI()
                 if (ai) {
@@ -892,7 +893,7 @@ Rules:
 3. Return ONLY a valid JSON array of 4 strings (e.g. ["Suggestion 1", "Suggestion 2", "Suggestion 3", "Suggestion 4"]). Do not return markdown backticks or any other text.`
 
         // Try Gemini 2.5 Flash
-        if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.startsWith("AIzaSy")) {
+        if (process.env.GEMINI_API_KEY) {
             try {
                 const ai = getAI()
                 if (ai) {
