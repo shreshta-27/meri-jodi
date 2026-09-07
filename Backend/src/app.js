@@ -52,6 +52,7 @@ const setupApp = () => {
 
     // Health check (public)
     app.use("/api/health", healthRoutes)
+    app.use("/api/v1/health", healthRoutes)
 
     // All routes below require auth
     app.use(authenticate)

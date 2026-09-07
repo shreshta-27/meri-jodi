@@ -41,7 +41,7 @@ class BlockService {
     async getBlocked(profileId) {
         return Block.find({ blockerProfileId: profileId })
             .sort({ createdAt: -1 })
-            .populate("blockedProfileId", "gender location photos")
+            .populate("blockedProfileId", "name gender location photos")
     }
 
     /**

@@ -160,7 +160,7 @@ class MessageService {
             {
                 $unwind: {
                     path: "$partnerUser",
-                    preserveNullAndEmptyArrays: false,
+                    preserveNullAndEmptyArrays: true,
                 },
             },
             {

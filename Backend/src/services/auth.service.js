@@ -213,18 +213,6 @@ class AuthService {
         const userDataJson = await redisClient.get(verifyKey)
 
         if (!userDataJson) {
-            // Check if user already exists and is verified
-            const existing = await User.findOne({ isEmailVerified: true }).sort({ updatedAt: -1 })
-            if (existing) {
-                const { accessToken, refreshToken } = await generateToken(existing._id, res)
-                return {
-                    message: "Email verified successfully! Your account is active.",
-                    user: existing.toAuthJSON(),
-                    token: accessToken,
-                    accessToken,
-                    refreshToken,
-                }
-            }
             const error = new Error("Verification link or code has expired or is invalid.")
             error.statusCode = 400
             throw error

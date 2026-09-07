@@ -4,6 +4,13 @@ import { REPORT_REASON, REPORT_STATUS } from "../constants/index.js"
 const reportReasonValues = Object.values(REPORT_REASON)
 const reportStatusValues = Object.values(REPORT_STATUS).filter(s => s !== "pending")
 
+const reasonAliases = {
+    inappropriate_messages: "inappropriate_content",
+    inappropriate_photo: "inappropriate_content",
+    scam: "spam",
+    fraud: "spam",
+}
+
 export const createReport = [
     body("reportedProfileId")
         .notEmpty()
@@ -13,6 +20,11 @@ export const createReport = [
     body("reason")
         .notEmpty()
         .withMessage("Report reason is required")
+        .customSanitizer((val) => {
+            if (!val || typeof val !== "string") return val
+            const normalized = val.trim().toLowerCase()
+            return reasonAliases[normalized] || normalized
+        })
         .isIn(reportReasonValues)
         .withMessage(`Invalid report reason. Must be one of: ${reportReasonValues.join(", ")}`),
     body("description")

@@ -39,7 +39,7 @@ class NotificationService {
                 .sort({ createdAt: -1 })
                 .skip(skip)
                 .limit(limit)
-                .populate("relatedProfileId", "photos gender"),
+                .populate("relatedProfileId", "name photos gender"),
             Notification.countDocuments({ userId }),
         ])
 

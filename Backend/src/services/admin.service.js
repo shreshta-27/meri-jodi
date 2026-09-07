@@ -209,12 +209,9 @@ class AdminService {
             throw error
         }
 
-        const [profile, preferences] = await Promise.all([
-            Profile.findOne({ userId }),
-            PartnerPreference.findOne({ userId }),
-        ])
-
+        const profile = await Profile.findOne({ userId })
         const profileId = profile?._id
+        const preferences = profileId ? await PartnerPreference.findOne({ profileId }) : null
 
         const [verifications, reportsAgainst, reportsBy] = await Promise.all([
             profileId ? Verification.find({ profileId }).sort({ createdAt: -1 }) : [],
@@ -331,7 +328,7 @@ class AdminService {
         await Promise.all([
             User.findByIdAndDelete(userId),
             Profile.findOneAndDelete({ userId }),
-            PartnerPreference.findOneAndDelete({ userId }),
+            profileId ? PartnerPreference.findOneAndDelete({ profileId }) : Promise.resolve(),
             Notification.deleteMany({ userId }),
             profileId ? Verification.deleteMany({ profileId }) : Promise.resolve(),
             profileId ? Report.deleteMany({ $or: [{ reporterProfileId: profileId }, { reportedProfileId: profileId }] }) : Promise.resolve(),
