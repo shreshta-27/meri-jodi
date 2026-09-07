@@ -252,11 +252,19 @@ class AuthService {
         // Check if user was registered in the meantime
         let user = await User.findOne({ email: userData.email })
         if (!user) {
+            let phoneToSet = userData.phone || undefined
+            if (phoneToSet) {
+                const phoneInUse = await User.findOne({ phone: phoneToSet })
+                if (phoneInUse) {
+                    phoneToSet = undefined
+                }
+            }
+
             user = await User.create({
                 name: userData.name,
                 email: userData.email,
                 passwordHash: userData.passwordHash,
-                phone: userData.phone,
+                phone: phoneToSet,
                 isEmailVerified: true,
                 status: USER_STATUS.ACTIVE,
                 lastLogin: new Date(),

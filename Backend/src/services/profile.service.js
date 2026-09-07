@@ -71,13 +71,10 @@ class ProfileService {
      * @param {object} data - Profile data
      * @returns {Promise<object>} Created profile
      */
-    async create(userId, data) {
-        const existing = await Profile.findOne({ userId })
-        if (existing) {
-            return this.update(userId, data)
-        }
-
-        // Normalize aliases
+    /**
+     * Helper to normalize flattened and nested profile fields
+     */
+    _normalizeProfilePayload(data = {}) {
         const normalized = { ...data }
         if (normalized.gotra && !normalized.gotham) normalized.gotham = normalized.gotra
         if (normalized.nakshatra && !normalized.nakshtra) normalized.nakshtra = normalized.nakshatra
@@ -87,6 +84,73 @@ class ProfileService {
         if (normalized.time_of_birth && !normalized.timeOfBirth) normalized.timeOfBirth = normalized.time_of_birth
         if (normalized.about && !normalized.aboutMe) normalized.aboutMe = normalized.about
         if (normalized.hobbies && !normalized.hobbiesAndInterests) normalized.hobbiesAndInterests = normalized.hobbies
+
+        // Normalize flattened subdocuments
+        if (typeof normalized.education === "string") {
+            normalized.education = { highestDegree: normalized.education }
+        } else if (normalized.highestEducation) {
+            normalized.education = {
+                ...(typeof normalized.education === "object" ? normalized.education : {}),
+                highestDegree: normalized.highestEducation,
+            }
+        }
+
+        if (normalized.occupation || normalized.companyName || normalized.company || normalized.annualIncome || normalized.workLocation || normalized.income) {
+            normalized.career = {
+                ...(typeof normalized.career === "object" ? normalized.career : {}),
+                ...(normalized.occupation ? { occupation: normalized.occupation } : {}),
+                ...(normalized.companyName || normalized.company ? { companyName: normalized.companyName || normalized.company } : {}),
+                ...(normalized.annualIncome || normalized.income ? { annualIncome: normalized.annualIncome || normalized.income } : {}),
+                ...(normalized.workLocation ? { workLocation: normalized.workLocation } : {}),
+            }
+        }
+
+        if (normalized.city || normalized.state || normalized.country || normalized.pincode) {
+            normalized.location = {
+                ...(typeof normalized.location === "object" ? normalized.location : {}),
+                ...(normalized.city ? { city: normalized.city } : {}),
+                ...(normalized.state ? { state: normalized.state } : {}),
+                ...(normalized.country ? { country: normalized.country } : {}),
+                ...(normalized.pincode ? { pincode: normalized.pincode } : {}),
+            }
+        }
+
+        if (normalized.diet !== undefined || normalized.smoking !== undefined || normalized.drinking !== undefined) {
+            normalized.lifestyle = {
+                ...(typeof normalized.lifestyle === "object" ? normalized.lifestyle : {}),
+                ...(normalized.diet !== undefined ? { diet: normalized.diet } : {}),
+                ...(normalized.smoking !== undefined ? { smoking: normalized.smoking === true || normalized.smoking === "true" } : {}),
+                ...(normalized.drinking !== undefined ? { drinking: normalized.drinking === true || normalized.drinking === "true" } : {}),
+            }
+        }
+
+        if (normalized.fatherOccupation || normalized.motherOccupation || normalized.familyType || normalized.familyValues || normalized.familyAffluence) {
+            normalized.family = {
+                ...(typeof normalized.family === "object" ? normalized.family : {}),
+                ...(normalized.fatherOccupation ? { fatherOccupation: normalized.fatherOccupation } : {}),
+                ...(normalized.motherOccupation ? { motherOccupation: normalized.motherOccupation } : {}),
+                ...(normalized.familyType ? { familyType: normalized.familyType } : {}),
+                ...(normalized.familyValues ? { familyValues: normalized.familyValues } : {}),
+                ...(normalized.familyAffluence ? { familyAffluence: normalized.familyAffluence } : {}),
+            }
+        }
+
+        return normalized
+    }
+
+    /**
+     * Create a new profile
+     * @param {string} userId - User ID
+     * @param {object} data - Profile data
+     * @returns {Promise<object>} Created profile
+     */
+    async create(userId, data) {
+        const existing = await Profile.findOne({ userId })
+        if (existing) {
+            return this.update(userId, data)
+        }
+
+        const normalized = this._normalizeProfilePayload(data)
 
         const sanitized = {}
         for (const field of PROFILE_CREATE_FIELDS) {
@@ -140,16 +204,7 @@ class ProfileService {
      * @returns {Promise<object>} Updated profile
      */
     async update(userId, data) {
-        // Normalize aliases
-        const normalized = { ...data }
-        if (normalized.gotra && !normalized.gotham) normalized.gotham = normalized.gotra
-        if (normalized.nakshatra && !normalized.nakshtra) normalized.nakshtra = normalized.nakshatra
-        if (normalized.birthPlace && !normalized.placeOfBirth) normalized.placeOfBirth = normalized.birthPlace
-        if (normalized.birthTiming && !normalized.timeOfBirth) normalized.timeOfBirth = normalized.birthTiming
-        if (normalized.birthTime && !normalized.timeOfBirth) normalized.timeOfBirth = normalized.birthTime
-        if (normalized.time_of_birth && !normalized.timeOfBirth) normalized.timeOfBirth = normalized.time_of_birth
-        if (normalized.about && !normalized.aboutMe) normalized.aboutMe = normalized.about
-        if (normalized.hobbies && !normalized.hobbiesAndInterests) normalized.hobbiesAndInterests = normalized.hobbies
+        const normalized = this._normalizeProfilePayload(data)
 
         const sanitized = {}
         for (const field of PROFILE_UPDATE_FIELDS) {

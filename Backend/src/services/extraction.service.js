@@ -12,6 +12,29 @@ const getAI = () => {
     return aiClient
 }
 
+const GEMINI_MODELS = [
+    "gemini-3.6-flash",
+    "gemini-2.5-flash",
+    "gemini-2.0-flash",
+    "gemini-1.5-flash",
+]
+
+async function generateWithGemini(contents, config = {}) {
+    const ai = getAI()
+    if (!ai) return null
+    for (const model of GEMINI_MODELS) {
+        try {
+            const req = { model, contents }
+            if (config && Object.keys(config).length > 0) req.config = config
+            const response = await ai.models.generateContent(req)
+            if (response?.text) return response.text.trim()
+        } catch (err) {
+            console.warn(`[Gemini] Model ${model} failed, trying next:`, err.message || err)
+        }
+    }
+    return null
+}
+
 const biodataSchema = {
     type: Type.OBJECT,
     properties: {
@@ -673,16 +696,11 @@ Return ONLY valid JSON. No conversational text or markdown codeblocks outside JS
                         ]
                     }
 
-                    const response = await ai.models.generateContent({
-                        model: "gemini-2.5-flash",
-                        contents,
-                        config: {
-                            responseMimeType: "application/json",
-                            responseSchema: biodataSchema,
-                        },
+                    const text = await generateWithGemini(contents, {
+                        responseMimeType: "application/json",
+                        responseSchema: biodataSchema,
                     })
 
-                    const text = response?.text?.trim()
                     if (text) {
                         const parsed = JSON.parse(text)
                         return normalizeBiodataResult(parsed)
@@ -799,18 +817,11 @@ Guidelines:
 4. Keep the tone respectful, genuine, modern, and appealing for marriage.
 5. Do NOT include headings, quotes, bullet points, or placeholders. Output ONLY the raw paragraph text.`
 
-        // Try Gemini 2.5 Flash first
+        // Try Gemini with dynamic model cascade
         if (process.env.GEMINI_API_KEY) {
             try {
-                const ai = getAI()
-                if (ai) {
-                    const response = await ai.models.generateContent({
-                        model: "gemini-2.5-flash",
-                        contents: prompt,
-                    })
-                    const text = response?.text?.trim()
-                    if (text) return text
-                }
+                const text = await generateWithGemini(prompt)
+                if (text) return text
             } catch (err) {
                 console.warn("Gemini bio generation failed, trying Groq fallback:", err.message)
             }
@@ -892,26 +903,19 @@ Rules:
 2. Personalize referencing their occupation, city, or hobbies when available.
 3. Return ONLY a valid JSON array of 4 strings (e.g. ["Suggestion 1", "Suggestion 2", "Suggestion 3", "Suggestion 4"]). Do not return markdown backticks or any other text.`
 
-        // Try Gemini 2.5 Flash
+        // Try Gemini with dynamic model cascade
         if (process.env.GEMINI_API_KEY) {
             try {
-                const ai = getAI()
-                if (ai) {
-                    const response = await ai.models.generateContent({
-                        model: "gemini-2.5-flash",
-                        contents: prompt,
-                    })
-                    let text = response?.text?.trim()
-                    if (text) {
-                        if (text.startsWith("```json")) {
-                            text = text.replace(/^```json\s*/, "").replace(/\s*```$/, "")
-                        } else if (text.startsWith("```")) {
-                            text = text.replace(/^```\s*/, "").replace(/\s*```$/, "")
-                        }
-                        const parsed = JSON.parse(text)
-                        if (Array.isArray(parsed) && parsed.length > 0) {
-                            return parsed.slice(0, 4)
-                        }
+                let text = await generateWithGemini(prompt)
+                if (text) {
+                    if (text.startsWith("```json")) {
+                        text = text.replace(/^```json\s*/, "").replace(/\s*```$/, "")
+                    } else if (text.startsWith("```")) {
+                        text = text.replace(/^```\s*/, "").replace(/\s*```$/, "")
+                    }
+                    const parsed = JSON.parse(text)
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                        return parsed.slice(0, 4)
                     }
                 }
             } catch (err) {
