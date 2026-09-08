@@ -108,6 +108,106 @@ class AdminController {
             return apiResponse.error(error.message, error.statusCode || 500)
         }
     }
+
+    /**
+     * PUT /api/v1/admin/users/:id/profile
+     */
+    async updateUserProfile(req, res) {
+        const apiResponse = new ApiResponse(res)
+        try {
+            const data = await adminService.updateUserProfile(req.params.id, req.body)
+            return apiResponse.success(data, "User profile updated successfully")
+        } catch (error) {
+            console.error("Admin updateUserProfile error:", error)
+            return apiResponse.error(error.message, error.statusCode || 500)
+        }
+    }
+
+    /**
+     * GET /api/v1/admin/users/:id/subscriptions
+     */
+    async getUserSubscriptions(req, res) {
+        const apiResponse = new ApiResponse(res)
+        try {
+            const data = await adminService.getUserSubscriptions(req.params.id)
+            return apiResponse.success(data, "User subscriptions retrieved successfully")
+        } catch (error) {
+            console.error("Admin getUserSubscriptions error:", error)
+            return apiResponse.error(error.message, error.statusCode || 500)
+        }
+    }
+
+    /**
+     * POST /api/v1/admin/users/:id/subscriptions
+     */
+    async addUserSubscription(req, res) {
+        const apiResponse = new ApiResponse(res)
+        try {
+            const data = await adminService.addUserSubscription(req.params.id, req.body)
+            return apiResponse.success(data, "Subscription assigned successfully", 201)
+        } catch (error) {
+            console.error("Admin addUserSubscription error:", error)
+            return apiResponse.error(error.message, error.statusCode || 500)
+        }
+    }
+
+    /**
+     * PUT /api/v1/admin/subscriptions/:subId/status
+     */
+    async updateSubscriptionStatus(req, res) {
+        const apiResponse = new ApiResponse(res)
+        try {
+            const { status } = req.body
+            if (!status) return apiResponse.error("Status is required", 400)
+            const data = await adminService.updateSubscriptionStatus(req.params.subId, status)
+            return apiResponse.success(data, `Subscription status updated to ${status}`)
+        } catch (error) {
+            console.error("Admin updateSubscriptionStatus error:", error)
+            return apiResponse.error(error.message, error.statusCode || 500)
+        }
+    }
+
+    /**
+     * GET /api/v1/admin/settings/profile
+     */
+    async getAdminProfile(req, res) {
+        const apiResponse = new ApiResponse(res)
+        try {
+            const data = await adminService.getAdminProfile(req.userId)
+            return apiResponse.success(data, "Admin profile retrieved successfully")
+        } catch (error) {
+            console.error("Admin getAdminProfile error:", error)
+            return apiResponse.error(error.message, error.statusCode || 500)
+        }
+    }
+
+    /**
+     * PUT /api/v1/admin/settings/profile
+     */
+    async updateAdminProfile(req, res) {
+        const apiResponse = new ApiResponse(res)
+        try {
+            const data = await adminService.updateAdminProfile(req.userId, req.body)
+            return apiResponse.success(data, "Admin personal information updated successfully")
+        } catch (error) {
+            console.error("Admin updateAdminProfile error:", error)
+            return apiResponse.error(error.message, error.statusCode || 500)
+        }
+    }
+
+    /**
+     * PUT /api/v1/admin/settings/password
+     */
+    async updateAdminPassword(req, res) {
+        const apiResponse = new ApiResponse(res)
+        try {
+            const data = await adminService.updateAdminPassword(req.userId, req.body)
+            return apiResponse.success(data, "Admin password updated successfully")
+        } catch (error) {
+            console.error("Admin updateAdminPassword error:", error)
+            return apiResponse.error(error.message, error.statusCode || 400)
+        }
+    }
 }
 
 export default new AdminController()

@@ -8,6 +8,7 @@ import { PartnerPreference } from "../models/PartnerPreference.js"
 import { Notification } from "../models/Notification.js"
 import { Shortlist } from "../models/Shortlist.js"
 import { Block } from "../models/Block.js"
+import { Subscription } from "../models/Subscription.js"
 import { USER_STATUS, ROLES, NOTIFICATION_TYPE, PAGINATION_DEFAULTS } from "../constants/index.js"
 import { redisClient } from "../config/redis.js"
 import { revokeRefreshToken } from "../config/generateToken.js"
@@ -242,11 +243,17 @@ class AdminService {
         const profileId = profile?._id
         const preferences = profileId ? await PartnerPreference.findOne({ profileId }) : null
 
-        const [verifications, reportsAgainst, reportsBy] = await Promise.all([
+        const [verifications, reportsAgainst, reportsBy, subscriptions] = await Promise.all([
             profileId ? Verification.find({ profileId }).sort({ createdAt: -1 }) : [],
             profileId ? Report.find({ reportedProfileId: profileId }).sort({ createdAt: -1 }) : [],
             profileId ? Report.find({ reporterProfileId: profileId }).sort({ createdAt: -1 }) : [],
+            Subscription.find({ userId }).sort({ createdAt: -1 }),
         ])
+
+        const now = new Date()
+        const activeSubscription = subscriptions.find(
+            (s) => s.status === "active" && (!s.expiryDate || new Date(s.expiryDate) > now)
+        ) || null
 
         return {
             user: {
@@ -260,6 +267,8 @@ class AdminService {
             verifications,
             reportsAgainst,
             reportsBy,
+            subscriptions,
+            activeSubscription,
         }
     }
 
@@ -399,6 +408,279 @@ class AdminService {
         ])
 
         return { message: "User and associated data permanently removed." }
+    }
+
+    /**
+     * Admin direct update of a user and their profile dossier
+     */
+    async updateUserProfile(userId, data = {}) {
+        const user = await User.findById(userId)
+        if (!user) {
+            const error = new Error("User not found")
+            error.statusCode = 404
+            throw error
+        }
+
+        // 1. Update core user fields if provided
+        if (data.name !== undefined) user.name = data.name.trim()
+        if (data.phone !== undefined) user.phone = data.phone.trim()
+        if (data.status && Object.values(USER_STATUS).includes(data.status)) user.status = data.status
+        if (data.role && Object.values(ROLES).includes(data.role)) user.role = data.role
+        user.updatedAt = new Date()
+        await user.save()
+
+        // 2. Update profile fields
+        let profile = await Profile.findOne({ userId })
+        if (!profile) {
+            profile = new Profile({ userId, name: user.name, gender: user.gender || "male" })
+        }
+
+        const allowedDirect = [
+            "name", "dateOfBirth", "timeOfBirth", "placeOfBirth", "motherTongue",
+            "gender", "aboutMe", "heightCm", "religion", "caste", "subCaste",
+            "gotham", "rashi", "nakshtra", "manglik", "complexion", "maritalStatus",
+            "isVerified"
+        ]
+
+        allowedDirect.forEach((field) => {
+            if (data[field] !== undefined) {
+                profile[field] = data[field]
+            }
+        })
+
+        // Nested objects
+        if (data.location) {
+            profile.location = { ...(profile.location?.toObject?.() || profile.location || {}), ...data.location }
+        }
+        if (data.education) {
+            profile.education = { ...(profile.education?.toObject?.() || profile.education || {}), ...data.education }
+        }
+        if (data.career) {
+            profile.career = { ...(profile.career?.toObject?.() || profile.career || {}), ...data.career }
+        }
+        if (data.family) {
+            profile.family = { ...(profile.family?.toObject?.() || profile.family || {}), ...data.family }
+        }
+        if (data.lifestyle) {
+            profile.lifestyle = { ...(profile.lifestyle?.toObject?.() || profile.lifestyle || {}), ...data.lifestyle }
+        }
+
+        // Calculate profile completion percentage
+        let score = 0
+        if (profile.name) score += 10
+        if (profile.dateOfBirth) score += 10
+        if (profile.gender) score += 5
+        if (profile.religion && profile.caste) score += 15
+        if (profile.location?.city) score += 10
+        if (profile.education?.highestDegree) score += 10
+        if (profile.career?.occupation) score += 10
+        if (profile.aboutMe && profile.aboutMe.length > 20) score += 10
+        if (profile.family?.familyType || profile.family?.fatherOccupation) score += 10
+        if (profile.photos && profile.photos.length > 0) score += 10
+        profile.profileCompletionPct = Math.min(100, score)
+
+        profile.updatedAt = new Date()
+        await profile.save()
+
+        // Invalidate Redis user cache
+        await redisClient.del(`user:${userId}`)
+
+        return {
+            user: {
+                ...user.toAuthJSON(),
+                createdAt: user.createdAt,
+                updatedAt: user.updatedAt,
+                lastLogin: user.lastLogin,
+            },
+            profile,
+        }
+    }
+
+    /**
+     * Get user's subscription records
+     */
+    async getUserSubscriptions(userId) {
+        const user = await User.findById(userId)
+        if (!user) {
+            const error = new Error("User not found")
+            error.statusCode = 404
+            throw error
+        }
+
+        const subscriptions = await Subscription.find({ userId }).sort({ createdAt: -1 })
+        const now = new Date()
+        const activeSubscription = subscriptions.find(
+            (s) => s.status === "active" && (!s.expiryDate || new Date(s.expiryDate) > now)
+        ) || null
+
+        return {
+            subscriptions,
+            activeSubscription,
+        }
+    }
+
+    /**
+     * Assign or create a subscription plan for a user
+     */
+    async addUserSubscription(userId, data = {}) {
+        const user = await User.findById(userId)
+        if (!user) {
+            const error = new Error("User not found")
+            error.statusCode = 404
+            throw error
+        }
+
+        const {
+            planName = "Premium Plan",
+            planId = "premium",
+            amount = 1999,
+            currency = "INR",
+            billingCycle = "annual",
+            paymentMethod = "Admin Assigned",
+            transactionId = `ADMIN-MANUAL-${Date.now()}`,
+            autoRenew = false,
+            notes = "Plan assigned via Admin Console",
+            durationDays = 365,
+        } = data
+
+        const startDate = data.startDate ? new Date(data.startDate) : new Date()
+        let expiryDate = data.expiryDate ? new Date(data.expiryDate) : null
+        if (!expiryDate && durationDays) {
+            expiryDate = new Date(startDate.getTime() + durationDays * 24 * 60 * 60 * 1000)
+        }
+
+        // If newly created plan is active, mark all previous active subscriptions as expired
+        await Subscription.updateMany(
+            { userId, status: "active" },
+            { $set: { status: "expired" } }
+        )
+
+        const subscription = await Subscription.create({
+            userId,
+            planName,
+            planId,
+            amount,
+            currency,
+            status: "active",
+            billingCycle,
+            startDate,
+            expiryDate,
+            nextBillingDate: autoRenew ? expiryDate : null,
+            autoRenew,
+            paymentMethod,
+            transactionId,
+            notes,
+        })
+
+        // Send a notification to the user
+        await Notification.create({
+            userId,
+            type: NOTIFICATION_TYPE.SYSTEM,
+            message: `Your membership has been updated to ${planName}. Valid until ${expiryDate ? expiryDate.toLocaleDateString("en-IN") : "Lifetime"}.`,
+        }).catch(() => {})
+
+        return subscription
+    }
+
+    /**
+     * Update an existing subscription status
+     */
+    async updateSubscriptionStatus(subId, status) {
+        const sub = await Subscription.findByIdAndUpdate(
+            subId,
+            { status, updatedAt: new Date() },
+            { returnDocument: "after" }
+        )
+        if (!sub) {
+            const error = new Error("Subscription record not found")
+            error.statusCode = 404
+            throw error
+        }
+        return sub
+    }
+
+    /**
+     * Get Admin Profile Details
+     */
+    async getAdminProfile(adminId) {
+        const admin = await User.findById(adminId)
+        if (!admin) {
+            const error = new Error("Administrator account not found")
+            error.statusCode = 404
+            throw error
+        }
+
+        return {
+            ...admin.toAuthJSON(),
+            createdAt: admin.createdAt,
+            lastLogin: admin.lastLogin,
+        }
+    }
+
+    /**
+     * Update Admin Personal Information
+     */
+    async updateAdminProfile(adminId, { name, email, phone, avatar }) {
+        const admin = await User.findById(adminId)
+        if (!admin) {
+            const error = new Error("Administrator account not found")
+            error.statusCode = 404
+            throw error
+        }
+
+        if (name) admin.name = name.trim()
+        if (email) admin.email = email.toLowerCase().trim()
+        if (phone) admin.phone = phone.trim()
+        if (avatar !== undefined) admin.avatar = avatar
+        admin.updatedAt = new Date()
+
+        await admin.save()
+        await redisClient.del(`user:${adminId}`)
+
+        return {
+            ...admin.toAuthJSON(),
+            createdAt: admin.createdAt,
+            updatedAt: admin.updatedAt,
+        }
+    }
+
+    /**
+     * Update Admin Password
+     */
+    async updateAdminPassword(adminId, { currentPassword, newPassword }) {
+        if (!currentPassword || !newPassword) {
+            const error = new Error("Current and new passwords are both required")
+            error.statusCode = 400
+            throw error
+        }
+
+        if (newPassword.length < 6) {
+            const error = new Error("New password must be at least 6 characters long")
+            error.statusCode = 400
+            throw error
+        }
+
+        const admin = await User.findById(adminId)
+        if (!admin) {
+            const error = new Error("Administrator account not found")
+            error.statusCode = 404
+            throw error
+        }
+
+        const isMatch = await admin.validatePassword(currentPassword)
+        if (!isMatch) {
+            const error = new Error("Current password is incorrect")
+            error.statusCode = 400
+            throw error
+        }
+
+        await admin.setPassword(newPassword)
+        admin.updatedAt = new Date()
+        await admin.save()
+
+        await redisClient.del(`user:${adminId}`)
+
+        return { message: "Administrator password updated successfully" }
     }
 }
 
