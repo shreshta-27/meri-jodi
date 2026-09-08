@@ -48,10 +48,7 @@ const SignUpPage = () => {
                 gender,
                 phone: phone.trim() ? (phone.startsWith("+") ? phone.trim() : `+91${phone.trim()}`) : undefined,
             })
-            if (data?.otp) {
-                setDevOtp(data.otp)
-                setOtpInput(data.otp)
-            }
+            setOtpInput("")
             setSuccessMsg(
                 data.message ||
                     "Registration successful! We have sent a verification code to your email. Please check your inbox."

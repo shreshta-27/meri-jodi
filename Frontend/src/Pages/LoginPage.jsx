@@ -94,10 +94,7 @@ const LoginPage = () => {
         try {
             const data = await loginWithEmail(email.trim(), password)
             setInfoMsg(data.message || "Verification code sent to your email.")
-            if (data.otp) {
-                setDevOtp(data.otp)
-                setOtp(data.otp.split(""))
-            }
+            setOtp(["", "", "", "", "", ""])
             setStep("otp")
             setResendTimer(60)
             setCanResend(false)

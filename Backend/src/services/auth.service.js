@@ -406,8 +406,11 @@ class AuthService {
         const otp = Math.floor(100000 + Math.random() * 900000).toString()
         const otpKey = `otp:${cleanEmail}`
 
-        // 6. Store OTP in Redis (5 min / 300s TTL)
+        // 6. Store OTP state in Redis (5 min / 300s TTL) and update User model state in MongoDB
         await redisClient.set(otpKey, otp, { EX: 300 })
+        user.otp = otp
+        user.otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000)
+        await user.save()
 
         // 7. Send OTP email via Nodemailer
         const subject = `${config.appName} Login Verification Code: ${otp}`
@@ -434,7 +437,7 @@ class AuthService {
 
     /**
      * Verify Login OTP:
-     * Checks OTP in Redis, issues access/refresh tokens, sets cookies, and caches user session.
+     * Checks OTP in Redis and MongoDB User document, issues access/refresh tokens, sets cookies, and caches user session.
      */
     async verifyLoginOtp({ email, otp, res = null }) {
         const cleanEmail = email.toLowerCase().trim()
@@ -463,7 +466,18 @@ class AuthService {
         const otpKey = `otp:${cleanEmail}`
         let storedOtp = await redisClient.get(otpKey)
 
-        if (!storedOtp) {
+        // Find user to check MongoDB state as well
+        const user = await User.findOne({ email: cleanEmail }).select("+otp +otpExpiresAt")
+        if (!user) {
+            const error = new Error("User account not found.")
+            error.statusCode = 404
+            throw error
+        }
+
+        const isMongoOtpValid = Boolean(user.otp && user.otp === cleanOtp && user.otpExpiresAt && user.otpExpiresAt > new Date())
+        const isRedisOtpValid = Boolean(storedOtp && storedOtp === cleanOtp)
+
+        if (!isRedisOtpValid && !isMongoOtpValid) {
             // Check if this was a registration verification OTP
             const regOtpJson = await redisClient.get(`verify-otp:${cleanEmail}`)
             if (regOtpJson) {
@@ -472,27 +486,16 @@ class AuthService {
                     return this.verifyEmailToken(regData.token, res, cleanEmail)
                 }
             }
-            const error = new Error("OTP has expired or is invalid. Please request a new code.")
+            const error = new Error("Invalid or expired verification code. Please request a new code.")
             error.statusCode = 400
             throw error
         }
 
-        if (storedOtp !== cleanOtp) {
-            const error = new Error("Invalid OTP code.")
-            error.statusCode = 400
-            throw error
-        }
-
-        // Delete used OTP
+        // Clear used OTP from both Redis and MongoDB
         await redisClient.del(otpKey)
-
-        // Find user
-        const user = await User.findOne({ email: cleanEmail })
-        if (!user) {
-            const error = new Error("User account not found.")
-            error.statusCode = 404
-            throw error
-        }
+        user.otp = undefined
+        user.otpExpiresAt = undefined
+        await user.save()
 
         user.isEmailVerified = true
         user.lastLogin = new Date()
@@ -548,6 +551,9 @@ class AuthService {
         const otpKey = `otp:${cleanEmail}`
 
         await redisClient.set(otpKey, otp, { EX: 300 })
+        user.otp = otp
+        user.otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000)
+        await user.save()
 
         const subject = `${config.appName} - New Login Verification Code: ${otp}`
         const text = `Your new login verification code is: ${otp} (valid for 5 minutes).`

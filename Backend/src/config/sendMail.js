@@ -6,23 +6,31 @@ let transporter = null
 const getTransporter = () => {
     if (transporter) return transporter
 
-    if (config.smtp.user && config.smtp.pass) {
-        transporter = nodemailer.createTransport({
-            host: config.smtp.host,
-            port: config.smtp.port,
-            secure: config.smtp.port === 465,
-            auth: {
-                user: config.smtp.user,
-                pass: config.smtp.pass,
-            },
-            connectionTimeout: 4000,
-            greetingTimeout: 4000,
-            socketTimeout: 5000,
-        })
+    const user = (config.smtp.user || "").trim()
+    const pass = (config.smtp.pass || "").trim().replace(/\s+/g, "")
+
+    if (user && pass) {
+        const isGmail = config.smtp.host?.includes("gmail")
+        transporter = nodemailer.createTransport(
+            isGmail
+                ? {
+                      service: "gmail",
+                      auth: { user, pass },
+                  }
+                : {
+                      host: config.smtp.host,
+                      port: config.smtp.port,
+                      secure: config.smtp.port === 465,
+                      auth: { user, pass },
+                      connectionTimeout: 8000,
+                      greetingTimeout: 8000,
+                      socketTimeout: 10000,
+                  }
+        )
     } else {
         // Dev fallback simulated transporter
         transporter = {
-            sendMail: async (mailOptions) => {
+            sendMail: async () => {
                 return { messageId: "simulated-" + Date.now() }
             },
         }
