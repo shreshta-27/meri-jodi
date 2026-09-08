@@ -26,7 +26,10 @@ async function generateWithGemini(contents, config = {}) {
         try {
             const req = { model, contents }
             if (config && Object.keys(config).length > 0) req.config = config
-            const response = await ai.models.generateContent(req)
+            const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error(`Timeout after 6000ms for ${model}`)), 6000)
+            )
+            const response = await Promise.race([ai.models.generateContent(req), timeoutPromise])
             if (response?.text) return response.text.trim()
         } catch (err) {
             console.warn(`[Gemini] Model ${model} failed, trying next:`, err.message || err)
@@ -625,12 +628,13 @@ class ExtractionService {
             try {
                 const pdfMod = await import("pdf-parse")
                 const PDFParse = pdfMod.PDFParse || pdfMod.default
-                const parser = new PDFParse({ data: fileBuffer })
-                const parseResult = await parser.parse()
-                if (typeof parseResult === "string") {
-                    pdfText = parseResult.trim()
-                } else if (parseResult && parseResult.text) {
-                    pdfText = parseResult.text.trim()
+                if (typeof PDFParse === "function" && PDFParse.prototype?.getText) {
+                    const parser = new PDFParse({ data: fileBuffer })
+                    const res = await parser.getText()
+                    pdfText = (typeof res === "string" ? res : res?.text || "").trim()
+                } else if (typeof pdfMod.default === "function") {
+                    const res = await pdfMod.default(fileBuffer)
+                    pdfText = (res?.text || "").trim()
                 }
             } catch (pdfErr) {
                 console.warn("[PDF Parse Warning] Could not parse text with pdf-parse:", pdfErr.message)

@@ -20,6 +20,7 @@ const SignUpPage = () => {
     const [successMsg, setSuccessMsg] = useState("")
     const [loading, setLoading] = useState(false)
     const [otpInput, setOtpInput] = useState("")
+    const [devOtp, setDevOtp] = useState("")
     const [verifyingOtp, setVerifyingOtp] = useState(false)
     const [otpError, setOtpError] = useState("")
 
@@ -47,6 +48,10 @@ const SignUpPage = () => {
                 gender,
                 phone: phone.trim() ? (phone.startsWith("+") ? phone.trim() : `+91${phone.trim()}`) : undefined,
             })
+            if (data?.otp) {
+                setDevOtp(data.otp)
+                setOtpInput(data.otp)
+            }
             setSuccessMsg(
                 data.message ||
                     "Registration successful! We have sent a verification code to your email. Please check your inbox."
