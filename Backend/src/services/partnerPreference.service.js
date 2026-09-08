@@ -30,8 +30,21 @@ class PartnerPreferenceService {
         const sanitized = {}
         for (const field of PREFERENCE_UPDATE_FIELDS) {
             if (data[field] !== undefined) {
-                sanitized[field] = data[field]
+                if (Array.isArray(data[field]) && !["maritalStatus", "hobbiesAndInterests"].includes(field)) {
+                    sanitized[field] = data[field].join(", ")
+                } else {
+                    sanitized[field] = data[field]
+                }
             }
+        }
+
+        if (data.ageRange && typeof data.ageRange === "object") {
+            if (data.ageRange.min !== undefined) sanitized.ageMin = Number(data.ageRange.min)
+            if (data.ageRange.max !== undefined) sanitized.ageMax = Number(data.ageRange.max)
+        }
+        if (data.heightRange && typeof data.heightRange === "object") {
+            if (data.heightRange.min !== undefined) sanitized.heightMinCm = Number(data.heightRange.min)
+            if (data.heightRange.max !== undefined) sanitized.heightMaxCm = Number(data.heightRange.max)
         }
 
         // Normalize maritalStatus

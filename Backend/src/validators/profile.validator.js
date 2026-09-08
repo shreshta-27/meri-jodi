@@ -61,6 +61,10 @@ export const createProfile = [
         .optional({ values: "falsy" })
         .trim()
         .isLength({ min: 1, max: 50 }),
+    body("subCaste")
+        .optional({ values: "falsy" })
+        .trim()
+        .isLength({ min: 1, max: 50 }),
     body("maritalStatus")
         .optional({ values: "falsy" })
         .customSanitizer(sanitizeMaritalStatus)
@@ -155,6 +159,10 @@ export const createProfile = [
         .optional({ values: "falsy" })
         .customSanitizer(sanitizeFamilyAffluence)
         .isIn(familyAffluenceValues),
+    body("family.familyLocation")
+        .optional({ values: "falsy" })
+        .trim()
+        .isLength({ min: 1, max: 100 }),
     body("lifestyle.diet")
         .optional({ values: "falsy" })
         .trim()
@@ -167,6 +175,14 @@ export const createProfile = [
         .optional({ values: "falsy" })
         .customSanitizer((v) => v === true || v === "true")
         .isBoolean(),
+    body("lifestyle.habits")
+        .optional({ values: "falsy" })
+        .trim()
+        .isLength({ min: 1, max: 200 }),
+    body("lifestyle.fitness")
+        .optional({ values: "falsy" })
+        .trim()
+        .isLength({ min: 1, max: 200 }),
     body("hobbiesAndInterests")
         .optional({ values: "falsy" })
         .isArray(),
@@ -244,6 +260,10 @@ export const updateProfile = [
         .trim()
         .isLength({ min: 1, max: 50 }),
     body("caste")
+        .optional({ values: "falsy" })
+        .trim()
+        .isLength({ min: 1, max: 50 }),
+    body("subCaste")
         .optional({ values: "falsy" })
         .trim()
         .isLength({ min: 1, max: 50 }),
@@ -340,6 +360,10 @@ export const updateProfile = [
         .optional({ values: "falsy" })
         .customSanitizer(sanitizeFamilyAffluence)
         .isIn(familyAffluenceValues),
+    body("family.familyLocation")
+        .optional({ values: "falsy" })
+        .trim()
+        .isLength({ min: 1, max: 100 }),
     body("gotham")
         .optional({ values: "falsy" })
         .trim()
@@ -364,6 +388,14 @@ export const updateProfile = [
         .optional({ values: "falsy" })
         .customSanitizer((v) => v === true || v === "true")
         .isBoolean(),
+    body("lifestyle.habits")
+        .optional({ values: "falsy" })
+        .trim()
+        .isLength({ min: 1, max: 200 }),
+    body("lifestyle.fitness")
+        .optional({ values: "falsy" })
+        .trim()
+        .isLength({ min: 1, max: 200 }),
     body("hobbiesAndInterests")
         .optional({ values: "falsy" })
         .isArray(),

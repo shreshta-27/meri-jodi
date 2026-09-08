@@ -1,3 +1,4 @@
+import mongoose from "mongoose"
 import { User } from "../models/User.js"
 import { Profile } from "../models/Profile.js"
 import { Verification } from "../models/Verification.js"
@@ -268,6 +269,7 @@ class AdminService {
             reportsAgainst,
             reportsBy,
             subscriptions,
+            subscriptionHistory: subscriptions,
             activeSubscription,
         }
     }
@@ -459,7 +461,17 @@ class AdminService {
             profile.career = { ...(profile.career?.toObject?.() || profile.career || {}), ...data.career }
         }
         if (data.family) {
-            profile.family = { ...(profile.family?.toObject?.() || profile.family || {}), ...data.family }
+            const fam = { ...data.family }
+            if (fam.familyValues && typeof fam.familyValues === "string") {
+                fam.familyValues = fam.familyValues.toLowerCase()
+            }
+            if (fam.familyType && typeof fam.familyType === "string") {
+                fam.familyType = fam.familyType.toLowerCase()
+            }
+            if (fam.familyAffluence && typeof fam.familyAffluence === "string") {
+                fam.familyAffluence = fam.familyAffluence.toLowerCase()
+            }
+            profile.family = { ...(profile.family?.toObject?.() || profile.family || {}), ...fam }
         }
         if (data.lifestyle) {
             profile.lifestyle = { ...(profile.lifestyle?.toObject?.() || profile.lifestyle || {}), ...data.lifestyle }
@@ -530,18 +542,16 @@ class AdminService {
             throw error
         }
 
-        const {
-            planName = "Premium Plan",
-            planId = "premium",
-            amount = 1999,
-            currency = "INR",
-            billingCycle = "annual",
-            paymentMethod = "Admin Assigned",
-            transactionId = `ADMIN-MANUAL-${Date.now()}`,
-            autoRenew = false,
-            notes = "Plan assigned via Admin Console",
-            durationDays = 365,
-        } = data
+        const planId = data.planId || data.plan || "premium"
+        const planName = data.planName || (typeof planId === "string" ? planId.charAt(0).toUpperCase() + planId.slice(1) + " Plan" : "Premium Plan")
+        const amount = data.amount || 1999
+        const currency = data.currency || "INR"
+        const billingCycle = data.billingCycle || "annual"
+        const paymentMethod = data.paymentMethod || "Admin Assigned"
+        const transactionId = data.transactionId || `ADMIN-MANUAL-${Date.now()}`
+        const autoRenew = data.autoRenew || false
+        const notes = data.notes || "Plan assigned via Admin Console"
+        const durationDays = data.durationDays || (data.durationMonths ? Number(data.durationMonths) * 30 : 365)
 
         const startDate = data.startDate ? new Date(data.startDate) : new Date()
         let expiryDate = data.expiryDate ? new Date(data.expiryDate) : null
@@ -681,6 +691,129 @@ class AdminService {
         await redisClient.del(`user:${adminId}`)
 
         return { message: "Administrator password updated successfully" }
+    }
+
+    /**
+     * Get System Health & Diagnostics
+     */
+    async getHealth() {
+        const dbStatus = mongoose.connection.readyState === 1 ? "connected" : "disconnected"
+        let redisStatus = "connected"
+        try {
+            await redisClient.ping()
+        } catch {
+            redisStatus = "in-memory / fallback"
+        }
+
+        return {
+            status: "healthy",
+            uptime: process.uptime(),
+            database: { status: dbStatus, host: mongoose.connection.host, name: mongoose.connection.name },
+            redis: { status: redisStatus },
+            memory: process.memoryUsage(),
+            nodeVersion: process.version,
+            timestamp: new Date(),
+        }
+    }
+
+    /**
+     * Get Platform Activity Logs
+     */
+    async getActivityLogs(options = {}) {
+        const page = parseInt(options.page) || 1
+        const limit = parseInt(options.limit) || 20
+        const skip = (page - 1) * limit
+
+        const [recentUsers, recentVerifs, recentReports, recentSubs] = await Promise.all([
+            User.find().sort({ createdAt: -1 }).limit(10).lean(),
+            Verification.find().sort({ updatedAt: -1 }).limit(10).populate("profileId", "name").lean(),
+            Report.find().sort({ updatedAt: -1 }).limit(10).populate("reporterProfileId reportedProfileId", "name").lean(),
+            Subscription.find().sort({ createdAt: -1 }).limit(10).populate("userId", "name email").lean(),
+        ])
+
+        const logs = []
+        for (const u of recentUsers) {
+            logs.push({
+                id: `user-${u._id}`,
+                action: "USER_REGISTRATION",
+                description: `New user registered: ${u.name || u.email}`,
+                timestamp: u.createdAt,
+                user: { id: u._id, name: u.name, email: u.email },
+            })
+        }
+        for (const v of recentVerifs) {
+            logs.push({
+                id: `verif-${v._id}`,
+                action: "VERIFICATION_STATUS",
+                description: `Verification status updated to ${v.status} for ${v.profileId?.name || "User"}`,
+                timestamp: v.updatedAt || v.createdAt,
+                status: v.status,
+            })
+        }
+        for (const r of recentReports) {
+            logs.push({
+                id: `rep-${r._id}`,
+                action: "REPORT_FILED",
+                description: `Report filed by ${r.reporterProfileId?.name || "Anonymous"}: ${r.reason}`,
+                timestamp: r.createdAt,
+                status: r.status,
+            })
+        }
+        for (const s of recentSubs) {
+            logs.push({
+                id: `sub-${s._id}`,
+                action: "SUBSCRIPTION_ASSIGNED",
+                description: `Plan '${s.plan}' assigned to ${s.userId?.name || s.userId?.email || "User"}`,
+                timestamp: s.createdAt,
+                plan: s.plan,
+            })
+        }
+
+        logs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+        const pagedLogs = logs.slice(skip, skip + limit)
+
+        return {
+            logs: pagedLogs,
+            pagination: {
+                page,
+                limit,
+                total: logs.length,
+                totalPages: Math.ceil(logs.length / limit),
+            },
+        }
+    }
+
+    /**
+     * Get Platform Settings
+     */
+    async getSettings() {
+        const cached = await redisClient.get("platform:settings")
+        if (cached) {
+            try {
+                return JSON.parse(cached)
+            } catch (_) {}
+        }
+        return {
+            platformName: "MeriJodi Matrimonial Portal",
+            supportEmail: "support@merijodi.com",
+            contactPhone: "+91 98765 43210",
+            maintenanceMode: false,
+            allowRegistrations: true,
+            requireEmailVerification: true,
+            autoApproveProfiles: false,
+            maxPhotosPerProfile: 6,
+            freeDailyMatchesLimit: 20,
+        }
+    }
+
+    /**
+     * Update Platform Settings
+     */
+    async updateSettings(data) {
+        const current = await this.getSettings()
+        const updated = { ...current, ...data, updatedAt: new Date() }
+        await redisClient.set("platform:settings", JSON.stringify(updated))
+        return updated
     }
 }
 

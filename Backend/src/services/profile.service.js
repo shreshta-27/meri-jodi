@@ -17,6 +17,7 @@ const PROFILE_CREATE_FIELDS = [
     "heightCm",
     "religion",
     "caste",
+    "subCaste",
     "gotham",
     "rashi",
     "nakshtra",
@@ -46,6 +47,7 @@ const PROFILE_UPDATE_FIELDS = [
     "heightCm",
     "religion",
     "caste",
+    "subCaste",
     "gotham",
     "rashi",
     "nakshtra",
@@ -115,23 +117,26 @@ class ProfileService {
             }
         }
 
-        if (normalized.diet !== undefined || normalized.smoking !== undefined || normalized.drinking !== undefined) {
+        if (normalized.diet !== undefined || normalized.smoking !== undefined || normalized.drinking !== undefined || normalized.habits !== undefined || normalized.fitness !== undefined) {
             normalized.lifestyle = {
                 ...(typeof normalized.lifestyle === "object" ? normalized.lifestyle : {}),
                 ...(normalized.diet !== undefined ? { diet: normalized.diet } : {}),
                 ...(normalized.smoking !== undefined ? { smoking: normalized.smoking === true || normalized.smoking === "true" } : {}),
                 ...(normalized.drinking !== undefined ? { drinking: normalized.drinking === true || normalized.drinking === "true" } : {}),
+                ...(normalized.habits !== undefined ? { habits: normalized.habits } : {}),
+                ...(normalized.fitness !== undefined ? { fitness: normalized.fitness } : {}),
             }
         }
 
-        if (normalized.fatherOccupation || normalized.motherOccupation || normalized.familyType || normalized.familyValues || normalized.familyAffluence) {
+        if (normalized.fatherOccupation || normalized.motherOccupation || normalized.familyType || normalized.familyValues || normalized.familyAffluence || normalized.familyLocation) {
             normalized.family = {
                 ...(typeof normalized.family === "object" ? normalized.family : {}),
                 ...(normalized.fatherOccupation ? { fatherOccupation: normalized.fatherOccupation } : {}),
                 ...(normalized.motherOccupation ? { motherOccupation: normalized.motherOccupation } : {}),
-                ...(normalized.familyType ? { familyType: normalized.familyType } : {}),
-                ...(normalized.familyValues ? { familyValues: normalized.familyValues } : {}),
-                ...(normalized.familyAffluence ? { familyAffluence: normalized.familyAffluence } : {}),
+                ...(normalized.familyLocation ? { familyLocation: normalized.familyLocation } : {}),
+                ...(normalized.familyType ? { familyType: String(normalized.familyType).toLowerCase() } : {}),
+                ...(normalized.familyValues ? { familyValues: String(normalized.familyValues).toLowerCase() } : {}),
+                ...(normalized.familyAffluence ? { familyAffluence: String(normalized.familyAffluence).toLowerCase() } : {}),
             }
         }
 

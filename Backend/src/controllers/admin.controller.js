@@ -208,6 +208,62 @@ class AdminController {
             return apiResponse.error(error.message, error.statusCode || 400)
         }
     }
+
+    /**
+     * GET /api/v1/admin/health
+     */
+    async getHealth(req, res) {
+        const apiResponse = new ApiResponse(res)
+        try {
+            const data = await adminService.getHealth()
+            return apiResponse.success(data, "System health status retrieved successfully")
+        } catch (error) {
+            console.error("Admin getHealth error:", error)
+            return apiResponse.error(error.message, error.statusCode || 500)
+        }
+    }
+
+    /**
+     * GET /api/v1/admin/activity-logs
+     */
+    async getActivityLogs(req, res) {
+        const apiResponse = new ApiResponse(res)
+        try {
+            const data = await adminService.getActivityLogs(req.query)
+            return apiResponse.success(data, "Activity logs retrieved successfully")
+        } catch (error) {
+            console.error("Admin getActivityLogs error:", error)
+            return apiResponse.error(error.message, error.statusCode || 500)
+        }
+    }
+
+    /**
+     * GET /api/v1/admin/settings
+     */
+    async getSettings(req, res) {
+        const apiResponse = new ApiResponse(res)
+        try {
+            const data = await adminService.getSettings()
+            return apiResponse.success(data, "Platform settings retrieved successfully")
+        } catch (error) {
+            console.error("Admin getSettings error:", error)
+            return apiResponse.error(error.message, error.statusCode || 500)
+        }
+    }
+
+    /**
+     * PUT /api/v1/admin/settings
+     */
+    async updateSettings(req, res) {
+        const apiResponse = new ApiResponse(res)
+        try {
+            const data = await adminService.updateSettings(req.body)
+            return apiResponse.success(data, "Platform settings updated successfully")
+        } catch (error) {
+            console.error("Admin updateSettings error:", error)
+            return apiResponse.error(error.message, error.statusCode || 500)
+        }
+    }
 }
 
 export default new AdminController()
