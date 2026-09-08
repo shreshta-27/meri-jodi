@@ -334,6 +334,12 @@ tr:hover td {
 }
 
 /* Mobile Responsiveness */
+@media (min-width: 901px) {
+  .mobile-close-btn {
+    display: none !important;
+  }
+}
+
 @media (max-width: 900px) {
   .admin-sidebar {
     position: fixed;
@@ -347,5 +353,9 @@ tr:hover td {
   }
   .admin-content {
     padding: 1rem;
+  }
+  .stats-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
   }
 }

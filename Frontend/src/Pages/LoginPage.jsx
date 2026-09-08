@@ -32,6 +32,11 @@ const LoginPage = () => {
                 const data = await googleAuth({
                     accessToken: tokenResponse.access_token,
                 })
+                try {
+                    localStorage.removeItem("merijodi_draft_profile")
+                    localStorage.removeItem("merijodi_draft_step")
+                    localStorage.removeItem("merijodi_draft_userId")
+                } catch (_) {}
                 signIn(data.token || data.accessToken, data.user)
                 if (!data.isNewUser || data.isProfileComplete) {
                     navigate("/home")
@@ -130,6 +135,11 @@ const LoginPage = () => {
         setLoading(true)
         try {
             const data = await verifyLoginOtp({ email: email.trim(), otp: otpCode })
+            try {
+                localStorage.removeItem("merijodi_draft_profile")
+                localStorage.removeItem("merijodi_draft_step")
+                localStorage.removeItem("merijodi_draft_userId")
+            } catch (_) {}
             signIn(data.token || data.accessToken, data.user)
             navigate("/home")
         } catch (err) {
@@ -144,11 +154,8 @@ const LoginPage = () => {
         setError("")
         setLoading(true)
         try {
-            const data = await resendLoginOtp(email.trim())
+            await resendLoginOtp(email.trim())
             setInfoMsg("A new verification code has been sent to your email.")
-            if (data.otp) {
-                setDevOtp(data.otp)
-            }
             setResendTimer(60)
             setCanResend(false)
         } catch (err) {
@@ -235,6 +242,11 @@ const LoginPage = () => {
                                         className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:border-[#ED5463] focus:ring-2 focus:ring-[#ED5463]/20 focus:outline-none transition-all"
                                         required
                                     />
+                                    <div className="flex justify-end mt-1">
+                                        <Link to="/forgot-password" className="text-xs text-[#ED5463] font-semibold hover:underline">
+                                            Forgot Password?
+                                        </Link>
+                                    </div>
                                 </div>
 
                                 <button

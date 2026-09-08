@@ -36,21 +36,26 @@ export const deleteAdminUser = async (id) => {
 }
 
 export const getAdminVerifications = async (params = {}) => {
-    const res = await axiosInstance.get("/verifications", { params })
+    const res = await axiosInstance.get("/admin/verifications", { params })
     return res.data?.data || res.data
 }
 
 export const reviewAdminVerification = async (id, status, reviewNote = "") => {
-    const res = await axiosInstance.put(`/verifications/${id}/review`, { status, reviewNote })
+    const res = await axiosInstance.put(`/admin/verifications/${id}/review`, { status, reviewNote })
     return res.data?.data || res.data
 }
 
 export const getAdminReports = async (params = {}) => {
-    const res = await axiosInstance.get("/reports", { params })
+    const res = await axiosInstance.get("/admin/reports", { params })
     return res.data?.data || res.data
 }
 
 export const updateAdminReportStatus = async (id, status, resolutionNotes = "") => {
-    const res = await axiosInstance.put(`/reports/${id}/status`, { status, resolutionNotes, actionTaken: resolutionNotes })
+    const res = await axiosInstance.put(`/admin/reports/${id}/status`, {
+        status,
+        resolutionNotes,
+        actionTaken: resolutionNotes,
+    })
     return res.data?.data || res.data
 }
+

@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { useNavigate, useLocation, Link } from "react-router-dom"
-import { Menu, X, Heart, MessageSquare, Star, User, LogOut, Compass } from "lucide-react"
+import { Menu, X, Heart, MessageSquare, Star, User, LogOut, Compass, ShieldCheck } from "lucide-react"
 import logo2 from "../assets/logo2.png"
 import { useAuth } from "../context/AuthContext"
 import NotificationDropdown from "./NotificationDropdown"
@@ -209,6 +209,15 @@ export default function Navbar() {
                                 >
                                     <MessageSquare size={16} /> Messages
                                 </Link>
+                                {user?.role === "admin" && (
+                                    <Link
+                                        to="/admin"
+                                        onClick={() => setMobileMenuOpen(false)}
+                                        className="flex items-center gap-2 py-1.5 text-[#842029] font-bold"
+                                    >
+                                        <ShieldCheck size={16} /> Admin Console
+                                    </Link>
+                                )}
                             </div>
                             <div className="pt-3 border-t border-gray-100">
                                 <button

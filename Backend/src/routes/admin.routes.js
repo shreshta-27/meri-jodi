@@ -5,6 +5,8 @@ import reportController from "../controllers/report.controller.js"
 import { requireAdmin } from "../middlewares/auth.js"
 import { validateObjectId } from "../validators/shared.validator.js"
 import { validate } from "../middlewares/validate.js"
+import { reviewVerification } from "../validators/verification.validator.js"
+import { updateReportStatus } from "../validators/report.validator.js"
 
 const router = express.Router()
 
@@ -24,10 +26,11 @@ router.delete("/users/:id", validateObjectId("id"), validate, adminController.de
 
 // Verifications Management (Aggregated for convenience)
 router.get("/verifications", verificationController.getVerifications.bind(verificationController))
-router.put("/verifications/:id/review", validateObjectId("id"), validate, verificationController.reviewVerification.bind(verificationController))
+router.put("/verifications/:id/review", validateObjectId("id"), ...reviewVerification, validate, verificationController.reviewVerification.bind(verificationController))
 
 // Abuse Reports Management (Aggregated for convenience)
 router.get("/reports", reportController.getReports.bind(reportController))
-router.put("/reports/:id/status", validateObjectId("id"), validate, reportController.updateReportStatus.bind(reportController))
+router.put("/reports/:id/status", validateObjectId("id"), ...updateReportStatus, validate, reportController.updateReportStatus.bind(reportController))
 
 export default router
+

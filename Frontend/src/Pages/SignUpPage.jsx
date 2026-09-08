@@ -68,6 +68,11 @@ const SignUpPage = () => {
         setVerifyingOtp(true)
         try {
             const data = await verifyEmailToken(otpInput.trim())
+            try {
+                localStorage.removeItem("merijodi_draft_profile")
+                localStorage.removeItem("merijodi_draft_step")
+                localStorage.removeItem("merijodi_draft_userId")
+            } catch (_) {}
             signIn(data.token || data.accessToken, data.user)
             navigate("/complete-profile")
         } catch (err) {
@@ -85,6 +90,11 @@ const SignUpPage = () => {
                 const data = await googleAuth({
                     accessToken: tokenResponse.access_token,
                 })
+                try {
+                    localStorage.removeItem("merijodi_draft_profile")
+                    localStorage.removeItem("merijodi_draft_step")
+                    localStorage.removeItem("merijodi_draft_userId")
+                } catch (_) {}
                 signIn(data.token || data.accessToken, data.user)
                 if (!data.isNewUser || data.isProfileComplete) {
                     navigate("/home")
@@ -225,7 +235,6 @@ const SignUpPage = () => {
                                         setSuccessMsg("")
                                         setError("")
                                         setOtpError("")
-                                        setDevOtp("")
                                     }}
                                     className="text-gray-500 hover:text-gray-800 underline cursor-pointer"
                                 >

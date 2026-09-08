@@ -1,5 +1,7 @@
 import { Report } from "../models/Report.js"
-import { PAGINATION_DEFAULTS } from "../constants/index.js"
+import { Profile } from "../models/Profile.js"
+import { Notification } from "../models/Notification.js"
+import { PAGINATION_DEFAULTS, NOTIFICATION_TYPE } from "../constants/index.js"
 
 class ReportService {
     /**
@@ -46,12 +48,12 @@ class ReportService {
                 .limit(limit)
                 .populate({
                     path: "reporterProfileId",
-                    select: "name photos gender location",
+                    select: "name photos gender location userId",
                     populate: { path: "userId", select: "name avatar" },
                 })
                 .populate({
                     path: "reportedProfileId",
-                    select: "name photos gender location",
+                    select: "name photos gender location userId",
                     populate: { path: "userId", select: "name avatar" },
                 }),
             Report.countDocuments(query),
@@ -81,12 +83,23 @@ class ReportService {
         if (actionTaken) update.actionTaken = actionTaken
         if (resolvedByUserId) update.resolvedBy = resolvedByUserId
 
-        return Report.findByIdAndUpdate(
+        const report = await Report.findByIdAndUpdate(
             reportId,
             update,
             { returnDocument: "after" }
-        )
+        ).populate("reporterProfileId", "userId")
+
+        if (report && status === "resolved" && report.reporterProfileId?.userId) {
+            await Notification.create({
+                userId: report.reporterProfileId.userId,
+                type: NOTIFICATION_TYPE.SYSTEM,
+                message: `Your safety report has been reviewed and resolved by our moderation team. Thank you for keeping MeriJodi safe.`,
+            }).catch(() => {})
+        }
+
+        return report
     }
 }
 
 export default new ReportService()
+

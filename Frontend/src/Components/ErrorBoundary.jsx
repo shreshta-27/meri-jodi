@@ -18,6 +18,7 @@ class ErrorBoundary extends Component {
     try {
       localStorage.removeItem("merijodi_draft_profile")
       localStorage.removeItem("merijodi_draft_step")
+      localStorage.removeItem("merijodi_draft_userId")
     } catch {
       // Ignore
     }

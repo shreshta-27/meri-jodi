@@ -14,6 +14,7 @@ import { useToast } from "../context/ToastContext"
 
 const STORAGE_KEY_FORM = "merijodi_draft_profile"
 const STORAGE_KEY_STEP = "merijodi_draft_step"
+const STORAGE_KEY_USER = "merijodi_draft_userId"
 
 const MAROON = "#640515"
 const ACCENT = "#AE2539"
@@ -143,8 +144,15 @@ const AddDetailsManually = () => {
     let savedData = {}
     if (!fromUpload) {
       try {
-        const item = localStorage.getItem(STORAGE_KEY_FORM)
-        if (item) savedData = JSON.parse(item)
+        const savedUserId = localStorage.getItem(STORAGE_KEY_USER)
+        if (savedUserId && user?._id && savedUserId !== user._id) {
+          localStorage.removeItem(STORAGE_KEY_FORM)
+          localStorage.removeItem(STORAGE_KEY_STEP)
+          localStorage.removeItem(STORAGE_KEY_USER)
+        } else {
+          const item = localStorage.getItem(STORAGE_KEY_FORM)
+          if (item) savedData = JSON.parse(item)
+        }
       } catch (e) {
         console.warn("Could not read draft from localStorage", e)
       }
@@ -152,6 +160,7 @@ const AddDetailsManually = () => {
       try {
         localStorage.removeItem(STORAGE_KEY_FORM)
         localStorage.removeItem(STORAGE_KEY_STEP)
+        localStorage.removeItem(STORAGE_KEY_USER)
       } catch (e) {
         // ignore
       }
@@ -384,10 +393,13 @@ const AddDetailsManually = () => {
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY_FORM, JSON.stringify(formData))
+      if (user?._id) {
+        localStorage.setItem(STORAGE_KEY_USER, user._id)
+      }
     } catch (e) {
       console.warn("Failed to persist draft to localStorage", e)
     }
-  }, [formData])
+  }, [formData, user])
 
   // Auto-save current step to localStorage
   useEffect(() => {
@@ -453,6 +465,7 @@ const AddDetailsManually = () => {
       try {
         localStorage.removeItem(STORAGE_KEY_FORM)
         localStorage.removeItem(STORAGE_KEY_STEP)
+        localStorage.removeItem(STORAGE_KEY_USER)
       } catch (e) {
         console.warn("Failed to clear localStorage draft", e)
       }

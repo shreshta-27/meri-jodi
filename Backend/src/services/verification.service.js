@@ -1,6 +1,7 @@
 import { Verification } from "../models/Verification.js"
 import { Profile } from "../models/Profile.js"
-import { PAGINATION_DEFAULTS } from "../constants/index.js"
+import { Notification } from "../models/Notification.js"
+import { PAGINATION_DEFAULTS, NOTIFICATION_TYPE } from "../constants/index.js"
 
 class VerificationService {
     /**
@@ -60,7 +61,7 @@ class VerificationService {
                 .sort({ createdAt: -1 })
                 .skip(skip)
                 .limit(limit)
-                .populate("profileId", "name photos gender location religion caste"),
+                .populate("profileId", "name photos gender location religion caste userId"),
             Verification.countDocuments(query),
         ])
 
@@ -89,10 +90,34 @@ class VerificationService {
             { returnDocument: "after" }
         )
 
-        if (verification && (status === "verified" || status === "approved")) {
-            await Profile.findByIdAndUpdate(verification.profileId, {
-                isVerified: true,
-            })
+        if (!verification) return null
+
+        if (status === "verified" || status === "approved") {
+            const profile = await Profile.findByIdAndUpdate(
+                verification.profileId,
+                { isVerified: true },
+                { returnDocument: "after" }
+            )
+            if (profile?.userId) {
+                await Notification.create({
+                    userId: profile.userId,
+                    type: NOTIFICATION_TYPE.SYSTEM,
+                    message: "Congratulations! Your KYC verification document has been approved and your profile is now verified.",
+                }).catch(() => {})
+            }
+        } else if (status === "rejected") {
+            const profile = await Profile.findByIdAndUpdate(
+                verification.profileId,
+                { isVerified: false },
+                { returnDocument: "after" }
+            )
+            if (profile?.userId) {
+                await Notification.create({
+                    userId: profile.userId,
+                    type: NOTIFICATION_TYPE.SYSTEM,
+                    message: `Your KYC verification request was not approved${reviewNote ? `: "${reviewNote}"` : ". Please re-upload a clear government ID."}`,
+                }).catch(() => {})
+            }
         }
 
         return verification
@@ -100,3 +125,4 @@ class VerificationService {
 }
 
 export default new VerificationService()
+

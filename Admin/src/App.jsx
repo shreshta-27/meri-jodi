@@ -711,12 +711,6 @@ export default function App() {
 
         {/* Dynamic Content */}
         <div className="admin-content">
-          {toastMessage && (
-            <div style={{ padding: "1rem 1.25rem", background: "#ECFDF5", border: "1px solid #A7F3D0", color: "#065F46", borderRadius: "16px", marginBottom: "1.5rem", display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: "600", fontSize: "0.875rem" }}>
-              <CheckCircle size={18} /> {toastMessage}
-            </div>
-          )}
-
           {/* TAB 1: OVERVIEW */}
           {currentTab === "overview" && (
             <div>

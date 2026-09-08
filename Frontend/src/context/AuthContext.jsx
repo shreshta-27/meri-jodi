@@ -36,6 +36,13 @@ export const AuthProvider = ({ children }) => {
         } finally {
             saveToken(null)
             setUser(null)
+            try {
+                localStorage.removeItem("merijodi_draft_profile")
+                localStorage.removeItem("merijodi_draft_step")
+                localStorage.removeItem("merijodi_draft_userId")
+            } catch (_) {
+                // ignore localStorage errors
+            }
         }
     }, [saveToken])
 

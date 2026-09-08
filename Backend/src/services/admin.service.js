@@ -8,8 +8,9 @@ import { PartnerPreference } from "../models/PartnerPreference.js"
 import { Notification } from "../models/Notification.js"
 import { Shortlist } from "../models/Shortlist.js"
 import { Block } from "../models/Block.js"
-import { USER_STATUS, ROLES, PAGINATION_DEFAULTS } from "../constants/index.js"
+import { USER_STATUS, ROLES, NOTIFICATION_TYPE, PAGINATION_DEFAULTS } from "../constants/index.js"
 import { redisClient } from "../config/redis.js"
+import { revokeRefreshToken } from "../config/generateToken.js"
 
 class AdminService {
     /**
@@ -52,7 +53,7 @@ class AdminService {
             User.find()
                 .sort({ createdAt: -1 })
                 .limit(6)
-                .select("name email phone role status isEmailVerified isPhoneVerified createdAt"),
+                .select("name email phone role status isEmailVerified isPhoneVerified createdAt lastLogin"),
             Verification.find()
                 .sort({ createdAt: -1 })
                 .limit(5)
@@ -111,89 +112,117 @@ class AdminService {
     }
 
     /**
-     * Get paginated users directory with advanced filtering and search
+     * Get paginated users directory with advanced cross-model filtering and search
      */
     async getUsers(options = {}) {
-        const page = parseInt(options.page, 10) || PAGINATION_DEFAULTS.PAGE
+        const page = Math.max(1, parseInt(options.page, 10) || PAGINATION_DEFAULTS.PAGE)
         const limit = Math.min(
-            parseInt(options.limit, 10) || PAGINATION_DEFAULTS.LIMIT,
+            Math.max(1, parseInt(options.limit, 10) || PAGINATION_DEFAULTS.LIMIT),
             100
         )
         const skip = (page - 1) * limit
         const { search, status, role, isVerified, gender, sortBy = "createdAt", sortOrder = "desc" } = options
 
-        const userQuery = {}
+        const matchConditions = []
+
         if (status && Object.values(USER_STATUS).includes(status)) {
-            userQuery.status = status
+            matchConditions.push({ status })
         }
         if (role && Object.values(ROLES).includes(role)) {
-            userQuery.role = role
+            matchConditions.push({ role })
         }
-        if (search) {
+
+        if (isVerified !== undefined && isVerified !== "" && isVerified !== "all") {
+            const verifiedBool = isVerified === "true" || isVerified === true
+            matchConditions.push({ "profile.isVerified": verifiedBool })
+        }
+        if (gender && gender !== "all") {
+            matchConditions.push({ "profile.gender": gender.toLowerCase() })
+        }
+
+        if (search && search.trim()) {
             const regex = new RegExp(search.trim(), "i")
-            userQuery.$or = [{ name: regex }, { email: regex }, { phone: regex }]
+            matchConditions.push({
+                $or: [
+                    { name: regex },
+                    { email: regex },
+                    { phone: regex },
+                    { "profile.name": regex },
+                    { "profile.location.city": regex },
+                    { "profile.location.state": regex },
+                    { "profile.career.occupation": regex },
+                    { "profile.religion": regex },
+                    { "profile.caste": regex },
+                ],
+            })
         }
+
+        const matchStage = matchConditions.length > 0 ? { $match: { $and: matchConditions } } : { $match: {} }
 
         const sortDirection = sortOrder === "asc" ? 1 : -1
-        const sortOptions = { [sortBy]: sortDirection }
+        const sortField = sortBy === "name" ? "name" : sortBy === "lastLogin" ? "lastLogin" : "createdAt"
 
-        const [users, total] = await Promise.all([
-            User.find(userQuery)
-                .sort(sortOptions)
-                .skip(skip)
-                .limit(limit)
-                .select("name email phone avatar role status isEmailVerified isPhoneVerified lastLogin createdAt updatedAt"),
-            User.countDocuments(userQuery),
-        ])
+        const pipeline = [
+            {
+                $lookup: {
+                    from: "profiles",
+                    localField: "_id",
+                    foreignField: "userId",
+                    as: "profile",
+                },
+            },
+            {
+                $unwind: {
+                    path: "$profile",
+                    preserveNullAndEmptyArrays: true,
+                },
+            },
+            matchStage,
+            {
+                $facet: {
+                    metadata: [{ $count: "total" }],
+                    data: [
+                        { $sort: { [sortField]: sortDirection } },
+                        { $skip: skip },
+                        { $limit: limit },
+                        {
+                            $project: {
+                                _id: 1,
+                                name: { $ifNull: ["$name", "$profile.name", "MeriJodi Member"] },
+                                email: 1,
+                                phone: 1,
+                                avatar: 1,
+                                role: 1,
+                                status: 1,
+                                isEmailVerified: 1,
+                                isPhoneVerified: 1,
+                                lastLogin: 1,
+                                createdAt: 1,
+                                updatedAt: 1,
+                                profile: 1,
+                                isVerified: { $ifNull: ["$profile.isVerified", false] },
+                                profileCompletionPct: { $ifNull: ["$profile.profileCompletionPct", 0] },
+                                gender: { $ifNull: ["$profile.gender", "—"] },
+                                location: "$profile.location",
+                                career: "$profile.career",
+                            },
+                        },
+                    ],
+                },
+            },
+        ]
 
-        // Attach corresponding profiles
-        const userIds = users.map((u) => u._id)
-        const profileQuery = { userId: { $in: userIds } }
-        if (isVerified !== undefined && isVerified !== "") {
-            profileQuery.isVerified = isVerified === "true" || isVerified === true
-        }
-        if (gender) {
-            profileQuery.gender = gender.toLowerCase()
-        }
-
-        const profiles = await Profile.find(profileQuery).lean()
-        const profileMap = new Map(profiles.map((p) => [p.userId.toString(), p]))
-
-        const results = users
-            .map((u) => {
-                const p = profileMap.get(u._id.toString())
-                if (gender || isVerified !== undefined && isVerified !== "") {
-                    if (!p) return null
-                }
-                return {
-                    _id: u._id,
-                    name: u.name || p?.name || "MeriJodi Member",
-                    email: u.email,
-                    phone: u.phone,
-                    avatar: u.avatar,
-                    role: u.role,
-                    status: u.status,
-                    isEmailVerified: u.isEmailVerified,
-                    isPhoneVerified: u.isPhoneVerified,
-                    lastLogin: u.lastLogin,
-                    createdAt: u.createdAt,
-                    profile: p || null,
-                    isVerified: Boolean(p?.isVerified),
-                    profileCompletionPct: p?.profileCompletionPct || 0,
-                    gender: p?.gender || "—",
-                    location: p?.location || null,
-                    career: p?.career || null,
-                }
-            })
-            .filter(Boolean)
+        const [aggregationResult] = await User.aggregate(pipeline)
+        const total = aggregationResult?.metadata?.[0]?.total || 0
+        const users = aggregationResult?.data || []
 
         return {
-            users: results,
+            users,
             pagination: {
                 page,
                 limit,
                 total,
-                totalPages: Math.ceil(total / limit),
+                totalPages: Math.ceil(total / limit) || 1,
             },
         }
     }
@@ -220,7 +249,12 @@ class AdminService {
         ])
 
         return {
-            user: user.toAuthJSON(),
+            user: {
+                ...user.toAuthJSON(),
+                createdAt: user.createdAt,
+                updatedAt: user.updatedAt,
+                lastLogin: user.lastLogin,
+            },
             profile,
             preferences,
             verifications,
@@ -254,7 +288,17 @@ class AdminService {
         // Invalidate Redis user cache
         await redisClient.del(`user:${userId}`)
 
-        return user.toAuthJSON()
+        // If banned, revoke refresh token sessions
+        if (status === USER_STATUS.BANNED) {
+            await revokeRefreshToken(userId).catch(() => {})
+        }
+
+        return {
+            ...user.toAuthJSON(),
+            createdAt: user.createdAt,
+            updatedAt: user.updatedAt,
+            lastLogin: user.lastLogin,
+        }
     }
 
     /**
@@ -280,7 +324,12 @@ class AdminService {
         }
 
         await redisClient.del(`user:${userId}`)
-        return user.toAuthJSON()
+        return {
+            ...user.toAuthJSON(),
+            createdAt: user.createdAt,
+            updatedAt: user.updatedAt,
+            lastLogin: user.lastLogin,
+        }
     }
 
     /**
@@ -307,6 +356,15 @@ class AdminService {
             },
             { upsert: true, returnDocument: "after", setDefaultsOnInsert: true }
         )
+
+        // Send a real-time system notification
+        await Notification.create({
+            userId,
+            type: NOTIFICATION_TYPE.SYSTEM,
+            message: verifiedVal
+                ? "Congratulations! Your profile has been granted the Verified Member badge."
+                : "Your profile verification status has been updated by administration.",
+        }).catch(() => {})
 
         return profile
     }
@@ -337,6 +395,7 @@ class AdminService {
             profileId ? Shortlist.deleteMany({ $or: [{ profileId }, { shortlistedProfileId: profileId }] }) : Promise.resolve(),
             profileId ? Block.deleteMany({ $or: [{ blockerProfileId: profileId }, { blockedProfileId: profileId }] }) : Promise.resolve(),
             redisClient.del(`user:${userId}`),
+            revokeRefreshToken(userId).catch(() => {}),
         ])
 
         return { message: "User and associated data permanently removed." }
