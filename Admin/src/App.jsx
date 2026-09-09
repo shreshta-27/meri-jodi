@@ -6,6 +6,7 @@ import {
   CheckCircle,
   XCircle,
   Eye,
+  EyeOff,
   LogOut,
   Search,
   Menu,
@@ -58,6 +59,7 @@ export default function App() {
   // Login form state
   const [loginEmail, setLoginEmail] = useState("")
   const [loginPassword, setLoginPassword] = useState("")
+  const [showAdminLoginPassword, setShowAdminLoginPassword] = useState(false)
   const [loginError, setLoginError] = useState("")
   const [loginLoading, setLoginLoading] = useState(false)
 
@@ -128,6 +130,9 @@ export default function App() {
     newPassword: "",
     confirmPassword: "",
   })
+  const [showAdminCurrentPassword, setShowAdminCurrentPassword] = useState(false)
+  const [showAdminNewPassword, setShowAdminNewPassword] = useState(false)
+  const [showAdminConfirmPassword, setShowAdminConfirmPassword] = useState(false)
   const [settingsPasswordSaving, setSettingsPasswordSaving] = useState(false)
 
   // In-UI Toast Notification
@@ -759,14 +764,37 @@ export default function App() {
 
             <div>
               <label className="form-label">Password</label>
-              <input
-                type="password"
-                required
-                placeholder="••••••••"
-                value={loginPassword}
-                onChange={(e) => setLoginPassword(e.target.value)}
-                className="form-input"
-              />
+              <div style={{ position: "relative" }}>
+                <input
+                  type={showAdminLoginPassword ? "text" : "password"}
+                  required
+                  placeholder="••••••••"
+                  value={loginPassword}
+                  onChange={(e) => setLoginPassword(e.target.value)}
+                  className="form-input"
+                  style={{ paddingRight: "2.75rem" }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowAdminLoginPassword(!showAdminLoginPassword)}
+                  style={{
+                    position: "absolute",
+                    right: "0.75rem",
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    background: "none",
+                    border: "none",
+                    color: "#9CA3AF",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    padding: 0,
+                  }}
+                  aria-label={showAdminLoginPassword ? "Hide password" : "Show password"}
+                >
+                  {showAdminLoginPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
 
             <button
@@ -2005,38 +2033,107 @@ export default function App() {
 
                   <div className="form-group">
                     <label className="form-label">Current Password</label>
-                    <input
-                      type="password"
-                      required
-                      placeholder="••••••••"
-                      value={settingsPasswordForm.currentPassword}
-                      onChange={(e) => setSettingsPasswordForm({ ...settingsPasswordForm, currentPassword: e.target.value })}
-                      className="form-input"
-                    />
+                    <div style={{ position: "relative" }}>
+                      <input
+                        type={showAdminCurrentPassword ? "text" : "password"}
+                        required
+                        placeholder="••••••••"
+                        value={settingsPasswordForm.currentPassword}
+                        onChange={(e) => setSettingsPasswordForm({ ...settingsPasswordForm, currentPassword: e.target.value })}
+                        className="form-input"
+                        style={{ paddingRight: "2.75rem" }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowAdminCurrentPassword(!showAdminCurrentPassword)}
+                        style={{
+                          position: "absolute",
+                          right: "0.75rem",
+                          top: "50%",
+                          transform: "translateY(-50%)",
+                          background: "none",
+                          border: "none",
+                          color: "#9CA3AF",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          padding: 0,
+                        }}
+                        aria-label={showAdminCurrentPassword ? "Hide current password" : "Show current password"}
+                      >
+                        {showAdminCurrentPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
                   </div>
 
                   <div className="form-group">
                     <label className="form-label">New Password</label>
-                    <input
-                      type="password"
-                      required
-                      placeholder="Minimum 6 characters"
-                      value={settingsPasswordForm.newPassword}
-                      onChange={(e) => setSettingsPasswordForm({ ...settingsPasswordForm, newPassword: e.target.value })}
-                      className="form-input"
-                    />
+                    <div style={{ position: "relative" }}>
+                      <input
+                        type={showAdminNewPassword ? "text" : "password"}
+                        required
+                        placeholder="Minimum 6 characters"
+                        value={settingsPasswordForm.newPassword}
+                        onChange={(e) => setSettingsPasswordForm({ ...settingsPasswordForm, newPassword: e.target.value })}
+                        className="form-input"
+                        style={{ paddingRight: "2.75rem" }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowAdminNewPassword(!showAdminNewPassword)}
+                        style={{
+                          position: "absolute",
+                          right: "0.75rem",
+                          top: "50%",
+                          transform: "translateY(-50%)",
+                          background: "none",
+                          border: "none",
+                          color: "#9CA3AF",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          padding: 0,
+                        }}
+                        aria-label={showAdminNewPassword ? "Hide new password" : "Show new password"}
+                      >
+                        {showAdminNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
                   </div>
 
                   <div className="form-group">
                     <label className="form-label">Confirm New Password</label>
-                    <input
-                      type="password"
-                      required
-                      placeholder="Re-enter new password"
-                      value={settingsPasswordForm.confirmPassword}
-                      onChange={(e) => setSettingsPasswordForm({ ...settingsPasswordForm, confirmPassword: e.target.value })}
-                      className="form-input"
-                    />
+                    <div style={{ position: "relative" }}>
+                      <input
+                        type={showAdminConfirmPassword ? "text" : "password"}
+                        required
+                        placeholder="Re-enter new password"
+                        value={settingsPasswordForm.confirmPassword}
+                        onChange={(e) => setSettingsPasswordForm({ ...settingsPasswordForm, confirmPassword: e.target.value })}
+                        className="form-input"
+                        style={{ paddingRight: "2.75rem" }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowAdminConfirmPassword(!showAdminConfirmPassword)}
+                        style={{
+                          position: "absolute",
+                          right: "0.75rem",
+                          top: "50%",
+                          transform: "translateY(-50%)",
+                          background: "none",
+                          border: "none",
+                          color: "#9CA3AF",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          padding: 0,
+                        }}
+                        aria-label={showAdminConfirmPassword ? "Hide confirm password" : "Show confirm password"}
+                      >
+                        {showAdminConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
                   </div>
 
                   <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "2rem" }}>
