@@ -214,65 +214,85 @@ export default function App() {
     localStorage.removeItem("admin_user")
     setToken("")
     setAdminUser(null)
+    setStats(null)
+    setUsersList([])
+    setVerifications([])
+    setReports([])
+    showToast("Signed out successfully", "info")
   }
+
+  // Centralized authenticated fetch handler with automatic session expiration detection
+  const authFetch = useCallback(async (url, options = {}) => {
+    const currentToken = token || localStorage.getItem("admin_token")
+    if (!currentToken) return null
+    try {
+      const headers = {
+        Authorization: `Bearer ${currentToken}`,
+        ...(options.headers || {}),
+      }
+      if (options.body && typeof options.body === "string" && !headers["Content-Type"]) {
+        headers["Content-Type"] = "application/json"
+      }
+      const res = await fetch(url, { ...options, headers })
+      const json = await res.json().catch(() => ({}))
+
+      if (res.status === 401 || res.status === 403) {
+        localStorage.removeItem("admin_token")
+        localStorage.removeItem("admin_user")
+        setToken("")
+        setAdminUser(null)
+        setStats(null)
+        setUsersList([])
+        setVerifications([])
+        setReports([])
+        setLoginError("Your admin session has expired. Please sign in again.")
+        showToast("Session expired. Please sign in again.", "danger")
+        return null
+      }
+
+      return { res, json, ok: res.ok && json.success, data: json.data }
+    } catch (err) {
+      console.error("API error for " + url, err)
+      return null
+    }
+  }, [token])
 
   // Fetch Dashboard Stats & Overview
   const fetchStats = useCallback(async () => {
-    if (!token) return
-    try {
-      const res = await fetch(`${API_BASE}/v1/admin/stats`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      const json = await res.json()
-      if (res.ok && json.success) {
-        setStats(json.data)
-      }
-    } catch (err) {
-      console.error("Failed to load admin stats:", err)
+    const result = await authFetch(`${API_BASE}/v1/admin/stats`)
+    if (result && result.ok) {
+      setStats(result.data)
     }
-  }, [token])
+  }, [authFetch])
 
   // Fetch Verifications
   const fetchVerifications = useCallback(async () => {
-    if (!token) return
     setLoadingData(true)
     try {
-      const res = await fetch(`${API_BASE}/v1/admin/verifications?limit=100`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      const json = await res.json()
-      if (res.ok && json.success) {
-        setVerifications(json.data?.verifications || (Array.isArray(json.data) ? json.data : []))
+      const result = await authFetch(`${API_BASE}/v1/admin/verifications?limit=100`)
+      if (result && result.ok) {
+        setVerifications(result.data?.verifications || (Array.isArray(result.data) ? result.data : []))
       }
-    } catch (err) {
-      console.error("Failed to fetch verifications:", err)
     } finally {
       setLoadingData(false)
     }
-  }, [token])
+  }, [authFetch])
 
   // Fetch Reports
   const fetchReports = useCallback(async () => {
-    if (!token) return
     setLoadingData(true)
     try {
-      const res = await fetch(`${API_BASE}/v1/admin/reports?limit=100`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      const json = await res.json()
-      if (res.ok && json.success) {
-        setReports(json.data?.reports || (Array.isArray(json.data) ? json.data : []))
+      const result = await authFetch(`${API_BASE}/v1/admin/reports?limit=100`)
+      if (result && result.ok) {
+        setReports(result.data?.reports || (Array.isArray(result.data) ? result.data : []))
       }
-    } catch (err) {
-      console.error("Failed to fetch reports:", err)
     } finally {
       setLoadingData(false)
     }
-  }, [token])
+  }, [authFetch])
 
   // Fetch Users
   const fetchUsers = useCallback(async () => {
-    if (!token) return
     setLoadingData(true)
     try {
       const params = new URLSearchParams({ limit: "100" })
@@ -282,19 +302,14 @@ export default function App() {
       if (userVerifiedFilter !== "all") params.append("isVerified", userVerifiedFilter)
       if (debouncedSearch.trim()) params.append("search", debouncedSearch.trim())
 
-      const res = await fetch(`${API_BASE}/v1/admin/users?${params.toString()}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      const json = await res.json()
-      if (res.ok && json.success) {
-        setUsersList(json.data?.users || (Array.isArray(json.data) ? json.data : []))
+      const result = await authFetch(`${API_BASE}/v1/admin/users?${params.toString()}`)
+      if (result && result.ok) {
+        setUsersList(result.data?.users || (Array.isArray(result.data) ? result.data : []))
       }
-    } catch (err) {
-      console.error("Failed to fetch admin users:", err)
     } finally {
       setLoadingData(false)
     }
-  }, [token, userStatusFilter, userRoleFilter, userGenderFilter, userVerifiedFilter, debouncedSearch])
+  }, [authFetch, userStatusFilter, userRoleFilter, userGenderFilter, userVerifiedFilter, debouncedSearch])
 
   // Debounced search query
   useEffect(() => {
@@ -309,24 +324,20 @@ export default function App() {
 
   // Fetch Single User Detailed Dossier
   const fetchUserDetail = useCallback(async (userId) => {
-    if (!token) return
     setLoadingUserDetail(true)
     try {
-      const res = await fetch(`${API_BASE}/v1/admin/users/${userId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      const json = await res.json()
-      if (res.ok && json.success) {
-        setSelectedUserDetail(json.data)
-      } else {
-        showToast(json.message || "Failed to load user details", "error")
+      const result = await authFetch(`${API_BASE}/v1/admin/users/${userId}`)
+      if (result && result.ok) {
+        setSelectedUserDetail(result.data)
+      } else if (result) {
+        showToast(result.json?.message || "Failed to load user details", "error")
       }
     } catch (err) {
       showToast("Error loading user details: " + err.message, "error")
     } finally {
       setLoadingUserDetail(false)
     }
-  }, [token])
+  }, [authFetch])
 
   // View User Profile Tab
   const handleViewUserProfile = (userId) => {
@@ -336,28 +347,21 @@ export default function App() {
 
   // Fetch Admin Settings Profile
   const fetchAdminProfile = useCallback(async () => {
-    if (!token) return
-    try {
-      const res = await fetch(`${API_BASE}/v1/admin/settings/profile`, {
-        headers: { Authorization: `Bearer ${token}` },
+    const result = await authFetch(`${API_BASE}/v1/admin/settings/profile`)
+    if (result && result.ok) {
+      const u = result.data
+      setSettingsPersonalForm({
+        name: u.name || "",
+        email: u.email || "",
+        phone: u.phone || "",
+        avatar: u.avatar || "",
       })
-      const json = await res.json()
-      if (res.ok && json.success) {
-        const u = json.data
-        setSettingsPersonalForm({
-          name: u.name || "",
-          email: u.email || "",
-          phone: u.phone || "",
-          avatar: u.avatar || "",
-        })
-      }
-    } catch (err) {
-      console.error("Failed to fetch admin settings profile:", err)
     }
-  }, [token])
+  }, [authFetch])
 
   // Reload all data
   const refreshAll = () => {
+    showToast("Refreshing data from database...", "info")
     fetchStats()
     fetchVerifications()
     fetchReports()
@@ -391,16 +395,11 @@ export default function App() {
     if (!selectedVerification) return
     setActionLoading(true)
     try {
-      const res = await fetch(`${API_BASE}/v1/admin/verifications/${selectedVerification._id}/review`, {
+      const result = await authFetch(`${API_BASE}/v1/admin/verifications/${selectedVerification._id}/review`, {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({ status, reviewNote: actionNote.trim() || undefined }),
       })
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.message || "Failed to update verification")
+      if (!result?.ok) throw new Error(result?.json?.message || "Failed to update verification")
       showToast(`Document ${status} successfully.`, "success")
       setSelectedVerification(null)
       setActionNote("")
@@ -418,20 +417,15 @@ export default function App() {
     if (!selectedReport) return
     setActionLoading(true)
     try {
-      const res = await fetch(`${API_BASE}/v1/admin/reports/${selectedReport._id}/status`, {
+      const result = await authFetch(`${API_BASE}/v1/admin/reports/${selectedReport._id}/status`, {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({
           status,
           actionTaken: actionNote.trim() || undefined,
           resolutionNotes: actionNote.trim() || undefined,
         }),
       })
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.message || "Failed to update report")
+      if (!result?.ok) throw new Error(result?.json?.message || "Failed to update report")
       showToast(`Report marked as ${status}.`, "success")
       setSelectedReport(null)
       setActionNote("")
@@ -456,16 +450,11 @@ export default function App() {
       type: newStatus === "banned" ? "danger" : "warning",
       onConfirm: async () => {
         try {
-          const res = await fetch(`${API_BASE}/v1/admin/users/${userId}/status`, {
+          const result = await authFetch(`${API_BASE}/v1/admin/users/${userId}/status`, {
             method: "PUT",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
             body: JSON.stringify({ status: newStatus }),
           })
-          const json = await res.json()
-          if (!res.ok) throw new Error(json.message || "Failed to update status")
+          if (!result?.ok) throw new Error(result?.json?.message || "Failed to update status")
           showToast(`User status updated to ${newStatus}`, "success")
           closeConfirmModal()
           fetchUsers()
@@ -490,16 +479,11 @@ export default function App() {
       type: newRole === "admin" ? "warning" : "info",
       onConfirm: async () => {
         try {
-          const res = await fetch(`${API_BASE}/v1/admin/users/${userId}/role`, {
+          const result = await authFetch(`${API_BASE}/v1/admin/users/${userId}/role`, {
             method: "PUT",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
             body: JSON.stringify({ role: newRole }),
           })
-          const json = await res.json()
-          if (!res.ok) throw new Error(json.message || "Failed to update role")
+          if (!result?.ok) throw new Error(result?.json?.message || "Failed to update role")
           showToast(`User role updated to ${newRole}`, "success")
           closeConfirmModal()
           fetchUsers()
@@ -516,16 +500,11 @@ export default function App() {
   // Toggle User Profile Verification Badge
   const handleToggleVerification = async (userId, currentVerified) => {
     try {
-      const res = await fetch(`${API_BASE}/v1/admin/users/${userId}/verify`, {
+      const result = await authFetch(`${API_BASE}/v1/admin/users/${userId}/verify`, {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({ isVerified: !currentVerified }),
       })
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.message || "Failed to toggle verification")
+      if (!result?.ok) throw new Error(result?.json?.message || "Failed to toggle verification")
       showToast(`User verification set to ${!currentVerified}`, "success")
       fetchUsers()
       fetchStats()
@@ -547,12 +526,10 @@ export default function App() {
       type: "danger",
       onConfirm: async () => {
         try {
-          const res = await fetch(`${API_BASE}/v1/admin/users/${userId}`, {
+          const result = await authFetch(`${API_BASE}/v1/admin/users/${userId}`, {
             method: "DELETE",
-            headers: { Authorization: `Bearer ${token}` },
           })
-          const json = await res.json()
-          if (!res.ok) throw new Error(json.message || "Failed to delete user")
+          if (!result?.ok) throw new Error(result?.json?.message || "Failed to delete user")
           showToast("User deleted permanently", "success")
           closeConfirmModal()
           if (currentTab === "user-profile") setCurrentTab("users")
@@ -660,16 +637,11 @@ export default function App() {
         },
       }
 
-      const res = await fetch(`${API_BASE}/v1/admin/users/${selectedUserDetail.user._id}/profile`, {
+      const result = await authFetch(`${API_BASE}/v1/admin/users/${selectedUserDetail.user._id}/profile`, {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify(payload),
       })
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.message || "Failed to update profile")
+      if (!result?.ok) throw new Error(result?.json?.message || "Failed to update profile")
       showToast("User profile details updated successfully", "success")
       setEditProfileModalOpen(false)
       fetchUserDetail(selectedUserDetail.user._id)
@@ -687,16 +659,11 @@ export default function App() {
     if (!selectedUserDetail?.user?._id) return
     setPlanSaving(true)
     try {
-      const res = await fetch(`${API_BASE}/v1/admin/users/${selectedUserDetail.user._id}/subscriptions`, {
+      const result = await authFetch(`${API_BASE}/v1/admin/users/${selectedUserDetail.user._id}/subscriptions`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify(planFormData),
       })
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.message || "Failed to assign subscription")
+      if (!result?.ok) throw new Error(result?.json?.message || "Failed to assign subscription")
       showToast(`Assigned ${planFormData.planName} to user successfully!`, "success")
       setAssignPlanModalOpen(false)
       fetchUserDetail(selectedUserDetail.user._id)
@@ -712,17 +679,12 @@ export default function App() {
     e.preventDefault()
     setSettingsPersonalSaving(true)
     try {
-      const res = await fetch(`${API_BASE}/v1/admin/settings/profile`, {
+      const result = await authFetch(`${API_BASE}/v1/admin/settings/profile`, {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify(settingsPersonalForm),
       })
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.message || "Failed to update personal settings")
-      const updatedUser = json.data
+      if (!result?.ok) throw new Error(result?.json?.message || "Failed to update personal settings")
+      const updatedUser = result.data
       setAdminUser(updatedUser)
       localStorage.setItem("admin_user", JSON.stringify(updatedUser))
       showToast("Personal information updated successfully", "success")
@@ -742,19 +704,14 @@ export default function App() {
     }
     setSettingsPasswordSaving(true)
     try {
-      const res = await fetch(`${API_BASE}/v1/admin/settings/password`, {
+      const result = await authFetch(`${API_BASE}/v1/admin/settings/password`, {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({
           currentPassword: settingsPasswordForm.currentPassword,
           newPassword: settingsPasswordForm.newPassword,
         }),
       })
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.message || "Failed to update password")
+      if (!result?.ok) throw new Error(result?.json?.message || "Failed to update password")
       showToast("Password updated successfully!", "success")
       setSettingsPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" })
     } catch (err) {

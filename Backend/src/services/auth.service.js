@@ -352,7 +352,7 @@ class AuthService {
         user.lastLogin = new Date()
         await user.save()
 
-        const { accessToken, refreshToken } = await generateToken(user._id, res)
+        const { accessToken, refreshToken } = await generateToken(user._id, res, "7d")
         await redisClient.setEx(`user:${user._id}`, 3600, JSON.stringify(user.toAuthJSON()))
 
         return {
