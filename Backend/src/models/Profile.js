@@ -115,6 +115,7 @@ const profileSchema = new Schema(
         ],
         profileCompletionPct: { type: Number, default: 0 },
         isVerified: { type: Boolean, default: false },
+        isPhotoHidden: { type: Boolean, default: false },
         createdBy: {
             type: String,
             enum: Object.values(PROFILE_CREATED_BY),

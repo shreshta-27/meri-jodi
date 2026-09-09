@@ -23,6 +23,8 @@ export const createOrUpdatePreferences = [
         .optional({ values: "falsy" }),
     body("location")
         .optional({ values: "falsy" }),
+    body("locations")
+        .optional({ values: "falsy" }),
     body("education")
         .optional({ values: "falsy" }),
     body("occupation")

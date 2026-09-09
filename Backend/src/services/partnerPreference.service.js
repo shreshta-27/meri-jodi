@@ -8,6 +8,7 @@ const PREFERENCE_UPDATE_FIELDS = [
     "religion",
     "caste",
     "location",
+    "locations",
     "education",
     "occupation",
     "annualIncome",
@@ -30,11 +31,35 @@ class PartnerPreferenceService {
         const sanitized = {}
         for (const field of PREFERENCE_UPDATE_FIELDS) {
             if (data[field] !== undefined) {
-                if (Array.isArray(data[field]) && !["maritalStatus", "hobbiesAndInterests"].includes(field)) {
+                if (Array.isArray(data[field]) && !["maritalStatus", "hobbiesAndInterests", "locations"].includes(field)) {
                     sanitized[field] = data[field].join(", ")
                 } else {
                     sanitized[field] = data[field]
                 }
+            }
+        }
+
+        // Normalize locations array & location string
+        if (data.locations !== undefined) {
+            if (Array.isArray(data.locations)) {
+                sanitized.locations = data.locations
+                    .map((l) => (typeof l === "string" ? l.trim() : String(l || "")))
+                    .filter(Boolean)
+                    .slice(0, 10)
+            } else if (typeof data.locations === "string") {
+                sanitized.locations = data.locations
+                    .split(",")
+                    .map((l) => l.trim())
+                    .filter(Boolean)
+                    .slice(0, 10)
+            }
+            if (sanitized.locations?.length > 0 && !sanitized.location) {
+                sanitized.location = sanitized.locations.join(", ")
+            }
+        } else if (data.location && typeof data.location === "string") {
+            const locs = data.location.split(",").map((l) => l.trim()).filter(Boolean).slice(0, 10)
+            if (locs.length > 0 && (!sanitized.locations || sanitized.locations.length === 0)) {
+                sanitized.locations = locs
             }
         }
 

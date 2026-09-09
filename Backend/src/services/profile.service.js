@@ -30,6 +30,7 @@ const PROFILE_CREATE_FIELDS = [
     "family",
     "lifestyle",
     "hobbiesAndInterests",
+    "isPhotoHidden",
     "createdBy",
     "agreedToTerms",
     "agreedToPrivacyPolicy",
@@ -60,6 +61,7 @@ const PROFILE_UPDATE_FIELDS = [
     "family",
     "lifestyle",
     "hobbiesAndInterests",
+    "isPhotoHidden",
     "createdBy",
     "agreedToTerms",
     "agreedToPrivacyPolicy",
@@ -138,6 +140,10 @@ class ProfileService {
                 ...(normalized.familyValues ? { familyValues: String(normalized.familyValues).toLowerCase() } : {}),
                 ...(normalized.familyAffluence ? { familyAffluence: String(normalized.familyAffluence).toLowerCase() } : {}),
             }
+        }
+
+        if (normalized.isPhotoHidden !== undefined) {
+            normalized.isPhotoHidden = normalized.isPhotoHidden === true || normalized.isPhotoHidden === "true"
         }
 
         return normalized

@@ -4,6 +4,7 @@ import { Eye, EyeOff } from "lucide-react"
 import { useAuth } from "../context/AuthContext"
 import { loginWithEmail, verifyLoginOtp, resendLoginOtp, googleAuth } from "../api/authApi"
 import logo from "../assets/logo2.png"
+import OtpBoxInput from "../Components/OtpBoxInput"
 
 import { useGoogleLogin } from "@react-oauth/google"
 
@@ -19,7 +20,7 @@ const LoginPage = () => {
     const [email, setEmail] = useState("")
     const [password, setPassword] = useState("")
     const [showPassword, setShowPassword] = useState(false)
-    const [otp, setOtp] = useState(["", "", "", "", "", ""])
+    const [otp, setOtp] = useState("")
     const [devOtp, setDevOtp] = useState("")
     const [error, setError] = useState("")
     const [infoMsg, setInfoMsg] = useState("")
@@ -96,7 +97,7 @@ const LoginPage = () => {
         try {
             const data = await loginWithEmail(email.trim(), password)
             setInfoMsg(data.message || "Verification code sent to your email.")
-            setOtp(["", "", "", "", "", ""])
+            setOtp("")
             setStep("otp")
             setResendTimer(60)
             setCanResend(false)
@@ -107,30 +108,11 @@ const LoginPage = () => {
         }
     }
 
-    // Handle OTP 6-box input
-    const handleOtpChange = (index, value) => {
-        if (!/^\d?$/.test(value)) return
-        const newOtp = [...otp]
-        newOtp[index] = value
-        setOtp(newOtp)
-
-        // Auto-advance to next input
-        if (value && index < 5) {
-            document.getElementById(`login-otp-${index + 1}`)?.focus()
-        }
-    }
-
-    const handleOtpKeyDown = (index, e) => {
-        if (e.key === "Backspace" && !otp[index] && index > 0) {
-            document.getElementById(`login-otp-${index - 1}`)?.focus()
-        }
-    }
-
     // Step 2: Submit OTP verification
     const handleOtpSubmit = async (e) => {
-        e.preventDefault()
+        if (e?.preventDefault) e.preventDefault()
         setError("")
-        const otpCode = otp.join("")
+        const otpCode = String(otp || "").trim()
         if (otpCode.length !== 6) {
             setError("Please enter the complete 6-digit verification code.")
             return
@@ -357,8 +339,6 @@ const LoginPage = () => {
                                 </div>
                             </div>
 
-
-
                             {infoMsg && (
                                 <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-700 text-xs sm:text-sm rounded-xl">
                                     ✓ {infoMsg}
@@ -372,23 +352,12 @@ const LoginPage = () => {
                             )}
 
                             <form onSubmit={handleOtpSubmit} className="space-y-6">
-                                <div className="flex justify-center gap-2 sm:gap-3 my-4">
-                                    {otp.map((digit, index) => (
-                                        <input
-                                            key={index}
-                                            id={`login-otp-${index}`}
-                                            type="text"
-                                            maxLength="1"
-                                            value={digit}
-                                            onChange={(e) => handleOtpChange(index, e.target.value)}
-                                            onKeyDown={(e) => handleOtpKeyDown(index, e)}
-                                            className="w-11 h-13 sm:w-13 sm:h-14 text-center text-2xl sm:text-3xl font-extrabold border-2 border-gray-300 rounded-xl focus:border-[#ED5463] focus:ring-2 focus:ring-[#ED5463]/20 focus:outline-none transition-all"
-                                            placeholder="•"
-                                            inputMode="numeric"
-                                            autoFocus={index === 0}
-                                        />
-                                    ))}
-                                </div>
+                                <OtpBoxInput
+                                    value={otp}
+                                    onChange={setOtp}
+                                    error={Boolean(error)}
+                                    idPrefix="login-otp"
+                                />
 
                                 <div className="text-center text-xs sm:text-sm text-[#6B7280]">
                                     Didn't receive the code?{" "}
@@ -407,7 +376,7 @@ const LoginPage = () => {
 
                                 <button
                                     type="submit"
-                                    disabled={loading || otp.join("").length !== 6}
+                                    disabled={loading || String(otp || "").length !== 6}
                                     className="w-full rounded-full bg-[#ED5463] py-3.5 text-white font-semibold text-sm shadow-md hover:bg-[#D4384B] hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     {loading ? "Verifying..." : "Verify & Sign In"}
